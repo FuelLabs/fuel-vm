@@ -29,6 +29,7 @@ use fuel_tx::{
         BlobId,
         BytecodeRoot,
         BytecodeWitnessIndex,
+        Inputs,
         ProofSet,
         Salt,
         Script as ScriptField,
@@ -55,6 +56,7 @@ impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     Tx: ExecutableTransaction,
+    Tx: Inputs,
 {
     pub(crate) fn metadata(&mut self, ra: RegId, imm: Immediate18) -> SimpleResult<()> {
         let tx_offset = self.tx_offset() as Word;
@@ -166,6 +168,7 @@ impl<Tx> GTFInput<'_, Tx> {
     ) -> SimpleResult<()>
     where
         Tx: ExecutableTransaction,
+        Tx: Inputs,
     {
         let b = convert::to_usize(b).ok_or(PanicReason::InvalidMetadataIdentifier)?;
         let args = GTFArgs::try_from(imm)?;

@@ -90,6 +90,10 @@ impl Chargeable for Blob {
             .resolve(bytes as u64)
             .saturating_add(gas_cost.s256().resolve(blob_len as u64))
     }
+
+    fn has_spendable_input(&self) -> bool {
+        self.has_spendable_input_inner()
+    }
 }
 
 impl UniqueFormatValidityChecks for Blob {

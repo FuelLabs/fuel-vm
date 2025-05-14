@@ -288,7 +288,8 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
             })
             .fold(0, |acc, cost| acc.saturating_add(cost))
     }
-
     /// Used for accounting purposes when charging for metadata creation.
     fn gas_used_by_metadata(&self, gas_costs: &GasCosts) -> Word;
+
+    fn has_spendable_input(&self) -> bool;
 }

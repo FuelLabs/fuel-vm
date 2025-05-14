@@ -106,6 +106,7 @@ test-helpers = [
     "fuel-crypto/test-helpers",
 ]
 u32-tx-pointer = ["fuel-tx/u32-tx-pointer"]
+chargeable-tx-v2 = []
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }

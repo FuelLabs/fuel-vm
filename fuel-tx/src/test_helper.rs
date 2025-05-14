@@ -120,6 +120,9 @@ mod use_std {
                         Input::MessageCoinPredicate(_) => (),
                         Input::MessageDataSigned(_) => (),
                         Input::MessageDataPredicate(_) => (),
+                        Input::InputV2(_) => {
+                            todo!()
+                        }
                     })
                     .unwrap_or(());
 
@@ -141,6 +144,8 @@ mod use_std {
                         Transaction::Upgrade(_) => (),
                         Transaction::Upload(_) => (),
                         Transaction::Blob(_) => (),
+                        #[cfg(feature = "chargeable-tx-v2")]
+                        Transaction::ScriptV2(_) => (),
                     })
                     .unwrap_or(());
 
@@ -304,6 +309,10 @@ mod use_std {
                         );
 
                         builder.add_input(input);
+                    }
+
+                    7 => {
+                        // do nothing for now...
                     }
 
                     _ => unreachable!(),

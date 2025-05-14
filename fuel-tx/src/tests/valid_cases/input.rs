@@ -5,7 +5,10 @@ use crate::{
     ConsensusParameters,
     builder::TransactionBuilder,
     field,
-    field::Witnesses,
+    field::{
+        Inputs,
+        Witnesses,
+    },
     test_helper::{
         TransactionFactory,
         generate_bytes,
@@ -27,10 +30,17 @@ use rand::{
 
 #[test]
 fn input_coin_message_signature() {
-    fn test<Tx: Buildable>(txs: &mut impl Iterator<Item = (Tx, Vec<SecretKey>)>) {
+    fn test<Tx>(txs: &mut impl Iterator<Item = (Tx, Vec<SecretKey>)>)
+    where
+        Tx: Buildable + Inputs,
+    {
         let rng = &mut StdRng::seed_from_u64(8586);
 
-        fn check_inputs<Tx: Buildable>(tx: Tx) -> Result<(), ValidityError> {
+        fn check_inputs<Tx>(tx: Tx) -> Result<(), ValidityError>
+        where
+            Tx: Buildable,
+            Tx: Inputs,
+        {
             let chain_id = ChainId::default();
             let txhash = tx.id(&chain_id);
             let outputs = tx.outputs();
@@ -65,6 +75,7 @@ fn input_coin_message_signature() {
             I: Iterator<Item = (Tx, Vec<SecretKey>)>,
             F: Fn(&mut Tx, &PublicKey),
             Tx: Buildable,
+            Tx: Inputs,
         {
             let (mut tx, keys) = iter.next().expect("Failed to generate a transaction");
 

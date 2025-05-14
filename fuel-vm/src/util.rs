@@ -156,6 +156,7 @@ pub mod test_helpers {
         TxParameters,
         Witness,
         field::{
+            Inputs,
             Outputs,
             ReceiptsRoot,
         },
@@ -556,6 +557,7 @@ pub mod test_helpers {
         where
             M: Memory,
             Tx: ExecutableTransaction,
+            Tx: Inputs,
             <Tx as IntoChecked>::Metadata: CheckedMetadata,
             Ecal: crate::interpreter::EcalHandler,
             V: Verifier + Clone,

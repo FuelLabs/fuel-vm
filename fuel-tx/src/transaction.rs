@@ -72,6 +72,7 @@ pub use fee::{
     Chargeable,
     TransactionFee,
 };
+use field::Inputs;
 pub use metadata::Cacheable;
 pub use repr::TransactionRepr;
 pub use types::*;
@@ -114,6 +115,8 @@ pub enum Transaction {
     Upgrade(Upgrade),
     Upload(Upload),
     Blob(Blob),
+    #[cfg(feature = "chargeable-tx-v2")]
+    ScriptV2(ScriptV2),
 }
 
 #[cfg(feature = "test-helpers")]
@@ -476,7 +479,7 @@ impl Transaction {
     }
 }
 
-pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
+pub trait Executable: Inputs + field::Outputs + field::Witnesses {
     /// Returns the assets' ids used in the inputs in the order of inputs.
     fn input_asset_ids<'a>(
         &'a self,
@@ -491,7 +494,12 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
                 | Input::MessageCoinPredicate(_)
                 | Input::MessageDataPredicate(_)
                 | Input::MessageDataSigned(_) => Some(base_asset_id),
-                _ => None,
+                Input::InputV2(inner) => match inner {
+                    InputV2::Coin(coin) => Some(&coin.asset_id),
+                    InputV2::Contract(_) => None,
+                    InputV2::Message(_) => Some(base_asset_id),
+                },
+                Input::Contract(_) => None,
             })
             .collect_vec()
             .into_iter()
@@ -554,6 +562,40 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         asset_id: AssetId,
         tx_pointer: TxPointer,
         witness_index: u16,
+    );
+
+    /// Append a new unsigned message input to the transaction.
+    ///
+    /// When the transaction is constructed, [`Signable::sign_inputs`] should
+    /// be called for every secret key used with this method.
+    ///
+    /// The production of the signatures can be done only after the full
+    /// transaction skeleton is built because the input of the hash message
+    /// is the ID of the final transaction.
+    fn add_unsigned_message_input(
+        &mut self,
+        sender: Address,
+        recipient: Address,
+        nonce: Nonce,
+        amount: Word,
+        data: Vec<u8>,
+        witness_index: u16,
+    );
+}
+
+impl<B, M> Executable for ChargeableTransaction<B, M>
+where
+    ChargeableTransaction<B, M>: Inputs + field::Outputs + field::Witnesses,
+    B: BodyConstraints,
+{
+    fn add_unsigned_coin_input(
+        &mut self,
+        utxo_id: UtxoId,
+        owner: &PublicKey,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        witness_index: u16,
     ) {
         let owner = Input::owner(owner);
 
@@ -568,14 +610,6 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         self.inputs_mut().push(input);
     }
 
-    /// Append a new unsigned message input to the transaction.
-    ///
-    /// When the transaction is constructed, [`Signable::sign_inputs`] should
-    /// be called for every secret key used with this method.
-    ///
-    /// The production of the signatures can be done only after the full
-    /// transaction skeleton is built because the input of the hash message
-    /// is the ID of the final transaction.
     fn add_unsigned_message_input(
         &mut self,
         sender: Address,
@@ -602,11 +636,57 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
     }
 }
 
-impl<T: field::Inputs + field::Outputs + field::Witnesses> Executable for T {}
+#[cfg(feature = "chargeable-tx-v2")]
+impl<B, M> Executable for ChargeableTransactionV2<B, M>
+where
+    ChargeableTransactionV2<B, M>: Inputs + field::Outputs + field::Witnesses,
+    B: BodyConstraints,
+{
+    fn add_unsigned_coin_input(
+        &mut self,
+        utxo_id: UtxoId,
+        owner: &PublicKey,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        witness_index: u16,
+    ) {
+        let owner = Input::owner(owner);
+
+        let input = Input::coin_signed_v2(
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+        );
+        self.inputs_mut().push(input);
+    }
+
+    fn add_unsigned_message_input(
+        &mut self,
+        _sender: Address,
+        _recipient: Address,
+        _nonce: Nonce,
+        _amount: Word,
+        _data: Vec<u8>,
+        _witness_index: u16,
+    ) {
+        todo!()
+    }
+}
 
 impl From<Script> for Transaction {
     fn from(tx: Script) -> Self {
         Self::Script(tx)
+    }
+}
+
+#[cfg(feature = "chargeable-tx-v2")]
+impl From<ScriptV2> for Transaction {
+    fn from(tx: ScriptV2) -> Self {
+        Self::ScriptV2(tx)
     }
 }
 
@@ -649,6 +729,8 @@ impl Serialize for Transaction {
             Self::Upgrade(tx) => tx.size_static(),
             Self::Upload(tx) => tx.size_static(),
             Self::Blob(tx) => tx.size_static(),
+            #[cfg(feature = "chargeable-tx-v2")]
+            Self::ScriptV2(tx) => tx.size_static(),
         }
     }
 
@@ -660,6 +742,8 @@ impl Serialize for Transaction {
             Self::Upgrade(tx) => tx.size_dynamic(),
             Self::Upload(tx) => tx.size_dynamic(),
             Self::Blob(tx) => tx.size_dynamic(),
+            #[cfg(feature = "chargeable-tx-v2")]
+            Self::ScriptV2(tx) => tx.size_dynamic(),
         }
     }
 
@@ -674,6 +758,8 @@ impl Serialize for Transaction {
             Self::Upgrade(tx) => tx.encode_static(buffer),
             Self::Upload(tx) => tx.encode_static(buffer),
             Self::Blob(tx) => tx.encode_static(buffer),
+            #[cfg(feature = "chargeable-tx-v2")]
+            Self::ScriptV2(tx) => tx.encode_static(buffer),
         }
     }
 
@@ -688,6 +774,8 @@ impl Serialize for Transaction {
             Self::Upgrade(tx) => tx.encode_dynamic(buffer),
             Self::Upload(tx) => tx.encode_dynamic(buffer),
             Self::Blob(tx) => tx.encode_dynamic(buffer),
+            #[cfg(feature = "chargeable-tx-v2")]
+            Self::ScriptV2(tx) => tx.encode_dynamic(buffer),
         }
     }
 }
@@ -721,6 +809,11 @@ impl Deserialize for Transaction {
             TransactionRepr::Blob => {
                 Ok(<Blob as Deserialize>::decode_static(buffer)?.into())
             }
+            #[cfg(feature = "chargeable-tx-v2")]
+            TransactionRepr::ScriptV2 => {
+                let inner = <ScriptV2 as Deserialize>::decode_static(buffer)?;
+                Ok(Transaction::ScriptV2(inner))
+            }
         }
     }
 
@@ -735,6 +828,8 @@ impl Deserialize for Transaction {
             Self::Upgrade(tx) => tx.decode_dynamic(buffer),
             Self::Upload(tx) => tx.decode_dynamic(buffer),
             Self::Blob(tx) => tx.decode_dynamic(buffer),
+            #[cfg(feature = "chargeable-tx-v2")]
+            Self::ScriptV2(tx) => tx.decode_dynamic(buffer),
         }
     }
 }
@@ -747,6 +842,7 @@ pub mod field {
         Output,
         StorageSlot,
         UpgradePurpose as UpgradePurposeType,
+        ValidityError,
         Witness,
         input,
         output,
@@ -1011,6 +1107,10 @@ pub mod field {
         }
     }
 
+    pub trait IsCoin {
+        fn is_coin(&self) -> bool;
+    }
+
     pub trait Inputs {
         fn inputs(&self) -> &Vec<Input>;
         fn inputs_mut(&mut self) -> &mut Vec<Input>;
@@ -1030,6 +1130,8 @@ pub mod field {
 
         /// Returns the offset to the `Output` at `idx` index, if any.
         fn outputs_offset_at(&self, idx: usize) -> Option<usize>;
+
+        fn check_all_outputs(&self) -> Result<(), ValidityError>;
     }
 
     pub trait Witnesses {

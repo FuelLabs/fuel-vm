@@ -11,17 +11,18 @@ use crate::{
     Upgrade,
     Upload,
     UtxoId,
-    field,
     input::{
         AsField,
         PredicateCode,
         coin::{
             Coin,
             CoinSpecification,
+            CoinV2,
         },
         message::{
             Message,
             MessageSpecification,
+            MessageV2,
         },
     },
     test_helper::TransactionFactory,
@@ -241,6 +242,14 @@ where
         })
     }
 }
+impl DecompressibleBy<TestCompressionCtx> for CoinV2 {
+    async fn decompress_with(
+        _c: <CoinV2 as Compressible>::Compressed,
+        _ctx: &TestCompressionCtx,
+    ) -> Result<CoinV2, Infallible> {
+        todo!()
+    }
+}
 
 impl<Specification> DecompressibleBy<TestCompressionCtx> for Message<Specification>
 where
@@ -280,6 +289,15 @@ where
         }
 
         Ok(message)
+    }
+}
+
+impl DecompressibleBy<TestCompressionCtx> for MessageV2 {
+    async fn decompress_with(
+        _c: <MessageV2 as Compressible>::Compressed,
+        _ctx: &TestCompressionCtx,
+    ) -> Result<MessageV2, Infallible> {
+        todo!()
     }
 }
 
@@ -459,7 +477,7 @@ async fn can_decompress_compressed_transaction_mint() {
 async fn assert_can_decompress_compressed_transaction<Tx, Iterator>(iterator: Iterator)
 where
     Iterator: core::iter::Iterator<Item = Tx>,
-    Tx: PrepareSign + field::Inputs + Clone + Into<Transaction>,
+    Tx: PrepareSign + Inputs + Clone + Into<Transaction>,
 {
     let mut ctx = TestCompressionCtx::default();
     let txs = iterator

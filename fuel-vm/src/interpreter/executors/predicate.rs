@@ -20,11 +20,13 @@ use crate::{
 
 use crate::storage::predicate::PredicateStorageRequirements;
 use fuel_asm::PanicReason;
+use fuel_tx::field::Inputs;
 
 impl<M, Tx, Ecal, S> Interpreter<M, PredicateStorage<S>, Tx, Ecal>
 where
     M: Memory,
     Tx: ExecutableTransaction,
+    Tx: Inputs,
     Ecal: EcalHandler,
     S: PredicateStorageRequirements,
 {

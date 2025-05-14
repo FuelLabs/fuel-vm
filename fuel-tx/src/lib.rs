@@ -27,7 +27,6 @@ pub use fuel_asm::{
     PanicInstruction,
     PanicReason,
 };
-use fuel_types::SubAssetId;
 pub use fuel_types::{
     Address,
     AssetId,
@@ -39,6 +38,7 @@ pub use fuel_types::{
     ContractId,
     MessageId,
     Salt,
+    SubAssetId,
     Word,
 };
 pub use tx_pointer::TxPointer;

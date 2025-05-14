@@ -5,7 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [Unreleased (see .changes folder)]
+
+## [Version 0.61.0]
+
+### Added
+- [899](https://github.com/FuelLabs/fuel-vm/pull/899): Add a feature that propose `u32` `tx_pointer` instead of `u16` in `fuel-tx` and `fuel-vm`.
+- [939](https://github.com/FuelLabs/fuel-vm/pull/939): Add new `GetGasPrice` `GM` opcode argument
+
+### Breaking
+- [778](https://github.com/FuelLabs/fuel-vm/pull/778): Add `SubAssetId` newtype that's used instead of `Bytes32`.
+- [933](https://github.com/FuelLabs/fuel-vm/pull/933): Don't perform balance update if the change is zero
+- [934](https://github.com/FuelLabs/fuel-vm/pull/934): Add `input_index` of the failed predicate to `CheckError::PredicateVerificationFailed`.
+- [935](https://github.com/FuelLabs/fuel-vm/pull/935): Bump Rust version to `1.85.0`.
+- [936](https://github.com/FuelLabs/fuel-vm/pull/936): Update Rust edition to 2024.
+- [938](https://github.com/FuelLabs/fuel-vm/pull/938): Rename `update` method to `insert` on sparse merkle tree, and allow inserting empty values.
+
+### Changed
+- [913](https://github.com/FuelLabs/fuel-vm/pull/913): Change the way we are building the changelog to avoids conflicts.
+
+### Fixed
+- [940](https://github.com/FuelLabs/fuel-vm/pull/940): Zero out heap memory when reallocating after reset.
 
 ## [Version 0.60.1]
 

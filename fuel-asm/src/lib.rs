@@ -268,6 +268,14 @@ impl_instructions! {
     0x60 MCPI mcpi [dst_addr: RegId src_addr: RegId len: Imm12]
     "Get transaction fields."
     0x61 GTF gtf [dst: RegId arg: RegId selector: Imm12]
+    "Load quarterword (u16)."
+    0x62 LQW lqw [dst: RegId arg: RegId offset: Imm12]
+    "Load halfword (u32)."
+    0x63 LHW lhw [dst: RegId arg: RegId offset: Imm12]
+    "Store quarterword (u16)."
+    0x64 SQW sqw [dst: RegId arg: RegId offset: Imm12]
+    "Store halfword (u32)."
+    0x65 SHW shw [dst: RegId arg: RegId offset: Imm12]
 
     "Clear an immediate number of bytes in memory."
     0x70 MCLI mcli [addr: RegId count: Imm18]
@@ -703,10 +711,10 @@ impl Opcode {
             | WQML | WDDV | WQDV | WDMD | WQMD | WDAM | WQAM | WDMM | WQMM | PSHH
             | PSHL | POPH | POPL | RET | ALOC | MCL | MCP | MEQ | ECK1 | ECR1 | ED19
             | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI | MODI | MULI
-            | MLDV | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW | SB | SW
-            | MCPI | MCLI | GM | MOVI | JNZI | JI | JMP | JNE | JMPF | JMPB | JNZF
-            | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF | LDC | BSIZ | BLDD
-            | ECOP | EPAR => true,
+            | MLDV | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LQW | LHW | LW
+            | SB | SQW | SHW | SW | MCPI | MCLI | GM | MOVI | JNZI | JI | JMP | JNE
+            | JMPF | JMPB | JNZF | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF
+            | LDC | BSIZ | BLDD | ECOP | EPAR => true,
             _ => false,
         }
     }

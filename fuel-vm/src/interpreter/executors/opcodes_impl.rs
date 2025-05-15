@@ -24,8 +24,8 @@ use core::ops::Div;
 use fuel_asm::{
     Instruction,
     PanicReason,
-    narrowint,
     RegId,
+    narrowint,
     op::{
         ADD,
         ADDI,

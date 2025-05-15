@@ -2225,12 +2225,12 @@ impl GasCosts {
 impl GasCostsValues {
     /// Create costs that are all set to zero.
     pub fn free() -> Self {
-        GasCostsValuesV5::free().into()
+        GasCostsValuesV6::free().into()
     }
 
     /// Create costs that are all set to one.
     pub fn unit() -> Self {
-        GasCostsValuesV5::unit().into()
+        GasCostsValuesV6::unit().into()
     }
 }
 
@@ -3815,6 +3815,12 @@ impl From<GasCostsValuesV4> for GasCostsValues {
 impl From<GasCostsValuesV5> for GasCostsValues {
     fn from(i: GasCostsValuesV5) -> Self {
         GasCostsValues::V5(i)
+    }
+}
+
+impl From<GasCostsValuesV6> for GasCostsValues {
+    fn from(i: GasCostsValuesV6) -> Self {
+        GasCostsValues::V6(i)
     }
 }
 

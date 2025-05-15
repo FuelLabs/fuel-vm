@@ -3,8 +3,9 @@ use super::*;
 /// hash
 pub const GIT: &str = "98341e564b75d1157e61d7d5f38612f6224a5b30";
 /// Modified manually afterwards in https://github.com/FuelLabs/fuel-vm/pull/780
+/// and in https://github.com/FuelLabs/fuel-vm/pull/922
 pub fn default_gas_costs() -> GasCostsValues {
-    GasCostsValuesV5 {
+    GasCostsValuesV6 {
         add: 1,
         addi: 1,
         and: 1,
@@ -50,6 +51,7 @@ pub fn default_gas_costs() -> GasCostsValues {
         mul: 1,
         muli: 1,
         mldv: 1,
+        niop: 1,
         noop: 1,
         not: 1,
         or: 1,

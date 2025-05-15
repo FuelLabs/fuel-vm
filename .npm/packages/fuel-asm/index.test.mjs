@@ -34,6 +34,7 @@ describe('fuel-asm [esm]', () => {
     const addi2 = asm.addi(0x13, 0x11, 0x8)
     const tr = asm.tr(0x10, 0x12, 0x13)
     const ret = asm.ret(0x1)
+    const niop = asm.niop(0x10, 0x11, 0x12, new asm.NarrowMathArgs(asm.NarrowMathOp.EXP, asm.OpWidth.U16))
 
     const script = Uint8Array.from([
       ...gtf.to_bytes(),
@@ -42,12 +43,14 @@ describe('fuel-asm [esm]', () => {
       ...addi2.to_bytes(),
       ...tr.to_bytes(),
       ...ret.to_bytes(),
+      ...niop.to_bytes(),
     ])
 
     const expected = new Uint8Array([
       97, 64,  0,  10, 80, 69,  0, 32,
       93, 73, 16,   0, 80, 77, 16,  8,
-      60, 65, 36, 192, 36,  4,  0,  0
+      60, 65, 36, 192, 36,  4,  0,  0,
+      35, 65, 20, 128
     ])
 
     expect(script).to.deep.equal(expected)

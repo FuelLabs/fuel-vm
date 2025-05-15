@@ -4,7 +4,7 @@ use crate::Imm06;
 
 /// The operation performed by the NIOP instruction.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::FromRepr)]
-#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen(js_name = NarrowMathOp))]
 #[repr(u8)]
 #[must_use]
 pub enum MathOp {
@@ -36,8 +36,7 @@ pub enum OpWidth {
 
 /// Immediate value arguments for the NIOP instruction
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
-#[cfg_attr(feature = "typescript", wasm_bindgen(js_name = NarrrowMathArgs))]
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen(js_name = NarrowMathArgs))]
 #[must_use]
 pub struct MathArgs {
     /// The operation to perform
@@ -59,6 +58,16 @@ impl MathArgs {
         let op = MathOp::from_repr(bits.0 & 0b_1111)?;
         let width = OpWidth::from_repr((bits.0 >> 4) & 0b11)?;
         Some(Self { op, width })
+    }
+}
+
+#[cfg(feature = "typescript")]
+#[wasm_bindgen::prelude::wasm_bindgen]
+impl MathArgs {
+    /// Create a new `MathArgs` instance from operation and width.
+    #[wasm_bindgen(constructor)]
+    pub fn new(op: MathOp, width: OpWidth) -> Self {
+        Self { op, width }
     }
 }
 

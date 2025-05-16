@@ -11,13 +11,15 @@ pub enum MathOp {
     /// Add
     ADD = 0,
     /// Subtract
-    MUL = 1,
+    SUB = 1,
+    /// Multiply
+    MUL = 2,
     /// Exponentiate
-    EXP = 2,
+    EXP = 3,
     /// Bit shift left
-    SLL = 3,
+    SLL = 4,
     /// XNOR
-    XNOR = 4,
+    XNOR = 5,
 }
 
 /// Operation width

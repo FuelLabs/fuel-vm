@@ -136,7 +136,7 @@ impl AluResultForFlags {
     }
 
     /// The operation wraps around if wrapping is enabled, otherwise it panics.
-    /// Computes the wrapping value for u64 oveflow. For narrow ints, use
+    /// Computes the wrapping value for u64 oveflow.
     fn wrapping_ok_narrow(wrapped: Word, of: Word) -> Self {
         let wrapping = AluOk {
             value: wrapped,
@@ -473,6 +473,20 @@ fn test_binary_op_reg_reg_reg(
 #[test_case(MathOp::ADD, OpWidth::U32, u8::MAX as u64, 1 => AluResultForFlags::invariant_ok(u8::MAX as u64 + 1))]
 #[test_case(MathOp::ADD, OpWidth::U32, u16::MAX as u64, 1 => AluResultForFlags::invariant_ok(u16::MAX as u64 + 1))]
 #[test_case(MathOp::ADD, OpWidth::U32, u32::MAX as u64, u32::MAX as u64 => AluResultForFlags::wrapping_ok_narrow(u32::MAX as u64 - 1, 1))]
+#[test_case(MathOp::SUB, OpWidth::U8, 0, 0 => AluResultForFlags::invariant_ok(0))]
+#[test_case(MathOp::SUB, OpWidth::U8, 1, 0 => AluResultForFlags::invariant_ok(1))]
+#[test_case(MathOp::SUB, OpWidth::U8, u64::MAX, 0 => AluResultForFlags::invariant_ok(u8::MAX as u64))]
+#[test_case(MathOp::SUB, OpWidth::U16, u64::MAX, 0 => AluResultForFlags::invariant_ok(u16::MAX as u64))]
+#[test_case(MathOp::SUB, OpWidth::U32, u64::MAX, 0 => AluResultForFlags::invariant_ok(u32::MAX as u64))]
+#[test_case(MathOp::SUB, OpWidth::U8, 0, 1 => AluResultForFlags::wrapping_ok_narrow(u8::MAX as u64, u64::MAX))]
+#[test_case(MathOp::SUB, OpWidth::U16, 0, 1 => AluResultForFlags::wrapping_ok_narrow(u16::MAX as u64, u64::MAX))]
+#[test_case(MathOp::SUB, OpWidth::U32, 0, 1 => AluResultForFlags::wrapping_ok_narrow(u32::MAX as u64, u64::MAX))]
+#[test_case(MathOp::SUB, OpWidth::U8, 0, 2 => AluResultForFlags::wrapping_ok_narrow(u8::MAX as u64 - 1, u64::MAX))]
+#[test_case(MathOp::SUB, OpWidth::U16, 0, 2 => AluResultForFlags::wrapping_ok_narrow(u16::MAX as u64 - 1, u64::MAX))]
+#[test_case(MathOp::SUB, OpWidth::U32, 0, 2 => AluResultForFlags::wrapping_ok_narrow(u32::MAX as u64 - 1, u64::MAX))]
+#[test_case(MathOp::SUB, OpWidth::U8, 0, u8::MAX as u64 => AluResultForFlags::wrapping_ok_narrow(1, u64::MAX))]
+#[test_case(MathOp::SUB, OpWidth::U16, 0, u16::MAX as u64 => AluResultForFlags::wrapping_ok_narrow(1, u64::MAX))]
+#[test_case(MathOp::SUB, OpWidth::U32, 0, u32::MAX as u64 => AluResultForFlags::wrapping_ok_narrow(1, u64::MAX))]
 #[test_case(MathOp::MUL, OpWidth::U8, 0, 0 => AluResultForFlags::invariant_ok(0))]
 #[test_case(MathOp::MUL, OpWidth::U8, 0, 1 => AluResultForFlags::invariant_ok(0))]
 #[test_case(MathOp::MUL, OpWidth::U8, 1, 2 => AluResultForFlags::invariant_ok(2))]

@@ -72,6 +72,14 @@ where
         #[allow(clippy::arithmetic_side_effects)]
         let (wrapped, overflow) = match args.op {
             MathOp::ADD => split_overflow(lhs + rhs, args.width),
+            MathOp::SUB => {
+                let (wrapped, overflow) = lhs.overflowing_sub(rhs);
+                (
+                    truncate(wrapped, args.width),
+                    // Overflowing subtraction has max amount of leading ones
+                    if overflow { u64::MAX } else { 0 },
+                )
+            }
             MathOp::MUL => split_overflow(lhs * rhs, args.width),
             MathOp::EXP => match lhs.checked_pow(rhs_u32) {
                 Some(v) => {

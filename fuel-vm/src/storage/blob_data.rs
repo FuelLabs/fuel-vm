@@ -1,3 +1,5 @@
+use core::borrow::Borrow;
+
 use fuel_storage::Mappable;
 use fuel_types::{
     BlobId,
@@ -53,6 +55,12 @@ impl From<&mut [u8]> for BlobBytes {
 impl From<BlobBytes> for Vec<u8> {
     fn from(c: BlobBytes) -> Vec<u8> {
         c.0
+    }
+}
+
+impl Borrow<[u8]> for BlobBytes {
+    fn borrow(&self) -> &[u8] {
+        &self.0
     }
 }
 

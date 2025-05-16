@@ -155,6 +155,7 @@ where
             Instruction::SUB(op) => op.execute(interpreter),
             Instruction::XOR(op) => op.execute(interpreter),
             Instruction::MLDV(op) => op.execute(interpreter),
+            Instruction::NIOP(op) => op.execute(interpreter),
             Instruction::RET(op) => op.execute(interpreter),
             Instruction::RETD(op) => op.execute(interpreter),
             Instruction::ALOC(op) => op.execute(interpreter),

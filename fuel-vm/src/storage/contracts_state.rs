@@ -1,3 +1,5 @@
+use core::borrow::Borrow;
+
 use crate::double_key;
 use fuel_storage::Mappable;
 use fuel_types::{
@@ -79,6 +81,12 @@ impl From<&mut [u8]> for ContractsStateData {
 impl From<ContractsStateData> for Vec<u8> {
     fn from(c: ContractsStateData) -> Vec<u8> {
         c.0
+    }
+}
+
+impl Borrow<[u8]> for ContractsStateData {
+    fn borrow(&self) -> &[u8] {
+        &self.0
     }
 }
 

@@ -322,6 +322,31 @@ impl Input {
         })
     }
 
+    pub const fn coin_predicate_v2(
+        utxo_id: UtxoId,
+        owner: Address,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        predicate_index: u16,
+        predicate_data_index: u16,
+    ) -> Self {
+        let validation = CoinValidation::Predicate {
+            predicate_index,
+            predicate_data_index,
+        };
+        let coin = CoinV2 {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            validation,
+        };
+        let inner = InputV2::Coin(coin);
+        Self::InputV2(inner)
+    }
+
     pub const fn coin_signed(
         utxo_id: UtxoId,
         owner: Address,
@@ -617,13 +642,7 @@ impl Input {
             | Input::MessageCoinSigned(_)
             | Input::MessageDataSigned(_) => Some(0),
             Input::Contract(_) => None,
-            Self::InputV2(inner) => match inner {
-                InputV2::Coin(coin) => match &coin.validation {
-                    CoinValidation::Signed { .. } => Some(0),
-                    CoinValidation::Predicate { predicate, .. } => Some(predicate.len()),
-                },
-                _ => todo!(),
-            },
+            Self::InputV2(_) => None,
         }
     }
 
@@ -640,15 +659,7 @@ impl Input {
             | Input::MessageCoinSigned(_)
             | Input::MessageDataSigned(_) => Some(0),
             Input::Contract(_) => None,
-            Self::InputV2(inner) => match inner {
-                InputV2::Coin(coin) => match &coin.validation {
-                    CoinValidation::Signed { .. } => Some(0),
-                    CoinValidation::Predicate { predicate_data, .. } => {
-                        Some(predicate_data.len())
-                    }
-                },
-                _ => todo!(),
-            },
+            Self::InputV2(_) => None,
         }
     }
 

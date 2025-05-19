@@ -878,6 +878,11 @@ mod field {
                 None
             }
         }
+
+        #[cfg(feature = "chargeable-tx-v2")]
+        fn static_witnesses(&self) -> &[Witness] {
+            &[]
+        }
     }
 
     #[cfg(feature = "chargeable-tx-v2")]
@@ -946,6 +951,11 @@ mod field {
             } else {
                 None
             }
+        }
+
+        #[cfg(feature = "chargeable-tx-v2")]
+        fn static_witnesses(&self) -> &[Witness] {
+            &self.static_witnesses
         }
     }
 }

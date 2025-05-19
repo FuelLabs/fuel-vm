@@ -48,6 +48,10 @@ mod error;
 #[cfg(test)]
 mod tests;
 
+use crate::input::{
+    InputV2,
+    coin::CoinValidation,
+};
 pub use error::ValidityError;
 
 impl Input {
@@ -58,10 +62,20 @@ impl Input {
         txhash: &Bytes32,
         outputs: &[Output],
         witnesses: &[Witness],
+        #[cfg(feature = "chargeable-tx-v2")] static_witnesses: &[Witness],
         predicate_params: &PredicateParameters,
         recovery_cache: &mut Option<HashMap<u16, Address>>,
     ) -> Result<(), ValidityError> {
+        #[cfg(not(feature = "chargeable-tx-v2"))]
         self.check_without_signature(index, outputs, witnesses, predicate_params)?;
+        #[cfg(feature = "chargeable-tx-v2")]
+        self.check_without_signature(
+            index,
+            outputs,
+            witnesses,
+            static_witnesses,
+            predicate_params,
+        )?;
         self.check_signature(index, txhash, witnesses, recovery_cache)?;
 
         Ok(())
@@ -147,6 +161,7 @@ impl Input {
         index: usize,
         outputs: &[Output],
         witnesses: &[Witness],
+        #[cfg(feature = "chargeable-tx-v2")] static_witnesses: &[Witness],
         predicate_params: &PredicateParameters,
     ) -> Result<(), ValidityError> {
         match self {
@@ -210,6 +225,30 @@ impl Input {
             {
                 Err(ValidityError::InputMessageDataLength { index })
             }
+
+            #[cfg(feature = "chargeable-tx-v2")]
+            Self::InputV2(inner) => match inner {
+                InputV2::Coin(coin) => match coin.validation {
+                    CoinValidation::Signed { .. } => {
+                        // TODO: Do we need to check anything here?
+                        Ok(())
+                    }
+                    CoinValidation::Predicate {
+                        predicate_index,
+                        predicate_data_index,
+                    } => {
+                        if predicate_index as usize >= static_witnesses.len() {
+                            return Err(ValidityError::InputWitnessIndexBounds { index });
+                        }
+
+                        if predicate_data_index as usize >= static_witnesses.len() {
+                            return Err(ValidityError::InputWitnessIndexBounds { index });
+                        }
+                        Ok(())
+                    }
+                },
+                _ => todo!(),
+            },
 
             // TODO: If h is the block height the UTXO being spent was created,
             // transaction is  invalid if `blockheight() < h + maturity`.
@@ -445,6 +484,7 @@ where
                 index,
                 tx.outputs(),
                 tx.witnesses(),
+                tx.static_witnesses(),
                 predicate_params,
             )
         })?;

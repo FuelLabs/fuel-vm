@@ -296,6 +296,48 @@ async fn predicate() {
     assert!(!execute_predicate(predicate.iter().copied(), wrong_data, 0).await);
 }
 
+#[cfg(feature = "chargeable-tx-v2")]
+#[tokio::test]
+async fn script_v2__estimate_predicate_happy_path() {
+    let mut rng = StdRng::seed_from_u64(2322u64);
+
+    // given
+    let script = vec![];
+    let script_data = vec![];
+    let predicate_index = 0;
+    let predicate_data_index = 0;
+    let asset_id = rng.r#gen();
+    let amount = rng.r#gen();
+    let input = Input::coin_predicate_v2(
+        rng.r#gen(),
+        rng.r#gen(),
+        amount,
+        asset_id,
+        rng.r#gen(),
+        predicate_index,
+        predicate_data_index,
+    );
+    let predicate_static_witness = Witness::from(vec![RegId::ONE.into()]);
+    let predicate_data_static_witness = Witness::from(vec![]);
+
+    let mut tx = TransactionBuilder::script_v2(script, script_data)
+        .add_input(input)
+        .add_output(Output::coin(rng.r#gen(), amount, asset_id))
+        .add_static_witness(predicate_static_witness)
+        .add_static_witness(predicate_data_static_witness)
+        .finalize();
+
+    // assert_eq!(script.inputs()[0].predicate_gas_used(), Some(0));
+    let result = tx.estimate_predicates(
+        &ConsensusParameters::standard().into(),
+        MemoryInstance::new(),
+        &EmptyStorage,
+    );
+
+    // Then
+    result.expect("Should estimate predicate");
+    // assert_ne!(script.inputs()[0].predicate_gas_used(), Some(0));
+}
 #[tokio::test]
 async fn get_verifying_predicate() {
     let indices = vec![0, 4, 5, 7, 11];

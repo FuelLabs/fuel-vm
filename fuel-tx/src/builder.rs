@@ -1,7 +1,8 @@
+#[cfg(feature = "da-compression")]
+use crate::BodyConstraints;
 use crate::{
     Blob,
     BlobBody,
-    BodyConstraints,
     ChargeableTransaction,
     ConsensusParameters,
     ContractParameters,
@@ -578,6 +579,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     }
 }
 
+#[cfg(feature = "da-compression")]
 impl<B, M> TransactionBuilder<ChargeableTransaction<B, M>>
 where
     B: BodyConstraints,
@@ -608,6 +610,7 @@ where
     }
 }
 
+#[cfg(feature = "chargeable-tx-v2")]
 impl TransactionBuilder<ScriptV2> {
     pub fn add_unsigned_coin_input_v1(
         &mut self,

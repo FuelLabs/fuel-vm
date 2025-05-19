@@ -425,6 +425,7 @@ where
         return Err(ValidityError::NoSpendableInput)
     }
 
+    #[cfg(feature = "chargeable-tx-v2")]
     if tx.contains_invalid_inputs() {
         return Err(ValidityError::WrongInputVersion)
     }
@@ -484,6 +485,7 @@ where
                 index,
                 tx.outputs(),
                 tx.witnesses(),
+                #[cfg(feature = "chargeable-tx-v2")]
                 tx.static_witnesses(),
                 predicate_params,
             )

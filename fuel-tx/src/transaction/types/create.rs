@@ -133,6 +133,7 @@ impl Chargeable for Create {
         self.has_spendable_input_inner()
     }
 
+    #[cfg(feature = "chargeable-tx-v2")]
     fn contains_invalid_inputs(&self) -> bool {
         !self.inputs.iter().all(|input| input.is_v1())
     }

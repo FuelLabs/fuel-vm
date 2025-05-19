@@ -591,6 +591,33 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     }
 }
 
+impl TransactionBuilder<ScriptV2> {
+    #[cfg(feature = "test-helpers")]
+    pub fn add_unsigned_coin_input_v1(
+        &mut self,
+        secret: SecretKey,
+        utxo_id: crate::UtxoId,
+        amount: Word,
+        asset_id: fuel_types::AssetId,
+        tx_pointer: TxPointer,
+    ) -> &mut Self {
+        let pk = secret.public_key();
+
+        let witness_index = self.upsert_secret(secret);
+
+        self.tx.add_unsigned_coin_input_v1(
+            utxo_id,
+            &pk,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+        );
+
+        self
+    }
+}
+
 impl<Tx: field::Outputs> TransactionBuilder<Tx> {
     pub fn add_output(&mut self, output: Output) -> &mut Self {
         self.tx.outputs_mut().push(output);

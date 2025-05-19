@@ -51,7 +51,8 @@ serde_test = { version = "1.0" }
 tokio = { version = "1.27", features = ["full"] }
 
 [features]
-default = ["fuel-asm/default", "fuel-crypto/default", "fuel-merkle/default", "fuel-types/default", "std"]
+#default = ["fuel-asm/default", "fuel-crypto/default", "fuel-merkle/default", "fuel-types/default", "std"]
+default = ["fuel-asm/default", "fuel-crypto/default", "fuel-merkle/default", "fuel-types/default", "std", "chargeable-tx-v2"]
 test-helpers = ["alloc", "internals"]
 internals = []
 typescript = ["dep:serde_json", "alloc", "js-sys", "wasm-bindgen", "serde-wasm-bindgen", "fuel-types/typescript"]

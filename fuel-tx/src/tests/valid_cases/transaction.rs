@@ -711,6 +711,34 @@ fn script__check__cannot_create_contract() {
     );
 }
 
+#[cfg(feature = "chargeable-tx-v2")]
+#[test]
+fn script_v2__check__cannot_create_contract() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let maturity = 100.into();
+    let block_height = 1000.into();
+
+    let secret = SecretKey::random(rng);
+    let asset_id: AssetId = rng.r#gen();
+
+    let err = TransactionBuilder::script_v2(
+        vec![0xfa; SCRIPT_PARAMS.max_script_length() as usize],
+        vec![0xfb; SCRIPT_PARAMS.max_script_data_length() as usize],
+    )
+    .maturity(maturity)
+    .add_unsigned_coin_input(secret, rng.r#gen(), rng.r#gen(), asset_id, rng.r#gen())
+    .add_output(Output::contract_created(rng.r#gen(), rng.r#gen()))
+    .finalize()
+    .check(block_height, &test_params())
+    .expect_err("Expected erroneous transaction");
+
+    assert_eq!(
+        ValidityError::TransactionOutputContainsContractCreated { index: 0 },
+        err
+    );
+}
+
 #[test]
 fn script__check__errors_if_script_too_long() {
     let rng = &mut StdRng::seed_from_u64(8586);
@@ -722,6 +750,31 @@ fn script__check__errors_if_script_too_long() {
     let asset_id: AssetId = rng.r#gen();
 
     let err = TransactionBuilder::script(
+        vec![0xfa; 1 + SCRIPT_PARAMS.max_script_length() as usize],
+        vec![0xfb; SCRIPT_PARAMS.max_script_data_length() as usize],
+    )
+    .maturity(maturity)
+    .add_unsigned_coin_input(secret, rng.r#gen(), rng.r#gen(), asset_id, rng.r#gen())
+    .add_output(Output::contract_created(rng.r#gen(), rng.r#gen()))
+    .finalize()
+    .check(block_height, &test_params())
+    .expect_err("Expected erroneous transaction");
+
+    assert_eq!(ValidityError::TransactionScriptLength, err);
+}
+
+#[cfg(feature = "chargeable-tx-v2")]
+#[test]
+fn script_v2__check__errors_if_script_too_long() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let maturity = 100.into();
+    let block_height = 1000.into();
+
+    let secret = SecretKey::random(rng);
+    let asset_id: AssetId = rng.r#gen();
+
+    let err = TransactionBuilder::script_v2(
         vec![0xfa; 1 + SCRIPT_PARAMS.max_script_length() as usize],
         vec![0xfb; SCRIPT_PARAMS.max_script_data_length() as usize],
     )
@@ -757,6 +810,63 @@ fn script__check__errors_if_script_data_too_long() {
     .expect_err("Expected erroneous transaction");
 
     assert_eq!(ValidityError::TransactionScriptDataLength, err);
+}
+
+#[cfg(feature = "chargeable-tx-v2")]
+#[test]
+fn script_v2__check__errors_if_script_data_too_long() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let maturity = 100.into();
+    let block_height = 1000.into();
+
+    let secret = SecretKey::random(rng);
+    let asset_id: AssetId = rng.r#gen();
+
+    let err = TransactionBuilder::script_v2(
+        vec![0xfa; SCRIPT_PARAMS.max_script_length() as usize],
+        vec![0xfb; 1 + SCRIPT_PARAMS.max_script_data_length() as usize],
+    )
+    .maturity(maturity)
+    .add_unsigned_coin_input(secret, rng.r#gen(), rng.r#gen(), asset_id, rng.r#gen())
+    .add_output(Output::contract_created(rng.r#gen(), rng.r#gen()))
+    .finalize()
+    .check(block_height, &test_params())
+    .expect_err("Expected erroneous transaction");
+
+    assert_eq!(ValidityError::TransactionScriptDataLength, err);
+}
+
+#[cfg(feature = "chargeable-tx-v2")]
+#[test]
+fn script__check__errors_if_includes_v2_input() {
+    todo!()
+}
+
+#[cfg(feature = "chargeable-tx-v2")]
+#[test]
+fn script_v2__check__errors_if_includes_v1_input() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let maturity = 100.into();
+    let block_height = 1000.into();
+
+    let secret = SecretKey::random(rng);
+    let asset_id: AssetId = rng.r#gen();
+
+    let err = TransactionBuilder::script_v2(
+        vec![0xfa; SCRIPT_PARAMS.max_script_length() as usize],
+        vec![0xfb; SCRIPT_PARAMS.max_script_data_length() as usize],
+    )
+    .maturity(maturity)
+    .add_unsigned_coin_input(secret, rng.r#gen(), rng.r#gen(), asset_id, rng.r#gen())
+    .add_unsigned_coin_input_v1(secret, rng.r#gen(), rng.r#gen(), asset_id, rng.r#gen())
+    .add_output(Output::coin(rng.r#gen(), rng.r#gen(), asset_id))
+    .finalize()
+    .check(block_height, &test_params())
+    .expect_err("Expected erroneous transaction");
+
+    assert_eq!(ValidityError::WrongInputVersion, err);
 }
 
 #[test]
@@ -1242,6 +1352,53 @@ fn script__check__transaction_at_maximum_size_is_valid() {
         .expect("Expected valid transaction");
 }
 
+#[cfg(feature = "chargeable-tx-v2")]
+#[test]
+fn script_v2__check__transaction_at_maximum_size_is_valid() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+    let secret = SecretKey::random(rng);
+
+    let block_height = 100.into();
+    let mut params = test_params();
+    let max_size = 1024usize;
+    let mut tx_params = *params.tx_params();
+    tx_params.set_max_size(max_size as u64);
+    params.set_tx_params(tx_params);
+
+    let base_size = {
+        let tx = TransactionBuilder::script_v2(vec![], vec![])
+            .add_unsigned_coin_input(
+                secret,
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+            )
+            .finalize();
+        tx.size()
+    };
+
+    let script_size = max_size - base_size;
+
+    let script = {
+        let mut data = alloc::vec![0u8; script_size];
+        rng.fill_bytes(data.as_mut_slice());
+        data
+    };
+    let tx = TransactionBuilder::script_v2(script, vec![])
+        .add_unsigned_coin_input(
+            secret,
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+        )
+        .finalize();
+
+    tx.check(block_height, &params)
+        .expect("Expected valid transaction");
+}
+
 #[test]
 fn script__check__transaction_exceeding_maximum_size_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
@@ -1277,6 +1434,58 @@ fn script__check__transaction_exceeding_maximum_size_is_invalid() {
         data
     };
     let tx = TransactionBuilder::script(script, vec![])
+        .add_unsigned_coin_input(
+            secret,
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+        )
+        .finalize();
+
+    let err = tx
+        .check(block_height, &params)
+        .expect_err("Expected valid transaction");
+
+    assert_eq!(err, ValidityError::TransactionSizeLimitExceeded);
+}
+
+#[cfg(feature = "chargeable-tx-v2")]
+#[test]
+fn script_v2__check__transaction_exceeding_maximum_size_is_invalid() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+    let secret = SecretKey::random(rng);
+
+    let block_height = 100.into();
+    let mut params = test_params();
+    let max_size = 1024usize;
+    let mut tx_params = *params.tx_params();
+    tx_params.set_max_size(max_size as u64);
+    params.set_tx_params(tx_params);
+
+    let base_size = {
+        let tx = TransactionBuilder::script_v2(vec![], vec![])
+            .add_unsigned_coin_input(
+                secret,
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+            )
+            .finalize();
+        tx.size()
+    };
+
+    let script_size = max_size - base_size;
+
+    let script = {
+        // Exceed the maximum size by 1 byte
+        let script_size = script_size + 1;
+        let mut data = alloc::vec![0u8; script_size];
+        rng.fill_bytes(data.as_mut_slice());
+        data
+    };
+    let tx = TransactionBuilder::script_v2(script, vec![])
         .add_unsigned_coin_input(
             secret,
             rng.r#gen(),

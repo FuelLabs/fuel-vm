@@ -962,6 +962,34 @@ impl Input {
     {
         owner == &Self::predicate_owner(predicate)
     }
+
+    #[cfg(feature = "chargeable-tx-v2")]
+    pub fn is_v1(&self) -> bool {
+        match self {
+            Input::CoinSigned(_)
+            | Input::CoinPredicate(_)
+            | Input::Contract(_)
+            | Input::MessageCoinSigned(_)
+            | Input::MessageCoinPredicate(_)
+            | Input::MessageDataSigned(_)
+            | Input::MessageDataPredicate(_) => true,
+            Input::InputV2(_) => false,
+        }
+    }
+
+    #[cfg(feature = "chargeable-tx-v2")]
+    pub fn is_v2(&self) -> bool {
+        match self {
+            Input::CoinSigned(_)
+            | Input::CoinPredicate(_)
+            | Input::Contract(_)
+            | Input::MessageCoinSigned(_)
+            | Input::MessageCoinPredicate(_)
+            | Input::MessageDataSigned(_)
+            | Input::MessageDataPredicate(_) => false,
+            Input::InputV2(_) => true,
+        }
+    }
 }
 
 impl Serialize for Input {

@@ -386,6 +386,10 @@ where
         return Err(ValidityError::NoSpendableInput)
     }
 
+    if tx.contains_invalid_inputs() {
+        return Err(ValidityError::WrongInputVersion)
+    }
+
     tx.input_asset_ids_unique(base_asset_id)
         .try_for_each(|input_asset_id| {
             // check for duplicate change outputs

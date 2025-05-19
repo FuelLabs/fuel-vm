@@ -2,7 +2,9 @@ use crate::{
     ConsensusParameters,
     Input,
     Output,
+    TxPointer,
     UniqueIdentifier,
+    UtxoId,
     ValidityError,
     Witness,
     field::ChargeableBody,
@@ -25,9 +27,11 @@ use crate::{
 };
 use educe::Educe;
 use fuel_types::{
+    AssetId,
     BlockHeight,
     Bytes32,
     ChainId,
+    Word,
     bytes,
     canonical::Serialize,
 };
@@ -47,6 +51,7 @@ use crate::input::InputV2;
 
 #[cfg(feature = "da-compression")]
 use fuel_compression::Compressible;
+use fuel_crypto::PublicKey;
 
 #[cfg(feature = "da-compression")]
 pub trait BodyConstraints:
@@ -272,6 +277,29 @@ where
                 InputV2::Contract(_) => false,
             },
         })
+    }
+
+    #[cfg(feature = "test-helpers")]
+    pub fn add_unsigned_coin_input_v1(
+        &mut self,
+        utxo_id: UtxoId,
+        owner: &PublicKey,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        witness_index: u16,
+    ) {
+        let owner = Input::owner(owner);
+
+        let input = Input::coin_signed(
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+        );
+        self.inputs_mut().push(input);
     }
 }
 

@@ -94,6 +94,10 @@ impl Chargeable for Blob {
     fn has_spendable_input(&self) -> bool {
         self.has_spendable_input_inner()
     }
+
+    fn contains_invalid_inputs(&self) -> bool {
+        !self.inputs.iter().all(|input| input.is_v1())
+    }
 }
 
 impl UniqueFormatValidityChecks for Blob {

@@ -1,6 +1,8 @@
 use crate::{
     Blob,
     BlobBody,
+    BodyConstraints,
+    ChargeableTransaction,
     ConsensusParameters,
     ContractParameters,
     CreateMetadata,
@@ -60,6 +62,7 @@ use crate::{
 #[cfg(feature = "chargeable-tx-v2")]
 use crate::transaction::ScriptV2;
 
+use crate::field::ChargeableBody;
 use alloc::{
     collections::BTreeMap,
     vec::Vec,
@@ -72,6 +75,7 @@ use fuel_types::{
     Nonce,
     Salt,
     Word,
+    canonical::Serialize,
 };
 #[cfg(feature = "rand")]
 use rand::{
@@ -445,30 +449,6 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self
     }
 
-    pub fn add_unsigned_coin_input_v2(
-        &mut self,
-        secret: SecretKey,
-        utxo_id: crate::UtxoId,
-        amount: Word,
-        asset_id: fuel_types::AssetId,
-        tx_pointer: TxPointer,
-    ) -> &mut Self {
-        let pk = secret.public_key();
-
-        let witness_index = self.upsert_secret(secret);
-
-        self.tx.add_unsigned_coin_input(
-            utxo_id,
-            &pk,
-            amount,
-            asset_id,
-            tx_pointer,
-            witness_index,
-        );
-
-        self
-    }
-
     #[cfg(feature = "rand")]
     pub fn add_random_fee_input(&mut self, rng: &mut StdRng) -> &mut Self {
         self.add_unsigned_coin_input(
@@ -591,8 +571,37 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     }
 }
 
+impl<B, M> TransactionBuilder<ChargeableTransaction<B, M>>
+where
+    B: BodyConstraints,
+    ChargeableTransaction<B, M>: Buildable + ChargeableBody<B> + Serialize,
+{
+    pub fn add_unsigned_coin_input_v2(
+        &mut self,
+        secret: SecretKey,
+        utxo_id: crate::UtxoId,
+        amount: Word,
+        asset_id: fuel_types::AssetId,
+        tx_pointer: TxPointer,
+    ) -> &mut Self {
+        let pk = secret.public_key();
+
+        let witness_index = self.upsert_secret(secret);
+
+        self.tx.add_unsigned_coin_input_v2(
+            utxo_id,
+            &pk,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+        );
+
+        self
+    }
+}
+
 impl TransactionBuilder<ScriptV2> {
-    #[cfg(feature = "test-helpers")]
     pub fn add_unsigned_coin_input_v1(
         &mut self,
         secret: SecretKey,

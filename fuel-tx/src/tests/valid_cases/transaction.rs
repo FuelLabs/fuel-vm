@@ -840,7 +840,27 @@ fn script_v2__check__errors_if_script_data_too_long() {
 #[cfg(feature = "chargeable-tx-v2")]
 #[test]
 fn script__check__errors_if_includes_v2_input() {
-    todo!()
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let maturity = 100.into();
+    let block_height = 1000.into();
+
+    let secret = SecretKey::random(rng);
+    let asset_id: AssetId = rng.r#gen();
+
+    let err = TransactionBuilder::script(
+        vec![0xfa; SCRIPT_PARAMS.max_script_length() as usize],
+        vec![0xfb; SCRIPT_PARAMS.max_script_data_length() as usize],
+    )
+    .maturity(maturity)
+    .add_unsigned_coin_input(secret, rng.r#gen(), rng.r#gen(), asset_id, rng.r#gen())
+    .add_unsigned_coin_input_v2(secret, rng.r#gen(), rng.r#gen(), asset_id, rng.r#gen())
+    .add_output(Output::coin(rng.r#gen(), rng.r#gen(), asset_id))
+    .finalize()
+    .check(block_height, &test_params())
+    .expect_err("Expected erroneous transaction");
+
+    assert_eq!(ValidityError::WrongInputVersion, err);
 }
 
 #[cfg(feature = "chargeable-tx-v2")]

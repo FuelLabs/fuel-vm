@@ -254,6 +254,30 @@ where
             }
         })
     }
+
+    #[cfg(feature = "chargeable-tx-v2")]
+    #[cfg(feature = "test-helpers")]
+    pub fn add_unsigned_coin_input_v2(
+        &mut self,
+        utxo_id: UtxoId,
+        owner: &PublicKey,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        witness_index: u16,
+    ) {
+        let owner = Input::owner(owner);
+
+        let input = Input::coin_signed_v2(
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+        );
+        self.inputs_mut().push(input);
+    }
 }
 
 #[cfg(feature = "chargeable-tx-v2")]
@@ -281,6 +305,29 @@ where
 
     #[cfg(feature = "test-helpers")]
     pub fn add_unsigned_coin_input_v1(
+        &mut self,
+        utxo_id: UtxoId,
+        owner: &PublicKey,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        witness_index: u16,
+    ) {
+        let owner = Input::owner(owner);
+
+        let input = Input::coin_signed(
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+        );
+        self.inputs_mut().push(input);
+    }
+
+    #[cfg(feature = "test-helpers")]
+    pub fn add_unsigned_coin_input_v2(
         &mut self,
         utxo_id: UtxoId,
         owner: &PublicKey,

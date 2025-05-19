@@ -705,6 +705,8 @@ fn script_v2__predicate_coin__check__happy_path() {
         predicate_index,
         predicate_data_index,
     );
+    let predicate_static_witness = Witness::default();
+    let predicate_data_static_witness = Witness::default();
 
     TransactionBuilder::script_v2(
         vec![0xfa; SCRIPT_PARAMS.max_script_length() as usize],
@@ -713,6 +715,8 @@ fn script_v2__predicate_coin__check__happy_path() {
     .maturity(maturity)
     .add_input(input)
     .add_output(Output::coin(rng.r#gen(), rng.r#gen(), asset_id))
+    .add_static_witness(predicate_static_witness)
+    .add_static_witness(predicate_data_static_witness)
     .finalize()
     .check(block_height, &test_params())
     .expect("Failed to validate transaction");

@@ -177,6 +177,13 @@ impl TransactionBuilder<ScriptV2> {
         };
         Self::with_tx(tx)
     }
+
+    pub fn add_static_witness(&mut self, witness: Witness) -> &mut Self {
+        if let Some(witnesses) = self.tx.static_witnesses_mut() {
+            witnesses.push(witness);
+        }
+        self
+    }
 }
 
 impl TransactionBuilder<Create> {

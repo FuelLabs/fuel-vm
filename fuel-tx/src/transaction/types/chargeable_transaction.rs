@@ -883,6 +883,11 @@ mod field {
         fn static_witnesses(&self) -> &[Witness] {
             &[]
         }
+
+        #[cfg(feature = "chargeable-tx-v2")]
+        fn static_witnesses_mut(&mut self) -> Option<&mut Vec<Witness>> {
+            None
+        }
     }
 
     #[cfg(feature = "chargeable-tx-v2")]
@@ -956,6 +961,10 @@ mod field {
         #[cfg(feature = "chargeable-tx-v2")]
         fn static_witnesses(&self) -> &[Witness] {
             &self.static_witnesses
+        }
+
+        fn static_witnesses_mut(&mut self) -> Option<&mut Vec<Witness>> {
+            Some(&mut self.static_witnesses)
         }
     }
 }

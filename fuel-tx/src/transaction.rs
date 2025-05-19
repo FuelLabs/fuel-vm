@@ -1144,7 +1144,9 @@ pub mod field {
 
         #[cfg(feature = "chargeable-tx-v2")]
         fn static_witnesses(&self) -> &[Witness];
-        // fn witnesses_mut(&mut self) -> &mut Vec<Witness>;
+
+        #[cfg(feature = "chargeable-tx-v2")]
+        fn static_witnesses_mut(&mut self) -> Option<&mut Vec<Witness>>;
         // fn witnesses_offset(&self) -> usize;
         //
         // /// Returns the offset to the `Witness` at `idx` index, if any.

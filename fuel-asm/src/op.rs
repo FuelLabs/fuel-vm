@@ -79,7 +79,7 @@ impl NIOP {
     }
 }
 
-/// Construct a `WQCM` instruction from its arguments.
+/// Construct a `NIOP` instruction from its arguments.
 pub fn niop_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
     ra: A,
     rb: B,

@@ -21,7 +21,10 @@ use fuel_types::{
 };
 
 use alloc::vec::Vec;
-use core::iter;
+use core::{
+    borrow::Borrow,
+    iter,
+};
 
 /// The target size of Merkle tree leaves in bytes. Contract code will will be divided
 /// into chunks of this size and pushed to the Merkle tree.
@@ -147,6 +150,12 @@ impl From<&mut [u8]> for Contract {
 impl From<Contract> for Vec<u8> {
     fn from(c: Contract) -> Vec<u8> {
         c.0
+    }
+}
+
+impl Borrow<[u8]> for Contract {
+    fn borrow(&self) -> &[u8] {
+        self.0.borrow()
     }
 }
 

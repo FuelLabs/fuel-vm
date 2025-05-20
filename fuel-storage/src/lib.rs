@@ -13,6 +13,8 @@ mod impls;
 
 extern crate alloc;
 
+use core::borrow::Borrow;
+
 use alloc::{
     borrow::{
         Cow,
@@ -46,13 +48,13 @@ pub trait Mappable {
     /// same as `Self::OwnedKey`.
     type Key: ?Sized + ToOwned;
     /// The owned type of the `Key` retrieving from the storage.
-    type OwnedKey: From<<Self::Key as ToOwned>::Owned> + Clone;
+    type OwnedKey: From<<Self::Key as ToOwned>::Owned> + Borrow<Self::Key> + Clone;
     /// The value type is used while setting the value to the storage. In most cases, it
     /// is the same as `Self::OwnedValue`, but it is without restriction and can be
     /// used for performance optimizations.
     type Value: ?Sized + ToOwned;
     /// The owned type of the `Value` retrieving from the storage.
-    type OwnedValue: From<<Self::Value as ToOwned>::Owned> + Clone;
+    type OwnedValue: From<<Self::Value as ToOwned>::Owned> + Borrow<Self::Value> + Clone;
 }
 
 /// Base read storage trait for Fuel infrastructure.

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased (see .changes folder)]
 
+## [Version 0.62.0]
+
+### Breaking
+- [959](https://github.com/FuelLabs/fuel-vm/pull/959): Add Borrow trait bounds to owned types in Mappable trait.
+
+### Added
+- [922](https://github.com/FuelLabs/fuel-vm/pull/922): Add NIOP instruction to perform overflow-checked calculations on u8, u16, and u32 integers
+- [923](https://github.com/FuelLabs/fuel-vm/pull/923): Load and store instructions for u16 and u32
+- [925](https://github.com/FuelLabs/fuel-vm/pull/925): Add jump-and-link instruction `JAL   offset` that can be used to implement efficient subroutine calls.
+- [953](https://github.com/FuelLabs/fuel-vm/pull/953): feat: Expose SubAssetId in fuel-tx
+
 ## [Version 0.61.0]
 
 ### Added

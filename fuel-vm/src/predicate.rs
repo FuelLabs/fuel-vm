@@ -46,6 +46,19 @@ impl RuntimePredicate {
             idx,
         })
     }
+
+    #[cfg(feature = "chargeable-tx-v2")]
+    pub fn get_from_tx_witnesses<T>(tx: &T, idx: u16) -> Option<Self>
+    where
+        T: field::Witnesses,
+    {
+        let ofs = tx.witnesses_offset_at(idx as usize)?;
+        let len = tx.witnesses().get(idx as usize)?.len();
+        Some(Self {
+            range: MemoryRange::new(ofs, len),
+            idx: idx.into(),
+        })
+    }
 }
 
 #[allow(clippy::cast_possible_truncation)]

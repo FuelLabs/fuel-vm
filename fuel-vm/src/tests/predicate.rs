@@ -327,7 +327,7 @@ async fn script_v2__estimate_predicate_happy_path() {
         .add_static_witness(predicate_data_static_witness)
         .finalize();
 
-    // assert_eq!(script.inputs()[0].predicate_gas_used(), Some(0));
+    assert_eq!(tx.inputs()[0].predicate_gas_used(), Some(0));
     let result = tx.estimate_predicates(
         &ConsensusParameters::standard().into(),
         MemoryInstance::new(),
@@ -336,7 +336,7 @@ async fn script_v2__estimate_predicate_happy_path() {
 
     // Then
     result.expect("Should estimate predicate");
-    // assert_ne!(script.inputs()[0].predicate_gas_used(), Some(0));
+    assert_ne!(tx.inputs()[0].predicate_gas_used(), Some(0));
 }
 #[tokio::test]
 async fn get_verifying_predicate() {

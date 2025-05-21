@@ -236,6 +236,7 @@ impl Input {
                     CoinValidation::Predicate {
                         predicate_index,
                         predicate_data_index,
+                        ..
                     } => {
                         if predicate_index as usize >= static_witnesses.len() {
                             return Err(ValidityError::InputWitnessIndexBounds { index });

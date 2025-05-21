@@ -888,6 +888,16 @@ mod field {
         fn static_witnesses_mut(&mut self) -> Option<&mut Vec<Witness>> {
             None
         }
+
+        #[cfg(feature = "chargeable-tx-v2")]
+        fn static_witnesses_offset(&self) -> usize {
+            todo!()
+        }
+
+        #[cfg(feature = "chargeable-tx-v2")]
+        fn static_witnesses_offset_at(&self, idx: usize) -> Option<usize> {
+            todo!()
+        }
     }
 
     #[cfg(feature = "chargeable-tx-v2")]
@@ -965,6 +975,57 @@ mod field {
 
         fn static_witnesses_mut(&mut self) -> Option<&mut Vec<Witness>> {
             Some(&mut self.static_witnesses)
+        }
+
+        fn static_witnesses_offset(&self) -> usize {
+            if let Some(ChargeableMetadata {
+                common:
+                    CommonMetadata {
+                        static_witnesses_offset,
+                        ..
+                    },
+                ..
+            }) = &self.metadata
+            {
+                *static_witnesses_offset
+            } else {
+                self.witnesses_offset().saturating_add(
+                    self.witnesses()
+                        .iter()
+                        .map(|i| i.size())
+                        .reduce(usize::saturating_add)
+                        .unwrap_or_default(),
+                )
+            }
+        }
+
+        fn static_witnesses_offset_at(&self, idx: usize) -> Option<usize> {
+            if let Some(ChargeableMetadata {
+                common:
+                    CommonMetadata {
+                        static_witnesses_offset_at,
+                        ..
+                    },
+                ..
+            }) = &self.metadata
+            {
+                return static_witnesses_offset_at.get(idx).cloned();
+            }
+
+            if idx < self.witnesses.len() {
+                Some(
+                    self.static_witnesses_offset().saturating_add(
+                        self.static_witnesses()
+                            .iter()
+                            .take(idx)
+                            .map(|i| i.size())
+                            .reduce(usize::saturating_add)
+                            .unwrap_or_default(),
+                    ),
+                )
+            } else {
+                None
+            }
         }
     }
 }

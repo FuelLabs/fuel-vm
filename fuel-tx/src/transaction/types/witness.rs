@@ -49,6 +49,10 @@ impl Witness {
         self.data
     }
 
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
+
     /// ECRecover an address from a witness
     pub fn recover_witness(
         &self,

@@ -137,10 +137,22 @@ impl<Tx> PredicateRunKind<'_, Tx> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum PredicateAction {
-    Verifying,
-    Estimating { available_gas: Word },
+    Verifying {
+        index: usize,
+    },
+    Estimating {
+        available_gas: Word,
+    },
+    #[cfg(feature = "chargeable-tx-v2")]
+    VerifyMany {
+        indices: Vec<usize>,
+    },
+    #[cfg(feature = "chargeable-tx-v2")]
+    EstimateMany {
+        available_gas: Word,
+    },
 }
 
 /// The module contains functions to check predicates defined in the inputs of a
@@ -148,7 +160,17 @@ enum PredicateAction {
 pub mod predicates {
     use super::*;
     use crate::storage::predicate::PredicateStorageProvider;
-    use fuel_tx::field::Inputs;
+    use fuel_tx::{
+        field::Inputs,
+        input::{
+            InputV2,
+            coin::{
+                CoinV2,
+                CoinValidation,
+            },
+        },
+    };
+    use std::collections::HashMap;
 
     /// Initialize the VM with the provided transaction and check all predicates defined
     /// in the inputs.
@@ -271,18 +293,18 @@ pub mod predicates {
         let mut checks = vec![];
         let tx_offset = params.tx_offset;
 
-        let predicate_action = match kind {
-            PredicateRunKind::Verifying(_) => PredicateAction::Verifying,
-            PredicateRunKind::Estimating(_) => {
-                let max_gas_per_tx = params.max_gas_per_tx;
-                let max_gas_per_predicate = params.max_gas_per_predicate;
-                let available_gas = core::cmp::min(max_gas_per_predicate, max_gas_per_tx);
-
-                PredicateAction::Estimating { available_gas }
-            }
-        };
-
         for index in 0..kind.tx().inputs().len() {
+            let predicate_action = match kind {
+                PredicateRunKind::Verifying(_) => PredicateAction::Verifying { index },
+                PredicateRunKind::Estimating(_) => {
+                    let max_gas_per_tx = params.max_gas_per_tx;
+                    let max_gas_per_predicate = params.max_gas_per_predicate;
+                    let available_gas =
+                        core::cmp::min(max_gas_per_predicate, max_gas_per_tx);
+
+                    PredicateAction::Estimating { available_gas }
+                }
+            };
             if let Some(predicate) =
                 RuntimePredicate::from_tx(kind.tx(), tx_offset, index)
             {
@@ -294,7 +316,6 @@ pub mod predicates {
                 let verify_task = E::create_task(move || {
                     let (used_gas, result) = check_predicate(
                         tx,
-                        index,
                         predicate_action,
                         predicate,
                         my_params,
@@ -325,28 +346,60 @@ pub mod predicates {
         Tx: Inputs,
     {
         let mut checks = vec![];
-
         let max_gas = kind.tx().max_gas(&params.gas_costs, &params.fee_params);
         let max_gas_per_tx = params.max_gas_per_tx;
         let max_gas_per_predicate = params.max_gas_per_predicate;
         let mut global_available_gas = max_gas_per_tx.saturating_sub(max_gas);
 
-        for index in 0..kind.tx().inputs().len() {
+        let mut v1_input_indices = Vec::new();
+        let mut v2_input_indices: HashMap<(u16, u16), Vec<usize>> = HashMap::new();
+        for (index, input) in kind.tx().inputs().iter().enumerate() {
+            match input {
+                Input::CoinSigned(_)
+                | Input::CoinPredicate(_)
+                | Input::Contract(_)
+                | Input::MessageCoinSigned(_)
+                | Input::MessageCoinPredicate(_)
+                | Input::MessageDataSigned(_)
+                | Input::MessageDataPredicate(_) => {
+                    v1_input_indices.push(index);
+                }
+                Input::InputV2(inner) => match inner {
+                    InputV2::Coin(CoinV2 { validation, .. }) => match validation {
+                        CoinValidation::Predicate {
+                            predicate_index,
+                            predicate_data_index,
+                            ..
+                        } => {
+                            v2_input_indices
+                                .entry((*predicate_index, *predicate_data_index))
+                                .and_modify(|vec| vec.push(index))
+                                .or_insert(vec![index]);
+                        }
+                        _ => {}
+                    },
+                    _ => todo!(),
+                },
+            }
+        }
+
+        for index in v1_input_indices.iter() {
             let tx = kind.tx().clone();
 
             if let Some(predicate) =
-                RuntimePredicate::from_tx(&tx, params.tx_offset, index)
+                RuntimePredicate::from_tx(&tx, params.tx_offset, *index)
             {
                 let available_gas = global_available_gas.min(max_gas_per_predicate);
                 let predicate_action = match kind {
-                    PredicateRunKind::Verifying(_) => PredicateAction::Verifying,
+                    PredicateRunKind::Verifying(_) => {
+                        PredicateAction::Verifying { index: *index }
+                    }
                     PredicateRunKind::Estimating(_) => {
                         PredicateAction::Estimating { available_gas }
                     }
                 };
                 let (gas_used, result) = check_predicate(
                     tx,
-                    index,
                     predicate_action,
                     predicate,
                     params.clone(),
@@ -354,7 +407,38 @@ pub mod predicates {
                     storage,
                 );
                 global_available_gas = global_available_gas.saturating_sub(gas_used);
-                checks.push((index, result.map(|()| gas_used)));
+                checks.push((*index, result.map(|()| gas_used)));
+            }
+        }
+
+        for ((predicate_index, _), indices) in v2_input_indices.iter() {
+            if let Some(predicate) =
+                RuntimePredicate::get_from_tx_witnesses(kind.tx(), *predicate_index)
+            {
+                let tx = kind.tx().clone();
+                let available_gas = global_available_gas.min(max_gas_per_predicate);
+                let predicate_action = match kind {
+                    PredicateRunKind::Verifying(_) => {
+                        todo!()
+                        // PredicateAction::VerifyMany{ indices: indices.clone() }
+                    }
+                    PredicateRunKind::Estimating(_) => {
+                        PredicateAction::EstimateMany { available_gas }
+                    }
+                };
+                let (gas_used, result) = check_predicate(
+                    tx,
+                    predicate_action,
+                    predicate,
+                    params.clone(),
+                    memory.as_mut(),
+                    storage,
+                );
+                global_available_gas = global_available_gas.saturating_sub(gas_used);
+                // TODO: IDK if this is the correct way to handle the result
+                for index in indices.iter() {
+                    checks.push((*index, result.clone().map(|()| gas_used)));
+                }
             }
         }
 
@@ -363,7 +447,7 @@ pub mod predicates {
 
     fn check_predicate<Tx>(
         tx: Tx,
-        index: usize,
+        // index: usize,
         predicate_action: PredicateAction,
         predicate: RuntimePredicate,
         params: CheckPredicateParams,
@@ -374,8 +458,8 @@ pub mod predicates {
         Tx: ExecutableTransaction,
         Tx: Inputs,
     {
-        if predicate_action == PredicateAction::Verifying {
-            match &tx.inputs()[index] {
+        match predicate_action {
+            PredicateAction::Verifying { index, .. } => match &tx.inputs()[index] {
                 Input::CoinPredicate(CoinPredicate {
                     owner: address,
                     predicate,
@@ -399,7 +483,9 @@ pub mod predicates {
                     }
                 }
                 _ => {}
-            }
+            },
+            PredicateAction::VerifyMany { .. } => {}
+            _ => {}
         }
 
         let zero_gas_price = 0;
@@ -412,7 +498,7 @@ pub mod predicates {
         );
 
         let (context, available_gas) = match predicate_action {
-            PredicateAction::Verifying => {
+            PredicateAction::Verifying { index } => {
                 let context = Context::PredicateVerification { program: predicate };
                 let available_gas = tx.inputs()[index]
                     .predicate_gas_used()
@@ -425,13 +511,22 @@ pub mod predicates {
 
                 (context, available_gas)
             }
+            #[cfg(feature = "chargeable-tx-v2")]
+            PredicateAction::VerifyMany { .. } => {
+                todo!()
+            }
+            #[cfg(feature = "chargeable-tx-v2")]
+            PredicateAction::EstimateMany { .. } => {
+                todo!()
+            }
         };
 
         if let Err(err) = vm.init_predicate(context, tx, available_gas) {
-            return (
-                0,
-                Err(PredicateVerificationFailed::interpreter_error(index, err)),
-            );
+            todo!()
+            // return (
+            //     0,
+            //     Err(PredicateVerificationFailed::interpreter_error(index, err)),
+            // );
         }
 
         let result = vm.verify_predicate();
@@ -441,7 +536,7 @@ pub mod predicates {
             return (0, Err(Bug::new(BugVariant::GlobalGasUnderflow).into()));
         };
 
-        if let PredicateAction::Verifying = predicate_action {
+        if let PredicateAction::Verifying { index } = predicate_action {
             if !is_successful {
                 return if let Err(err) = result {
                     (
@@ -490,6 +585,16 @@ pub mod predicates {
                             ..
                         }) => {
                             *predicate_gas_used = *gas_used;
+                        }
+                        Input::InputV2(InputV2::Coin(CoinV2 { validation, .. })) => {
+                            match validation {
+                                CoinValidation::Predicate {
+                                    predicate_gas_used, ..
+                                } => {
+                                    *predicate_gas_used = *gas_used;
+                                }
+                                _ => {}
+                            }
                         }
                         _ => {
                             unreachable!(

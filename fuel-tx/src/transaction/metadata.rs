@@ -61,6 +61,10 @@ pub struct CommonMetadata {
     pub outputs_offset_at: Vec<usize>,
     pub witnesses_offset: usize,
     pub witnesses_offset_at: Vec<usize>,
+    #[cfg(feature = "chargeable-tx-v2")]
+    pub static_witnesses_offset: usize,
+    #[cfg(feature = "chargeable-tx-v2")]
+    pub static_witnesses_offset_at: Vec<usize>,
 }
 
 impl CommonMetadata {
@@ -114,6 +118,21 @@ impl CommonMetadata {
             witnesses_offset_at.push(i);
         }
 
+        #[cfg(feature = "chargeable-tx-v2")]
+        let mut static_witnesses_offset_at =
+            Vec::with_capacity(tx.static_witnesses().len());
+        #[cfg(feature = "chargeable-tx-v2")]
+        {
+            let mut offset = tx.static_witnesses_offset();
+            for (index, static_witnesses) in tx.static_witnesses().iter().enumerate() {
+                let i = offset;
+                offset = offset
+                    .checked_add(static_witnesses.size())
+                    .ok_or(ValidityError::SerializedWitnessTooLarge { index })?;
+                static_witnesses_offset_at.push(i);
+            }
+        }
+
         Ok(Self {
             id,
             inputs_offset: tx.inputs_offset(),
@@ -123,6 +142,10 @@ impl CommonMetadata {
             outputs_offset_at,
             witnesses_offset: tx.witnesses_offset(),
             witnesses_offset_at,
+            #[cfg(feature = "chargeable-tx-v2")]
+            static_witnesses_offset: tx.static_witnesses_offset(),
+            #[cfg(feature = "chargeable-tx-v2")]
+            static_witnesses_offset_at,
         })
     }
 }

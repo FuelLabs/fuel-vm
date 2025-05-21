@@ -1147,10 +1147,13 @@ pub mod field {
 
         #[cfg(feature = "chargeable-tx-v2")]
         fn static_witnesses_mut(&mut self) -> Option<&mut Vec<Witness>>;
-        // fn witnesses_offset(&self) -> usize;
-        //
-        // /// Returns the offset to the `Witness` at `idx` index, if any.
-        // fn witnesses_offset_at(&self, idx: usize) -> Option<usize>;
+
+        #[cfg(feature = "chargeable-tx-v2")]
+        fn static_witnesses_offset(&self) -> usize;
+
+        #[cfg(feature = "chargeable-tx-v2")]
+        /// Returns the offset to the `Witness` at `idx` index, if any.
+        fn static_witnesses_offset_at(&self, idx: usize) -> Option<usize>;
     }
 
     pub trait UpgradePurpose {

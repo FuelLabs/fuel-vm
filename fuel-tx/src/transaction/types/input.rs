@@ -332,6 +332,7 @@ impl Input {
         predicate_data_index: u16,
     ) -> Self {
         let validation = CoinValidation::Predicate {
+            predicate_gas_used: 0,
             predicate_index,
             predicate_data_index,
         };
@@ -680,9 +681,16 @@ impl Input {
             | Input::MessageCoinSigned(_)
             | Input::MessageDataSigned(_)
             | Input::Contract(_) => None,
-            Self::InputV2(_) => {
-                todo!()
-            }
+            Self::InputV2(inner) => match inner {
+                InputV2::Coin(coin) => match coin.validation {
+                    CoinValidation::Signed { .. } => None,
+                    CoinValidation::Predicate {
+                        predicate_gas_used, ..
+                    } => Some(predicate_gas_used),
+                },
+                InputV2::Message(_) => todo!(),
+                InputV2::Contract(_) => None,
+            },
         }
     }
 

@@ -929,13 +929,14 @@ mod field {
                 return *witnesses_offset;
             }
 
-            self.outputs_offset().saturating_add(
-                self.outputs()
-                    .iter()
-                    .map(|i| i.size())
-                    .reduce(usize::saturating_add)
-                    .unwrap_or_default(),
-            )
+            let outputs_offset = self.outputs_offset();
+            let outputs_len = self
+                .outputs()
+                .iter()
+                .map(|i| i.size())
+                .reduce(usize::saturating_add)
+                .unwrap_or_default();
+            outputs_offset.saturating_add(outputs_len)
         }
 
         #[inline(always)]
@@ -949,22 +950,22 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return witnesses_offset_at.get(idx).cloned();
-            }
-
-            if idx < self.witnesses.len() {
-                Some(
-                    self.witnesses_offset().saturating_add(
-                        self.witnesses()
-                            .iter()
-                            .take(idx)
-                            .map(|i| i.size())
-                            .reduce(usize::saturating_add)
-                            .unwrap_or_default(),
-                    ),
-                )
+                witnesses_offset_at.get(idx).cloned()
             } else {
-                None
+                if idx < self.witnesses.len() {
+                    Some(
+                        self.witnesses_offset().saturating_add(
+                            self.witnesses()
+                                .iter()
+                                .take(idx)
+                                .map(|i| i.size())
+                                .reduce(usize::saturating_add)
+                                .unwrap_or_default(),
+                        ),
+                    )
+                } else {
+                    None
+                }
             }
         }
 

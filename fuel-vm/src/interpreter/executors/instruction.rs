@@ -46,6 +46,8 @@ where
     fn fetch_instruction(&self) -> Result<[u8; 4], InterpreterError<S::DataError>> {
         let pc = self.registers[RegId::PC];
 
+        let tx_offset = self.tx_offset();
+        let _tx_bytes = self.memory().read(tx_offset, 384);
         let raw_instruction: [u8; 4] =
             self.memory().read_bytes(pc).map_err(|reason| {
                 InterpreterError::PanicInstruction(PanicInstruction::error(

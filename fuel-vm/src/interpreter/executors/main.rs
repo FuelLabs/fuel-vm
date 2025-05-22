@@ -412,9 +412,11 @@ pub mod predicates {
         }
 
         for ((predicate_index, _), indices) in v2_input_indices.iter() {
-            if let Some(predicate) =
-                RuntimePredicate::get_from_tx_witnesses(kind.tx(), *predicate_index)
-            {
+            if let Some(predicate) = RuntimePredicate::get_from_tx_static_witnesses(
+                kind.tx(),
+                params.tx_offset,
+                *predicate_index,
+            ) {
                 let tx = kind.tx().clone();
                 let available_gas = global_available_gas.min(max_gas_per_predicate);
                 let predicate_action = match kind {
@@ -516,8 +518,10 @@ pub mod predicates {
                 todo!()
             }
             #[cfg(feature = "chargeable-tx-v2")]
-            PredicateAction::EstimateMany { .. } => {
-                todo!()
+            PredicateAction::EstimateMany { available_gas } => {
+                let context = Context::PredicateEstimation { program: predicate };
+
+                (context, available_gas)
             }
         };
 

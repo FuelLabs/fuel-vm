@@ -317,7 +317,9 @@ async fn script_v2__estimate_predicate_happy_path() {
         predicate_index,
         predicate_data_index,
     );
-    let predicate_static_witness = Witness::from(vec![RegId::ONE.into()]);
+    let predicate_bytes: Vec<_> = vec![op::ret(RegId::ONE)].into_iter().collect();
+
+    let predicate_static_witness = Witness::from(predicate_bytes);
     let predicate_data_static_witness = Witness::from(vec![]);
 
     let mut tx = TransactionBuilder::script_v2(script, script_data)

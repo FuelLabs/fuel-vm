@@ -8,6 +8,7 @@ use fuel_types::{
 use crate::{
     UniqueIdentifier,
     ValidityError,
+    Witness,
     field,
 };
 
@@ -88,31 +89,37 @@ impl CommonMetadata {
             .map(|(i, _)| tx.inputs_predicate_offset_at(i))
             .collect_vec();
 
-        let mut offset = tx.inputs_offset();
+        let mut input_offset = tx.inputs_offset();
         let mut inputs_offset_at = Vec::with_capacity(tx.inputs().len());
         for (index, input) in tx.inputs().iter().enumerate() {
-            let i = offset;
-            offset = offset
+            let i = input_offset;
+            input_offset = input_offset
                 .checked_add(input.size())
                 .ok_or(ValidityError::SerializedInputTooLarge { index })?;
             inputs_offset_at.push(i);
         }
+        let _input_bytes = tx.inputs()[0].to_bytes();
+        let _input_size = tx.inputs()[0].size();
+        let mut _input_encoded = Vec::new();
+        tx.inputs().encode_dynamic(&mut _input_encoded).unwrap();
 
-        let mut offset = tx.outputs_offset();
+        let mut output_offset = tx.outputs_offset();
         let mut outputs_offset_at = Vec::with_capacity(tx.outputs().len());
         for (index, output) in tx.outputs().iter().enumerate() {
-            let i = offset;
-            offset = offset
+            let i = output_offset;
+            output_offset = output_offset
                 .checked_add(output.size())
                 .ok_or(ValidityError::SerializedOutputTooLarge { index })?;
             outputs_offset_at.push(i);
         }
 
-        let mut offset = tx.witnesses_offset();
+        let _output_bytes = tx.outputs()[0].to_bytes();
+
+        let mut witness_offset = tx.witnesses_offset();
         let mut witnesses_offset_at = Vec::with_capacity(tx.witnesses().len());
         for (index, witnesses) in tx.witnesses().iter().enumerate() {
-            let i = offset;
-            offset = offset
+            let i = witness_offset;
+            witness_offset = witness_offset
                 .checked_add(witnesses.size())
                 .ok_or(ValidityError::SerializedWitnessTooLarge { index })?;
             witnesses_offset_at.push(i);
@@ -123,11 +130,11 @@ impl CommonMetadata {
             Vec::with_capacity(tx.static_witnesses().len());
         #[cfg(feature = "chargeable-tx-v2")]
         {
-            let mut offset = tx.static_witnesses_offset();
-            for (index, static_witnesses) in tx.static_witnesses().iter().enumerate() {
-                let i = offset;
-                offset = offset
-                    .checked_add(static_witnesses.size())
+            let mut static_witness_offset = tx.static_witnesses_offset();
+            for (index, static_witness) in tx.static_witnesses().iter().enumerate() {
+                let i = static_witness_offset;
+                static_witness_offset = static_witness_offset
+                    .checked_add(static_witness.size())
                     .ok_or(ValidityError::SerializedWitnessTooLarge { index })?;
                 static_witnesses_offset_at.push(i);
             }

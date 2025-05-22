@@ -48,14 +48,19 @@ impl RuntimePredicate {
     }
 
     #[cfg(feature = "chargeable-tx-v2")]
-    pub fn get_from_tx_witnesses<T>(tx: &T, idx: u16) -> Option<Self>
+    pub fn get_from_tx_static_witnesses<T>(
+        tx: &T,
+        tx_offset: usize,
+        idx: u16,
+    ) -> Option<Self>
     where
         T: field::Witnesses,
     {
-        let ofs = tx.witnesses_offset_at(idx as usize)?;
-        let len = tx.witnesses().get(idx as usize)?.len();
+        let ofs = tx.static_witnesses_offset_at(idx as usize)?;
+        let len = tx.static_witnesses().get(idx as usize)?.len();
+        let addr = ofs.saturating_add(tx_offset);
         Some(Self {
-            range: MemoryRange::new(ofs, len),
+            range: MemoryRange::new(addr, len),
             idx: idx.into(),
         })
     }

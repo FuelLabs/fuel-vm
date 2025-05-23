@@ -1,4 +1,7 @@
-use crate::UtxoId;
+use crate::{
+    Input,
+    UtxoId,
+};
 use fuel_types::{
     AssetId,
     ContractId,
@@ -187,4 +190,7 @@ pub enum ValidityError {
     TransactionOutputDoesntContainContractCreated,
     /// Blob id of the transaction differs from the data.
     TransactionBlobIdVerificationFailed,
+    #[cfg(feature = "chargeable-tx-v2")]
+    /// The transaction includes unsupported input
+    WrongInputVersion,
 }

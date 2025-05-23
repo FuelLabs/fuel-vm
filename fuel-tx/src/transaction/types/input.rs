@@ -1143,6 +1143,9 @@ impl Deserialize for Input {
                         ),
                     }
                 }
+                InputRepr::CoinV2 => {
+                    todo!()
+                }
             },
         )
     }

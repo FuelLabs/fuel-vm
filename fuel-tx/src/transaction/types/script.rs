@@ -440,8 +440,7 @@ mod field {
                     + WORD_SIZE // Inputs size
                     + WORD_SIZE // Outputs size
                     + WORD_SIZE // Witnesses size
-                    + WORD_SIZE // Static witnesses size
-                    + WORD_SIZE, // TODO: Does this fix it?
+                    + WORD_SIZE, // Static witnesses size
             )
         }
     }

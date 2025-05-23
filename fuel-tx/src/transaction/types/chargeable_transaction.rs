@@ -891,12 +891,12 @@ mod field {
 
         #[cfg(feature = "chargeable-tx-v2")]
         fn static_witnesses_offset(&self) -> usize {
-            todo!()
+            self.witnesses_offset()
         }
 
         #[cfg(feature = "chargeable-tx-v2")]
         fn static_witnesses_offset_at(&self, idx: usize) -> Option<usize> {
-            todo!()
+            None
         }
     }
 

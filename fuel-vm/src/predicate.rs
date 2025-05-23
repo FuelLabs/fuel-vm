@@ -1,8 +1,10 @@
 //! Predicate representations with required data to be executed during VM runtime
 
+use crate::{
+    consts::WORD_SIZE,
+    interpreter::MemoryRange,
+};
 use fuel_tx::field;
-
-use crate::interpreter::MemoryRange;
 
 /// Runtime representation of a predicate
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -56,7 +58,10 @@ impl RuntimePredicate {
     where
         T: field::Witnesses,
     {
-        let ofs = tx.static_witnesses_offset_at(idx as usize)?;
+        const SIZE_BYTES: usize = WORD_SIZE; // Account for the bytes specifying the size of the static witness
+        let ofs = tx
+            .static_witnesses_offset_at(idx as usize)?
+            .saturating_add(SIZE_BYTES);
         let len = tx.static_witnesses().get(idx as usize)?.len();
         let addr = ofs.saturating_add(tx_offset);
         Some(Self {

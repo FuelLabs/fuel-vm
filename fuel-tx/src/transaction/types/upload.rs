@@ -180,6 +180,10 @@ impl Chargeable for Upload {
             .saturating_add(leaf_hash_gas)
             .saturating_add(verify_proof_gas)
     }
+
+    fn has_spendable_input(&self) -> bool {
+        self.has_spendable_input_inner()
+    }
 }
 
 impl UniqueFormatValidityChecks for Upload {

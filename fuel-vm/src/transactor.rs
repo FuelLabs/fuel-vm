@@ -1,5 +1,7 @@
 //! State machine of the interpreter.
 
+#[cfg(any(test, feature = "test-helpers"))]
+use crate::interpreter::MemoryInstance;
 use crate::{
     backtrace::Backtrace,
     checked_transaction::{
@@ -37,10 +39,8 @@ use fuel_tx::{
     Script,
     Upgrade,
     Upload,
+    field::Inputs,
 };
-
-#[cfg(any(test, feature = "test-helpers"))]
-use crate::interpreter::MemoryInstance;
 
 #[derive(Debug)]
 /// State machine to execute transactions and provide runtime entities on
@@ -311,6 +311,7 @@ where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
+    Tx: Inputs,
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
     Ecal: EcalHandler,
     V: Verifier,

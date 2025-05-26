@@ -46,6 +46,8 @@ impl UniqueIdentifier for Transaction {
             Self::Upgrade(tx) => tx.id(chain_id),
             Self::Upload(tx) => tx.id(chain_id),
             Self::Blob(tx) => tx.id(chain_id),
+            #[cfg(feature = "chargeable-tx-v2")]
+            Self::ScriptV2(tx) => tx.id(chain_id),
         }
     }
 
@@ -57,6 +59,8 @@ impl UniqueIdentifier for Transaction {
             Self::Upgrade(tx) => tx.cached_id(),
             Self::Upload(tx) => tx.cached_id(),
             Self::Blob(tx) => tx.cached_id(),
+            #[cfg(feature = "chargeable-tx-v2")]
+            Self::ScriptV2(tx) => tx.cached_id(),
         }
     }
 }
@@ -113,8 +117,8 @@ where
             .collect_vec();
 
         for w in witness_indexes {
-            if let Some(w) = self.witnesses_mut().get_mut(w) {
-                *w = signature.as_ref().into();
+            if let Some(inner) = self.witnesses_mut().get_mut(w) {
+                *inner = signature.as_ref().into();
             }
         }
     }
@@ -277,7 +281,7 @@ mod tests {
         };
     }
 
-    fn assert_id_common_attrs<Tx: Buildable>(tx: &Tx) {
+    fn assert_id_common_attrs<Tx: Buildable + Inputs>(tx: &Tx) {
         use core::ops::Deref;
         assert_id_ne(tx, |t| t.set_tip(t.tip().not()));
         assert_id_ne(tx, |t| t.set_maturity((t.maturity().deref().not()).into()));

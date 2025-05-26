@@ -661,6 +661,29 @@ fn script__check__happy_path() {
     .expect("Failed to validate transaction");
 }
 
+#[cfg(feature = "chargeable-tx-v2")]
+#[test]
+fn script_v2__check__happy_path() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let maturity = 100.into();
+    let block_height = 1000.into();
+
+    let secret = SecretKey::random(rng);
+    let asset_id: AssetId = rng.r#gen();
+
+    TransactionBuilder::script_v2(
+        vec![0xfa; SCRIPT_PARAMS.max_script_length() as usize],
+        vec![0xfb; SCRIPT_PARAMS.max_script_data_length() as usize],
+    )
+    .maturity(maturity)
+    .add_unsigned_coin_input(secret, rng.r#gen(), rng.r#gen(), asset_id, rng.r#gen())
+    .add_output(Output::coin(rng.r#gen(), rng.r#gen(), asset_id))
+    .finalize()
+    .check(block_height, &test_params())
+    .expect("Failed to validate transaction");
+}
+
 #[test]
 fn script__check__cannot_create_contract() {
     let rng = &mut StdRng::seed_from_u64(8586);

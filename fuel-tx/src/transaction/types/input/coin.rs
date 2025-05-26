@@ -1,5 +1,6 @@
 use core::default::Default;
 
+use super::PredicateCode;
 use crate::{
     TxPointer,
     UtxoId,
@@ -18,8 +19,6 @@ use fuel_types::{
     AssetId,
     Word,
 };
-
-use super::PredicateCode;
 
 pub type CoinFull = Coin<Full>;
 pub type CoinSigned = Coin<Signed>;
@@ -188,6 +187,12 @@ where
     }
 }
 
+impl CoinV2 {
+    pub fn prepare_sign(&mut self) {
+        self.tx_pointer = Default::default();
+    }
+}
+
 impl Coin<Full> {
     pub fn into_signed(self) -> Coin<Signed> {
         let Self {
@@ -288,4 +293,37 @@ impl Coin<Predicate> {
             ..Default::default()
         }
     }
+}
+
+#[derive(Educe, Clone, PartialEq, Eq, Hash)]
+#[educe(Debug)]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+pub struct CoinV2 {
+    pub utxo_id: UtxoId,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    pub owner: Address,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    pub amount: Word,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    pub asset_id: AssetId,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    pub tx_pointer: TxPointer,
+    pub validation: CoinValidation,
+}
+
+#[derive(Educe, Clone, PartialEq, Eq, Hash)]
+#[educe(Debug)]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+pub enum CoinValidation {
+    Signed {
+        witness_index: u16,
+    },
+    Predicate {
+        predicate: PredicateCode,
+        predicate_data: Vec<u8>,
+    },
 }

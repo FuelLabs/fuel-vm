@@ -145,6 +145,7 @@ enum PredicateAction {
     Estimating {
         available_gas: Word,
     },
+    #[allow(dead_code)]
     #[cfg(feature = "chargeable-tx-v2")]
     VerifyMany {
         indices: Vec<usize>,
@@ -159,7 +160,10 @@ enum PredicateAction {
 /// transaction.
 pub mod predicates {
     use super::*;
-    use crate::storage::predicate::PredicateStorageProvider;
+    use crate::storage::{
+        predicate,
+        predicate::PredicateStorageProvider,
+    };
     use fuel_tx::{
         field::Inputs,
         input::{
@@ -526,11 +530,17 @@ pub mod predicates {
         };
 
         if let Err(err) = vm.init_predicate(context, tx, available_gas) {
-            todo!()
-            // return (
-            //     0,
-            //     Err(PredicateVerificationFailed::interpreter_error(index, err)),
-            // );
+            let interpreter_error = match predicate_action {
+                PredicateAction::Verifying { index } => interpreter_error(index, err),
+                PredicateAction::Estimating { .. } => interpreter_error(0, err),
+                #[cfg(feature = "chargeable-tx-v2")]
+                PredicateAction::VerifyMany { indices } => {
+                    interpreter_error_multi(&indices, err)
+                }
+                #[cfg(feature = "chargeable-tx-v2")]
+                PredicateAction::EstimateMany { .. } => interpreter_error_multi(&[], err),
+            };
+            return (0, Err(interpreter_error));
         }
 
         let result = vm.verify_predicate();
@@ -543,10 +553,7 @@ pub mod predicates {
         if let PredicateAction::Verifying { index } = predicate_action {
             if !is_successful {
                 return if let Err(err) = result {
-                    (
-                        gas_used,
-                        Err(PredicateVerificationFailed::interpreter_error(index, err)),
-                    )
+                    (gas_used, Err(interpreter_error(index, err)))
                 } else {
                     (gas_used, Err(PredicateVerificationFailed::False { index }))
                 }
@@ -561,6 +568,58 @@ pub mod predicates {
         }
 
         (gas_used, Ok(()))
+    }
+
+    fn interpreter_error(
+        index: usize,
+        error: InterpreterError<predicate::PredicateStorageError>,
+    ) -> PredicateVerificationFailed {
+        match error {
+            error if error.panic_reason() == Some(PanicReason::OutOfGas) => {
+                PredicateVerificationFailed::OutOfGas { index }
+            }
+            InterpreterError::Panic(reason) => {
+                PredicateVerificationFailed::Panic { index, reason }
+            }
+            InterpreterError::PanicInstruction(instruction) => {
+                PredicateVerificationFailed::PanicInstruction { index, instruction }
+            }
+            InterpreterError::Bug(bug) => PredicateVerificationFailed::Bug(bug),
+            InterpreterError::Storage(_) => {
+                PredicateVerificationFailed::Storage { index }
+            }
+            _ => PredicateVerificationFailed::False { index },
+        }
+    }
+
+    fn interpreter_error_multi(
+        indices: &[usize],
+        error: InterpreterError<predicate::PredicateStorageError>,
+    ) -> PredicateVerificationFailed {
+        match error {
+            error if error.panic_reason() == Some(PanicReason::OutOfGas) => {
+                PredicateVerificationFailed::OutOfGasMulti {
+                    indices: indices.to_vec(),
+                }
+            }
+            InterpreterError::Panic(reason) => PredicateVerificationFailed::PanicMulti {
+                indices: indices.to_vec(),
+                reason,
+            },
+            InterpreterError::PanicInstruction(instruction) => {
+                PredicateVerificationFailed::PanicInstructionMulti {
+                    indices: indices.to_vec(),
+                    instruction,
+                }
+            }
+            InterpreterError::Bug(bug) => PredicateVerificationFailed::Bug(bug),
+            InterpreterError::Storage(_) => PredicateVerificationFailed::StorageMulti {
+                indices: indices.to_vec(),
+            },
+            _ => PredicateVerificationFailed::FalseMulti {
+                indices: indices.to_vec(),
+            },
+        }
     }
 
     fn finalize_check_predicate<Tx>(

@@ -1,9 +1,6 @@
-#[cfg(feature = "da-compression")]
-use crate::BodyConstraints;
 use crate::{
     Blob,
     BlobBody,
-    ChargeableTransaction,
     ConsensusParameters,
     ContractParameters,
     CreateMetadata,
@@ -39,6 +36,11 @@ use crate::{
             Witnesses,
         },
     },
+};
+#[cfg(feature = "da-compression")]
+use crate::{
+    BodyConstraints,
+    ChargeableTransaction,
 };
 
 use crate::{

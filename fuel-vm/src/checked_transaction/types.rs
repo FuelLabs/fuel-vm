@@ -252,7 +252,7 @@ pub mod script {
         type Metadata = CheckedMetadata;
 
         fn into_checked_basic(
-            mut self,
+            self,
             _block_height: BlockHeight,
             _consensus_params: &ConsensusParameters,
         ) -> Result<Checked<Self>, CheckError> {

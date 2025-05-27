@@ -1,7 +1,4 @@
-use crate::{
-    Input,
-    UtxoId,
-};
+use crate::UtxoId;
 use fuel_types::{
     AssetId,
     ContractId,

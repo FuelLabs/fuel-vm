@@ -692,7 +692,6 @@ fn script_v2__predicate_coin__check__happy_path() {
     let maturity = 100.into();
     let block_height = 1000.into();
 
-    let secret = SecretKey::random(rng);
     let asset_id: AssetId = rng.r#gen();
     let predicate_index = 0;
     let predicate_data_index = 1;

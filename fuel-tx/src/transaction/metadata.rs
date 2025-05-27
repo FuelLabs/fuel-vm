@@ -8,7 +8,6 @@ use fuel_types::{
 use crate::{
     UniqueIdentifier,
     ValidityError,
-    Witness,
     field,
 };
 
@@ -98,10 +97,6 @@ impl CommonMetadata {
                 .ok_or(ValidityError::SerializedInputTooLarge { index })?;
             inputs_offset_at.push(i);
         }
-        let _input_bytes = tx.inputs()[0].to_bytes();
-        let _input_size = tx.inputs()[0].size();
-        let mut _input_encoded = Vec::new();
-        tx.inputs().encode_dynamic(&mut _input_encoded).unwrap();
 
         let mut output_offset = tx.outputs_offset();
         let mut outputs_offset_at = Vec::with_capacity(tx.outputs().len());
@@ -112,8 +107,6 @@ impl CommonMetadata {
                 .ok_or(ValidityError::SerializedOutputTooLarge { index })?;
             outputs_offset_at.push(i);
         }
-
-        let _output_bytes = tx.outputs()[0].to_bytes();
 
         let mut witness_offset = tx.witnesses_offset();
         let mut witnesses_offset_at = Vec::with_capacity(tx.witnesses().len());

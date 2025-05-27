@@ -1,6 +1,6 @@
 #![allow(clippy::cast_possible_truncation)]
+#![allow(non_snake_case)]
 
-use super::PREDICATE_PARAMS;
 use crate::{
     ConsensusParameters,
     builder::TransactionBuilder,

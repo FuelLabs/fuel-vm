@@ -49,6 +49,8 @@ impl RuntimePredicate {
         })
     }
 
+    /// Gets a runtime predicate from a transaction's static witnesses, given the index of
+    /// that witness
     #[cfg(feature = "chargeable-tx-v2")]
     pub fn get_from_tx_static_witnesses<T>(
         tx: &T,

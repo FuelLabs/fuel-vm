@@ -21,8 +21,6 @@ use core::{
     fmt,
 };
 
-use crate::storage::predicate;
-
 /// Interpreter runtime error variants.
 #[derive(Debug, derive_more::Display)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -254,11 +252,25 @@ pub enum PredicateVerificationFailed {
         /// Input index of the predicate
         index: usize,
     },
+    /// The predicate did not use the amount of gas provided
+    #[display(
+        fmt = "Predicate for {indices:?} used less than the required amount of gas"
+    )]
+    GasMismatchMulti {
+        /// Input index of the predicate
+        indices: Vec<usize>,
+    },
     /// The transaction doesn't contain enough gas to evaluate the predicate
     #[display(fmt = "Insufficient gas available for predicate {index}")]
     OutOfGas {
         /// Input index of the predicate
         index: usize,
+    },
+    /// The transaction doesn't contain enough gas to evaluate the predicate
+    #[display(fmt = "Insufficient gas available for predicate for {indices:?}")]
+    OutOfGasMulti {
+        /// Input index of the predicate
+        indices: Vec<usize>,
     },
     /// The predicate owner does not correspond to the predicate code
     #[display(fmt = "Predicate {index} owner invalid, doesn't match code root")]
@@ -266,17 +278,36 @@ pub enum PredicateVerificationFailed {
         /// Input index of the predicate
         index: usize,
     },
+
+    /// The predicate owner does not correspond to the predicate code
+    #[display(fmt = "Predicate for {indices:?} owner invalid, doesn't match code root")]
+    InvalidOwnerMulti {
+        /// Input index of the predicate
+        indices: Vec<usize>,
+    },
     /// The predicate wasn't successfully evaluated to true
     #[display(fmt = "Predicate {index} failed to evaluate")]
     False {
         /// Input index of the predicate
         index: usize,
     },
+    /// The predicate wasn't successfully evaluated to true
+    #[display(fmt = "Predicate for {indices:?} failed to evaluate")]
+    FalseMulti {
+        /// Input index of the predicate
+        indices: Vec<usize>,
+    },
     /// The predicate gas used was not specified before execution
     #[display(fmt = "Predicate {index} failed to evaluate")]
     GasNotSpecified {
         /// Input index of the predicate
         index: usize,
+    },
+    /// The predicate gas used was not specified before execution
+    #[display(fmt = "Predicate for {indices:?} failed to evaluate")]
+    GasNotSpecifiedMulti {
+        /// Input index of the predicate
+        indices: Vec<usize>,
     },
     /// The transaction's `max_gas` is greater than the global gas limit.
     #[display(fmt = "Transaction exceeds total gas allowance {_0:?}")]
@@ -295,11 +326,29 @@ pub enum PredicateVerificationFailed {
         /// Instruction that caused the panic
         instruction: PanicInstruction,
     },
+    /// The VM execution resulted in a well-formed panic, not caused by an instruction.
+    #[display(
+        fmt = "Execution error: {instruction:?} in input predicate for {indices:?}"
+    )]
+    PanicInstructionMulti {
+        /// Input indices of the predicates
+        indices: Vec<usize>,
+        /// Panic reason
+        instruction: PanicInstruction,
+    },
     /// The VM execution resulted in a well-formed panic not caused by an instruction.
     #[display(fmt = "Execution error: {reason:?} in input predicate {index}")]
     Panic {
         /// Input index of the predicate
         index: usize,
+        /// Panic reason
+        reason: PanicReason,
+    },
+    /// The VM execution resulted in a well-formed panic not caused by an instruction.
+    #[display(fmt = "Execution error: {reason:?} in input predicate for {indices:?}")]
+    PanicMulti {
+        /// Input indices of the predicates
+        indices: Vec<usize>,
         /// Panic reason
         reason: PanicReason,
     },
@@ -309,28 +358,12 @@ pub enum PredicateVerificationFailed {
         /// Input index of the predicate
         index: usize,
     },
-}
-
-impl PredicateVerificationFailed {
-    /// Construct a new `PredicateVerificationFailed` from the given
-    /// `InterpreterError` and the index of the predicate that caused it.
-    pub(crate) fn interpreter_error(
-        index: usize,
-        error: InterpreterError<predicate::PredicateStorageError>,
-    ) -> Self {
-        match error {
-            error if error.panic_reason() == Some(PanicReason::OutOfGas) => {
-                Self::OutOfGas { index }
-            }
-            InterpreterError::Panic(reason) => Self::Panic { index, reason },
-            InterpreterError::PanicInstruction(instruction) => {
-                Self::PanicInstruction { index, instruction }
-            }
-            InterpreterError::Bug(bug) => Self::Bug(bug),
-            InterpreterError::Storage(_) => Self::Storage { index },
-            _ => Self::False { index },
-        }
-    }
+    /// Predicate verification failed since it attempted to access storage
+    #[display(fmt = "Predicate for {indices:?} attempted to access storage")]
+    StorageMulti {
+        /// Input indices of the predicates
+        indices: Vec<usize>,
+    },
 }
 
 impl From<Bug> for PredicateVerificationFailed {

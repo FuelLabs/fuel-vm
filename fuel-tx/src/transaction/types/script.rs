@@ -7,7 +7,6 @@ use crate::{
     ConsensusParameters,
     FeeParameters,
     GasCosts,
-    Input,
     Output,
     TransactionRepr,
     ValidityError,

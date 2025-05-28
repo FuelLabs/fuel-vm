@@ -53,6 +53,10 @@ impl Witness {
         self.data.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+
     /// ECRecover an address from a witness
     pub fn recover_witness(
         &self,

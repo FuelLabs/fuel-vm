@@ -951,21 +951,19 @@ mod field {
             }) = &self.metadata
             {
                 witnesses_offset_at.get(idx).cloned()
+            } else if idx < self.witnesses.len() {
+                Some(
+                    self.witnesses_offset().saturating_add(
+                        self.witnesses()
+                            .iter()
+                            .take(idx)
+                            .map(|i| i.size())
+                            .reduce(usize::saturating_add)
+                            .unwrap_or_default(),
+                    ),
+                )
             } else {
-                if idx < self.witnesses.len() {
-                    Some(
-                        self.witnesses_offset().saturating_add(
-                            self.witnesses()
-                                .iter()
-                                .take(idx)
-                                .map(|i| i.size())
-                                .reduce(usize::saturating_add)
-                                .unwrap_or_default(),
-                        ),
-                    )
-                } else {
-                    None
-                }
+                None
             }
         }
 

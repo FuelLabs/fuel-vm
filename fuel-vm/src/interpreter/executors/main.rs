@@ -369,19 +369,19 @@ pub mod predicates {
                     v1_input_indices.push(index);
                 }
                 Input::InputV2(inner) => match inner {
-                    InputV2::Coin(CoinV2 { validation, .. }) => match validation {
-                        CoinValidation::Predicate {
+                    InputV2::Coin(CoinV2 { validation, .. }) => {
+                        if let CoinValidation::Predicate {
                             predicate_index,
                             predicate_data_index,
                             ..
-                        } => {
+                        } = validation
+                        {
                             v2_input_indices
                                 .entry((*predicate_index, *predicate_data_index))
                                 .and_modify(|vec| vec.push(index))
                                 .or_insert(vec![index]);
                         }
-                        _ => {}
-                    },
+                    }
                     _ => todo!(),
                 },
             }
@@ -415,6 +415,7 @@ pub mod predicates {
             }
         }
 
+        #[cfg(feature = "chargeable-tx-v2")]
         for ((predicate_index, _), indices) in v2_input_indices.iter() {
             if let Some(predicate) = RuntimePredicate::get_from_tx_static_witnesses(
                 kind.tx(),
@@ -498,6 +499,7 @@ pub mod predicates {
                 }
                 _ => {}
             },
+            #[cfg(feature = "chargeable-tx-v2")]
             PredicateAction::VerifyMany { .. } => {}
             _ => {}
         }
@@ -600,6 +602,7 @@ pub mod predicates {
         }
     }
 
+    #[cfg(feature = "chargeable-tx-v2")]
     fn interpreter_error_multi(
         indices: &[usize],
         error: InterpreterError<predicate::PredicateStorageError>,
@@ -658,13 +661,11 @@ pub mod predicates {
                             *predicate_gas_used = *gas_used;
                         }
                         Input::InputV2(InputV2::Coin(CoinV2 { validation, .. })) => {
-                            match validation {
-                                CoinValidation::Predicate {
-                                    predicate_gas_used, ..
-                                } => {
-                                    *predicate_gas_used = *gas_used;
-                                }
-                                _ => {}
+                            if let CoinValidation::Predicate {
+                                predicate_gas_used, ..
+                            } = validation
+                            {
+                                *predicate_gas_used = *gas_used;
                             }
                         }
                         _ => {

@@ -41,7 +41,10 @@ use crate::{
 use crate::{
     BodyConstraints,
     ChargeableTransaction,
+    field::ChargeableBody,
 };
+#[cfg(feature = "da-compression")]
+use fuel_types::canonical::Serialize;
 
 use crate::{
     Cacheable,

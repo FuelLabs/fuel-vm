@@ -572,6 +572,7 @@ mod typescript {
         txhash: &Bytes32,
         outputs: Vec<JsValue>,
         witnesses: Vec<JsValue>,
+        #[cfg(feature = "chargeable-tx-v2")] static_witnesses: Vec<JsValue>,
         predicate_params: &PredicateParameters,
     ) -> Result<(), js_sys::Error> {
         let outputs: Vec<crate::Output> = outputs
@@ -586,17 +587,39 @@ mod typescript {
             .collect::<Result<Vec<_>, _>>()
             .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))?;
 
-        input
+        #[cfg(feature = "chargeable-tx-v2")]
+        let result = {
+            let static_witnesses: Vec<Witness> = static_witnesses
+                .into_iter()
+                .map(serde_wasm_bindgen::from_value::<Witness>)
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))?;
+            input
+                .0
+                .check(
+                    index,
+                    txhash,
+                    &outputs,
+                    &witnesses,
+                    &static_witnesses,
+                    predicate_params.as_ref(),
+                    &mut None,
+                )
+                .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))
+        };
+        #[cfg(not(feature = "chargeable-tx-v2"))]
+        let result = input
             .0
             .check(
                 index,
                 txhash,
                 &outputs,
                 &witnesses,
-                predicate_params.as_ref(),
+                &predicate_params,
                 &mut None,
             )
-            .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))
+            .map_err(|e| js_sys::Error::new(&format!("{:?}", e)));
+        result
     }
 
     #[wasm_bindgen::prelude::wasm_bindgen]

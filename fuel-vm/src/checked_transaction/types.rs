@@ -181,13 +181,14 @@ pub mod script {
         NonRetryableFreeBalances,
         RetryableAmount,
     };
+    #[cfg(feature = "chargeable-tx-v2")]
+    use fuel_tx::ScriptV2;
     use fuel_tx::{
         Cacheable,
         Chargeable,
         ConsensusParameters,
         FormatValidityChecks,
         Script,
-        ScriptV2,
     };
     use fuel_types::{
         AssetId,

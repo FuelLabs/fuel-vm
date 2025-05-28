@@ -425,7 +425,7 @@ async fn script_v2__estimate_predicate__fails_if_predicate_not_found_in_static_w
 #[tokio::test]
 async fn script_v2__estimate_predicate__fails_if_predicate_data_not_found_in_static_witnesses()
  {
-   todo!()
+    todo!()
 }
 
 #[tokio::test]

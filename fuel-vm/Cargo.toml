@@ -74,8 +74,7 @@ tokio = { version = "1.27", features = ["full"] }
 tokio-rayon = "2.1.0"
 
 [features]
-#default = ["std"]
-default = ["std", "chargeable-tx-v2"]
+default = ["std"]
 std = [
     "alloc",
     "fuel-crypto/std",

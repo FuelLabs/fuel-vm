@@ -48,6 +48,7 @@ mod error;
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "chargeable-tx-v2")]
 use crate::input::{
     InputV2,
     coin::CoinValidation,

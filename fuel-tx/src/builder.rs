@@ -37,13 +37,13 @@ use crate::{
         },
     },
 };
-#[cfg(feature = "da-compression")]
+#[cfg(all(feature = "da-compression", feature = "chargeable-tx-v2"))]
 use crate::{
     BodyConstraints,
     ChargeableTransaction,
     field::ChargeableBody,
 };
-#[cfg(feature = "da-compression")]
+#[cfg(all(feature = "da-compression", feature = "chargeable-tx-v2"))]
 use fuel_types::canonical::Serialize;
 
 use crate::{
@@ -582,7 +582,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     }
 }
 
-#[cfg(feature = "da-compression")]
+#[cfg(all(feature = "da-compression", feature = "chargeable-tx-v2"))]
 impl<B, M> TransactionBuilder<ChargeableTransaction<B, M>>
 where
     B: BodyConstraints,

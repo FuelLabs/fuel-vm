@@ -2,9 +2,7 @@ use crate::{
     ConsensusParameters,
     Input,
     Output,
-    TxPointer,
     UniqueIdentifier,
-    UtxoId,
     ValidityError,
     Witness,
     field::ChargeableBody,
@@ -25,13 +23,21 @@ use crate::{
         },
     },
 };
+#[cfg(feature = "chargeable-tx-v2")]
+use crate::{
+    TxPointer,
+    UtxoId,
+};
 use educe::Educe;
+#[cfg(feature = "chargeable-tx-v2")]
 use fuel_types::{
     AssetId,
+    Word,
+};
+use fuel_types::{
     BlockHeight,
     Bytes32,
     ChainId,
-    Word,
     bytes,
     canonical::Serialize,
 };
@@ -51,6 +57,7 @@ use crate::input::InputV2;
 
 #[cfg(feature = "da-compression")]
 use fuel_compression::Compressible;
+#[cfg(feature = "chargeable-tx-v2")]
 use fuel_crypto::PublicKey;
 
 #[cfg(feature = "da-compression")]

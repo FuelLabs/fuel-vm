@@ -174,7 +174,7 @@ pub mod predicates {
             },
         },
     };
-    use std::collections::HashMap;
+    use hashbrown::HashMap;
 
     /// Initialize the VM with the provided transaction and check all predicates defined
     /// in the inputs.

@@ -28,6 +28,9 @@ use rand::{
     rngs::StdRng,
 };
 
+#[cfg(not(feature = "chargeable-tx-v2"))]
+use tests::valid_cases::PREDICATE_PARAMS;
+
 #[test]
 fn input_coin_message_signature() {
     fn test<Tx>(txs: &mut impl Iterator<Item = (Tx, Vec<SecretKey>)>)

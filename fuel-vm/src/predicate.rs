@@ -1,9 +1,8 @@
 //! Predicate representations with required data to be executed during VM runtime
 
-use crate::{
-    consts::WORD_SIZE,
-    interpreter::MemoryRange,
-};
+#[cfg(feature = "chargeable-tx-v2")]
+use crate::consts::WORD_SIZE;
+use crate::interpreter::MemoryRange;
 use fuel_tx::field;
 
 /// Runtime representation of a predicate

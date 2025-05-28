@@ -296,6 +296,7 @@ async fn predicate() {
     assert!(!execute_predicate(predicate.iter().copied(), wrong_data, 0).await);
 }
 
+// TODO: Have the predicate inspect the predicate data to ensure it works
 #[cfg(feature = "chargeable-tx-v2")]
 #[tokio::test]
 async fn script_v2__estimate_predicate_happy_path() {
@@ -370,7 +371,8 @@ async fn script_v2__estimate_predicate_happy_path() {
 
 #[cfg(feature = "chargeable-tx-v2")]
 #[tokio::test]
-async fn script_v2__estimate_predicate__fails_if_no_static_witness() {
+async fn script_v2__estimate_predicate__fails_if_predicate_not_found_in_static_witnesses()
+{
     let mut rng = StdRng::seed_from_u64(2322u64);
 
     // given
@@ -416,6 +418,14 @@ async fn script_v2__estimate_predicate__fails_if_no_static_witness() {
     } else {
         panic!("Expected MissingPredicate error");
     }
+}
+
+#[ignore]
+#[cfg(feature = "chargeable-tx-v2")]
+#[tokio::test]
+async fn script_v2__estimate_predicate__fails_if_predicate_data_not_found_in_static_witnesses()
+ {
+   todo!()
 }
 
 #[tokio::test]

@@ -298,57 +298,6 @@ async fn predicate() {
 
 #[cfg(feature = "chargeable-tx-v2")]
 #[tokio::test]
-async fn script_v2__estimate_predicate__fails_if_no_static_witness() {
-    let mut rng = StdRng::seed_from_u64(2322u64);
-
-    // given
-    let script = vec![];
-    let script_data = vec![];
-    let predicate_index = 0;
-    let predicate_data_index = 1;
-    let asset_id = rng.r#gen();
-    let amount = rng.r#gen();
-    // two inputs sharing the same predicate
-    let input = Input::coin_predicate_v2(
-        rng.r#gen(),
-        rng.r#gen(),
-        amount,
-        asset_id,
-        rng.r#gen(),
-        predicate_index,
-        predicate_data_index,
-    );
-
-    let mut tx = TransactionBuilder::script_v2(script, script_data)
-        .add_input(input)
-        .add_output(Output::coin(rng.r#gen(), amount, asset_id))
-        .finalize();
-
-    assert_eq!(tx.inputs()[0].predicate_gas_used(), Some(0));
-    let result = tx.estimate_predicates(
-        &ConsensusParameters::standard().into(),
-        MemoryInstance::new(),
-        &EmptyStorage,
-    );
-
-    // Then
-    let err = result.expect_err("Should estimate predicate");
-    if let CheckError::PredicateVerificationFailed(
-        PredicateVerificationFailed::MissingPredicate {
-            input_indices,
-            predicate_index,
-        },
-    ) = &err
-    {
-        assert_eq!(predicate_index, &0);
-        assert_eq!(input_indices, &vec![0]);
-    } else {
-        panic!("Expected MissingPredicate error");
-    }
-}
-
-#[cfg(feature = "chargeable-tx-v2")]
-#[tokio::test]
 async fn script_v2__estimate_predicate_happy_path() {
     let mut rng = StdRng::seed_from_u64(2322u64);
 
@@ -417,6 +366,56 @@ async fn script_v2__estimate_predicate_happy_path() {
     // Then
     result.expect("Should estimate predicate");
     assert_ne!(tx.inputs()[0].predicate_gas_used(), Some(0));
+}
+
+#[cfg(feature = "chargeable-tx-v2")]
+#[tokio::test]
+async fn script_v2__estimate_predicate__fails_if_no_static_witness() {
+    let mut rng = StdRng::seed_from_u64(2322u64);
+
+    // given
+    let script = vec![];
+    let script_data = vec![];
+    let predicate_index = 0;
+    let predicate_data_index = 1;
+    let asset_id = rng.r#gen();
+    let amount = rng.r#gen();
+    let input = Input::coin_predicate_v2(
+        rng.r#gen(),
+        rng.r#gen(),
+        amount,
+        asset_id,
+        rng.r#gen(),
+        predicate_index,
+        predicate_data_index,
+    );
+
+    let mut tx = TransactionBuilder::script_v2(script, script_data)
+        .add_input(input)
+        .add_output(Output::coin(rng.r#gen(), amount, asset_id))
+        .finalize();
+
+    // when
+    let result = tx.estimate_predicates(
+        &ConsensusParameters::standard().into(),
+        MemoryInstance::new(),
+        &EmptyStorage,
+    );
+
+    // Then
+    let err = result.expect_err("Should estimate predicate");
+    if let CheckError::PredicateVerificationFailed(
+        PredicateVerificationFailed::MissingPredicate {
+            input_indices,
+            predicate_index,
+        },
+    ) = &err
+    {
+        assert_eq!(predicate_index, &0);
+        assert_eq!(input_indices, &vec![0]);
+    } else {
+        panic!("Expected MissingPredicate error");
+    }
 }
 
 #[tokio::test]

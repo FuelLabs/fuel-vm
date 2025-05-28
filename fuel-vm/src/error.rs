@@ -252,6 +252,7 @@ pub enum PredicateVerificationFailed {
         /// Input index of the predicate
         index: usize,
     },
+    #[cfg(feature = "chargeable-tx-v2")]
     /// The predicate did not use the amount of gas provided
     #[display(
         fmt = "Predicate for {indices:?} used less than the required amount of gas"
@@ -266,6 +267,7 @@ pub enum PredicateVerificationFailed {
         /// Input index of the predicate
         index: usize,
     },
+    #[cfg(feature = "chargeable-tx-v2")]
     /// The transaction doesn't contain enough gas to evaluate the predicate
     #[display(fmt = "Insufficient gas available for predicate for {indices:?}")]
     OutOfGasMulti {
@@ -279,6 +281,7 @@ pub enum PredicateVerificationFailed {
         index: usize,
     },
 
+    #[cfg(feature = "chargeable-tx-v2")]
     /// The predicate owner does not correspond to the predicate code
     #[display(fmt = "Predicate for {indices:?} owner invalid, doesn't match code root")]
     InvalidOwnerMulti {
@@ -291,6 +294,7 @@ pub enum PredicateVerificationFailed {
         /// Input index of the predicate
         index: usize,
     },
+    #[cfg(feature = "chargeable-tx-v2")]
     /// The predicate wasn't successfully evaluated to true
     #[display(fmt = "Predicate for {indices:?} failed to evaluate")]
     FalseMulti {
@@ -303,6 +307,7 @@ pub enum PredicateVerificationFailed {
         /// Input index of the predicate
         index: usize,
     },
+    #[cfg(feature = "chargeable-tx-v2")]
     /// The predicate gas used was not specified before execution
     #[display(fmt = "Predicate for {indices:?} failed to evaluate")]
     GasNotSpecifiedMulti {
@@ -326,6 +331,7 @@ pub enum PredicateVerificationFailed {
         /// Instruction that caused the panic
         instruction: PanicInstruction,
     },
+    #[cfg(feature = "chargeable-tx-v2")]
     /// The VM execution resulted in a well-formed panic, not caused by an instruction.
     #[display(
         fmt = "Execution error: {instruction:?} in input predicate for {indices:?}"
@@ -344,6 +350,7 @@ pub enum PredicateVerificationFailed {
         /// Panic reason
         reason: PanicReason,
     },
+    #[cfg(feature = "chargeable-tx-v2")]
     /// The VM execution resulted in a well-formed panic not caused by an instruction.
     #[display(fmt = "Execution error: {reason:?} in input predicate for {indices:?}")]
     PanicMulti {
@@ -358,12 +365,14 @@ pub enum PredicateVerificationFailed {
         /// Input index of the predicate
         index: usize,
     },
+    #[cfg(feature = "chargeable-tx-v2")]
     /// Predicate verification failed since it attempted to access storage
     #[display(fmt = "Predicate for {indices:?} attempted to access storage")]
     StorageMulti {
         /// Input indices of the predicates
         indices: Vec<usize>,
     },
+    #[cfg(feature = "chargeable-tx-v2")]
     /// Input referenced a predicate which could not be found in the static witnesses
     #[display(
         fmt = "Could not find predicate for inputs {input_indices:?} at static witness index {predicate_index}"

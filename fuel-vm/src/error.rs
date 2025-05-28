@@ -364,6 +364,16 @@ pub enum PredicateVerificationFailed {
         /// Input indices of the predicates
         indices: Vec<usize>,
     },
+    /// Input referenced a predicate which could not be found in the static witnesses
+    #[display(
+        fmt = "Could not find predicate for inputs {input_indices:?} at static witness index {predicate_index}"
+    )]
+    MissingPredicate {
+        /// Input indices that referenced the predicate
+        input_indices: Vec<usize>,
+        /// Index in static witnesses where the predicate was expected
+        predicate_index: u16,
+    },
 }
 
 impl From<Bug> for PredicateVerificationFailed {

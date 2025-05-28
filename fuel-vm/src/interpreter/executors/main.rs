@@ -445,6 +445,14 @@ pub mod predicates {
                 for index in indices.iter() {
                     checks.push((*index, result.clone().map(|()| gas_used)));
                 }
+            } else {
+                let err = PredicateVerificationFailed::MissingPredicate {
+                    input_indices: indices.clone(),
+                    predicate_index: *predicate_index,
+                };
+                for index in indices.iter() {
+                    checks.push((*index, Err(err.clone())));
+                }
             }
         }
 

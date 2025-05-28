@@ -65,7 +65,6 @@ use crate::{
 #[cfg(feature = "chargeable-tx-v2")]
 use crate::transaction::ScriptV2;
 
-use crate::field::ChargeableBody;
 use alloc::{
     collections::BTreeMap,
     vec::Vec,
@@ -78,7 +77,6 @@ use fuel_types::{
     Nonce,
     Salt,
     Word,
-    canonical::Serialize,
 };
 #[cfg(feature = "rand")]
 use rand::{

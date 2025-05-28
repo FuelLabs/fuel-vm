@@ -298,6 +298,57 @@ async fn predicate() {
 
 #[cfg(feature = "chargeable-tx-v2")]
 #[tokio::test]
+async fn script_v2__estimate_predicate__fails_if_no_static_witness() {
+    let mut rng = StdRng::seed_from_u64(2322u64);
+
+    // given
+    let script = vec![];
+    let script_data = vec![];
+    let predicate_index = 0;
+    let predicate_data_index = 1;
+    let asset_id = rng.r#gen();
+    let amount = rng.r#gen();
+    // two inputs sharing the same predicate
+    let input = Input::coin_predicate_v2(
+        rng.r#gen(),
+        rng.r#gen(),
+        amount,
+        asset_id,
+        rng.r#gen(),
+        predicate_index,
+        predicate_data_index,
+    );
+
+    let mut tx = TransactionBuilder::script_v2(script, script_data)
+        .add_input(input)
+        .add_output(Output::coin(rng.r#gen(), amount, asset_id))
+        .finalize();
+
+    assert_eq!(tx.inputs()[0].predicate_gas_used(), Some(0));
+    let result = tx.estimate_predicates(
+        &ConsensusParameters::standard().into(),
+        MemoryInstance::new(),
+        &EmptyStorage,
+    );
+
+    // Then
+    let err = result.expect_err("Should estimate predicate");
+    if let CheckError::PredicateVerificationFailed(
+        PredicateVerificationFailed::MissingPredicate {
+            input_indices,
+            predicate_index,
+        },
+    ) = &err
+    {
+        assert_eq!(predicate_index, &0);
+        assert_eq!(input_indices, &vec![0]);
+    } else {
+        panic!("Expected MissingPredicate error");
+    }
+}
+
+#[cfg(feature = "chargeable-tx-v2")]
+#[tokio::test]
 async fn script_v2__estimate_predicate_happy_path() {
     let mut rng = StdRng::seed_from_u64(2322u64);
 
@@ -308,6 +359,7 @@ async fn script_v2__estimate_predicate_happy_path() {
     let predicate_data_index = 1;
     let asset_id = rng.r#gen();
     let amount = rng.r#gen();
+    // two inputs sharing the same predicate
     let input = Input::coin_predicate_v2(
         rng.r#gen(),
         rng.r#gen(),
@@ -317,6 +369,28 @@ async fn script_v2__estimate_predicate_happy_path() {
         predicate_index,
         predicate_data_index,
     );
+    let input_2 = Input::coin_predicate_v2(
+        rng.r#gen(),
+        rng.r#gen(),
+        amount,
+        asset_id,
+        rng.r#gen(),
+        predicate_index,
+        predicate_data_index,
+    );
+    // third input with own predicate
+    let predicate_2_index = 2;
+    let predicate_data_2_index = 3;
+
+    let input_3 = Input::coin_predicate_v2(
+        rng.r#gen(),
+        rng.r#gen(),
+        amount,
+        asset_id,
+        rng.r#gen(),
+        predicate_2_index,
+        predicate_data_2_index,
+    );
     let predicate_bytes: Vec<_> = vec![op::ret(RegId::ONE)].into_iter().collect();
 
     let predicate_static_witness = Witness::from(predicate_bytes);
@@ -324,7 +398,11 @@ async fn script_v2__estimate_predicate_happy_path() {
 
     let mut tx = TransactionBuilder::script_v2(script, script_data)
         .add_input(input)
+        .add_input(input_2)
+        .add_input(input_3)
         .add_output(Output::coin(rng.r#gen(), amount, asset_id))
+        .add_static_witness(predicate_static_witness.clone())
+        .add_static_witness(predicate_data_static_witness.clone())
         .add_static_witness(predicate_static_witness)
         .add_static_witness(predicate_data_static_witness)
         .finalize();

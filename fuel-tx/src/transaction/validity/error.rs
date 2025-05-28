@@ -187,4 +187,7 @@ pub enum ValidityError {
     TransactionOutputDoesntContainContractCreated,
     /// Blob id of the transaction differs from the data.
     TransactionBlobIdVerificationFailed,
+    #[cfg(feature = "chargeable-tx-v2")]
+    /// The transaction includes unsupported input
+    WrongInputVersion,
 }

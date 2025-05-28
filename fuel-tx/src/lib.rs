@@ -127,6 +127,9 @@ pub use transaction::{
     policies,
 };
 
+#[cfg(feature = "chargeable-tx-v2")]
+pub use transaction::ScriptV2;
+
 #[cfg(feature = "da-compression")]
 pub use transaction::{
     BodyConstraints,

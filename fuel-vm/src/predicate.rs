@@ -1,8 +1,9 @@
 //! Predicate representations with required data to be executed during VM runtime
 
-use fuel_tx::field;
-
+#[cfg(feature = "chargeable-tx-v2")]
+use crate::consts::WORD_SIZE;
 use crate::interpreter::MemoryRange;
+use fuel_tx::field;
 
 /// Runtime representation of a predicate
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -44,6 +45,29 @@ impl RuntimePredicate {
         Some(Self {
             range: MemoryRange::new(addr, len),
             idx,
+        })
+    }
+
+    /// Gets a runtime predicate from a transaction's static witnesses, given the index of
+    /// that witness
+    #[cfg(feature = "chargeable-tx-v2")]
+    pub fn get_from_tx_static_witnesses<T>(
+        tx: &T,
+        tx_offset: usize,
+        idx: u16,
+    ) -> Option<Self>
+    where
+        T: field::Witnesses,
+    {
+        const SIZE_BYTES: usize = WORD_SIZE; // Account for the bytes specifying the size of the static witness
+        let ofs = tx
+            .static_witnesses_offset_at(idx as usize)?
+            .saturating_add(SIZE_BYTES);
+        let len = tx.static_witnesses().get(idx as usize)?.len();
+        let addr = ofs.saturating_add(tx_offset);
+        Some(Self {
+            range: MemoryRange::new(addr, len),
+            idx: idx.into(),
         })
     }
 }

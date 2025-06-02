@@ -10,6 +10,11 @@ use fuel_asm::{
     Instruction,
     RegId,
     Word,
+    narrowint::{
+        MathArgs,
+        MathOp,
+        OpWidth,
+    },
     op,
 };
 use fuel_tx::{
@@ -111,10 +116,28 @@ impl AluResultForFlags {
     }
 
     /// The operation wraps around if wrapping is enabled, otherwise it panics.
-    /// Computes the wrapping value for u64 oveflow.
+    /// Computes the wrapping value for u64 oveflow. For narrow ints, use
+    /// `wrapping_ok_narrow`.
     fn wrapping_ok(value: u128) -> Self {
         let wrapped = value as Word;
         let of = (value >> 64) as Word;
+        let wrapping = AluOk {
+            value: wrapped,
+            of,
+            err: 0,
+        }
+        .into();
+        Self {
+            normal: AluResult::Panic(PanicReason::ArithmeticOverflow),
+            wrapping,
+            unsafemath: AluResult::Panic(PanicReason::ArithmeticOverflow),
+            wrapping_unsafemath: wrapping,
+        }
+    }
+
+    /// The operation wraps around if wrapping is enabled, otherwise it panics.
+    /// Computes the wrapping value for u64 oveflow.
+    fn wrapping_ok_narrow(wrapped: Word, of: Word) -> Self {
         let wrapping = AluOk {
             value: wrapped,
             of,
@@ -429,6 +452,95 @@ fn test_binary_op_reg_reg_reg(
     c: Word,
 ) -> AluResultForFlags {
     let run = |flags| run_alu_op(op(0x20, 0x10, 0x11, 0x12), vec![a, b, c], flags);
+    AluResultForFlags {
+        normal: run(Flags::empty()),
+        wrapping: run(Flags::WRAPPING),
+        unsafemath: run(Flags::UNSAFEMATH),
+        wrapping_unsafemath: run(Flags::WRAPPING | Flags::UNSAFEMATH),
+    }
+}
+
+#[test_case(MathOp::ADD, OpWidth::U8, 0, 0 => AluResultForFlags::invariant_ok(0))]
+#[test_case(MathOp::ADD, OpWidth::U8, 1, 1 => AluResultForFlags::invariant_ok(2))]
+#[test_case(MathOp::ADD, OpWidth::U8, u64::MAX, 0 => AluResultForFlags::invariant_ok(u8::MAX as u64))]
+#[test_case(MathOp::ADD, OpWidth::U16, u64::MAX, 0 => AluResultForFlags::invariant_ok(u16::MAX as u64))]
+#[test_case(MathOp::ADD, OpWidth::U32, u64::MAX, 0 => AluResultForFlags::invariant_ok(u32::MAX as u64))]
+#[test_case(MathOp::ADD, OpWidth::U8, u8::MAX as u64, 1 => AluResultForFlags::wrapping_ok_narrow(0, 1))]
+#[test_case(MathOp::ADD, OpWidth::U16, u16::MAX as u64, 1 => AluResultForFlags::wrapping_ok_narrow(0, 1))]
+#[test_case(MathOp::ADD, OpWidth::U32, u32::MAX as u64, 1 => AluResultForFlags::wrapping_ok_narrow(0, 1))]
+#[test_case(MathOp::ADD, OpWidth::U8, u8::MAX as u64, 2 => AluResultForFlags::wrapping_ok_narrow(1, 1))]
+#[test_case(MathOp::ADD, OpWidth::U16, u8::MAX as u64, 1 => AluResultForFlags::invariant_ok(u8::MAX as u64 + 1))]
+#[test_case(MathOp::ADD, OpWidth::U32, u8::MAX as u64, 1 => AluResultForFlags::invariant_ok(u8::MAX as u64 + 1))]
+#[test_case(MathOp::ADD, OpWidth::U32, u16::MAX as u64, 1 => AluResultForFlags::invariant_ok(u16::MAX as u64 + 1))]
+#[test_case(MathOp::ADD, OpWidth::U32, u32::MAX as u64, u32::MAX as u64 => AluResultForFlags::wrapping_ok_narrow(u32::MAX as u64 - 1, 1))]
+#[test_case(MathOp::SUB, OpWidth::U8, 0, 0 => AluResultForFlags::invariant_ok(0))]
+#[test_case(MathOp::SUB, OpWidth::U8, 1, 0 => AluResultForFlags::invariant_ok(1))]
+#[test_case(MathOp::SUB, OpWidth::U8, u64::MAX, 0 => AluResultForFlags::invariant_ok(u8::MAX as u64))]
+#[test_case(MathOp::SUB, OpWidth::U16, u64::MAX, 0 => AluResultForFlags::invariant_ok(u16::MAX as u64))]
+#[test_case(MathOp::SUB, OpWidth::U32, u64::MAX, 0 => AluResultForFlags::invariant_ok(u32::MAX as u64))]
+#[test_case(MathOp::SUB, OpWidth::U8, 0, 1 => AluResultForFlags::wrapping_ok_narrow(u8::MAX as u64, u64::MAX))]
+#[test_case(MathOp::SUB, OpWidth::U16, 0, 1 => AluResultForFlags::wrapping_ok_narrow(u16::MAX as u64, u64::MAX))]
+#[test_case(MathOp::SUB, OpWidth::U32, 0, 1 => AluResultForFlags::wrapping_ok_narrow(u32::MAX as u64, u64::MAX))]
+#[test_case(MathOp::SUB, OpWidth::U8, 0, 2 => AluResultForFlags::wrapping_ok_narrow(u8::MAX as u64 - 1, u64::MAX))]
+#[test_case(MathOp::SUB, OpWidth::U16, 0, 2 => AluResultForFlags::wrapping_ok_narrow(u16::MAX as u64 - 1, u64::MAX))]
+#[test_case(MathOp::SUB, OpWidth::U32, 0, 2 => AluResultForFlags::wrapping_ok_narrow(u32::MAX as u64 - 1, u64::MAX))]
+#[test_case(MathOp::SUB, OpWidth::U8, 0, u8::MAX as u64 => AluResultForFlags::wrapping_ok_narrow(1, u64::MAX))]
+#[test_case(MathOp::SUB, OpWidth::U16, 0, u16::MAX as u64 => AluResultForFlags::wrapping_ok_narrow(1, u64::MAX))]
+#[test_case(MathOp::SUB, OpWidth::U32, 0, u32::MAX as u64 => AluResultForFlags::wrapping_ok_narrow(1, u64::MAX))]
+#[test_case(MathOp::MUL, OpWidth::U8, 0, 0 => AluResultForFlags::invariant_ok(0))]
+#[test_case(MathOp::MUL, OpWidth::U8, 0, 1 => AluResultForFlags::invariant_ok(0))]
+#[test_case(MathOp::MUL, OpWidth::U8, 1, 2 => AluResultForFlags::invariant_ok(2))]
+#[test_case(MathOp::MUL, OpWidth::U8, 1, u8::MAX as u64 => AluResultForFlags::invariant_ok(u8::MAX as u64))]
+#[test_case(MathOp::MUL, OpWidth::U8, u8::MAX as u64, u8::MAX as u64 => AluResultForFlags::wrapping_ok_narrow(1, u8::MAX as u64 - 1))]
+#[test_case(MathOp::MUL, OpWidth::U16, 0, 0 => AluResultForFlags::invariant_ok(0))]
+#[test_case(MathOp::MUL, OpWidth::U16, 0, 1 => AluResultForFlags::invariant_ok(0))]
+#[test_case(MathOp::MUL, OpWidth::U16, 1, 2 => AluResultForFlags::invariant_ok(2))]
+#[test_case(MathOp::MUL, OpWidth::U16, 1, u16::MAX as u64 => AluResultForFlags::invariant_ok(u16::MAX as u64))]
+#[test_case(MathOp::MUL, OpWidth::U16, u16::MAX as u64, u16::MAX as u64 => AluResultForFlags::wrapping_ok_narrow(1, u16::MAX as u64 - 1))]
+#[test_case(MathOp::MUL, OpWidth::U32, 0, 0 => AluResultForFlags::invariant_ok(0))]
+#[test_case(MathOp::MUL, OpWidth::U32, 0, 1 => AluResultForFlags::invariant_ok(0))]
+#[test_case(MathOp::MUL, OpWidth::U32, 1, 2 => AluResultForFlags::invariant_ok(2))]
+#[test_case(MathOp::MUL, OpWidth::U32, 1, u32::MAX as u64 => AluResultForFlags::invariant_ok(u32::MAX as u64))]
+#[test_case(MathOp::MUL, OpWidth::U32, u32::MAX as u64, u32::MAX as u64 => AluResultForFlags::wrapping_ok_narrow(1, u32::MAX as u64 - 1))]
+#[test_case(MathOp::EXP, OpWidth::U8, 0, 0 => AluResultForFlags::invariant_ok(1))]
+#[test_case(MathOp::EXP, OpWidth::U8, 0, 2 => AluResultForFlags::invariant_ok(0))]
+#[test_case(MathOp::EXP, OpWidth::U8, 2, 0 => AluResultForFlags::invariant_ok(1))]
+#[test_case(MathOp::EXP, OpWidth::U8, 2, 3 => AluResultForFlags::invariant_ok(8))]
+#[test_case(MathOp::EXP, OpWidth::U8, 2, 10 => AluResultForFlags::wrapping_fixed())]
+#[test_case(MathOp::EXP, OpWidth::U8, 99, 99 => AluResultForFlags::wrapping_fixed())]
+#[test_case(MathOp::EXP, OpWidth::U8, u8::MAX as u64, u8::MAX as u64 => AluResultForFlags::wrapping_fixed())]
+#[test_case(MathOp::EXP, OpWidth::U16, 2, 10 => AluResultForFlags::invariant_ok(2u64.pow(10)))]
+#[test_case(MathOp::EXP, OpWidth::U16, 2, 20 => AluResultForFlags::wrapping_fixed())]
+#[test_case(MathOp::EXP, OpWidth::U16, u16::MAX as u64, u16::MAX as u64 => AluResultForFlags::wrapping_fixed())]
+#[test_case(MathOp::EXP, OpWidth::U32, 2, 20 => AluResultForFlags::invariant_ok(2u64.pow(20)))]
+#[test_case(MathOp::EXP, OpWidth::U32, 2, 40 => AluResultForFlags::wrapping_fixed())]
+#[test_case(MathOp::EXP, OpWidth::U32, u32::MAX as u64, u32::MAX as u64 => AluResultForFlags::wrapping_fixed())]
+#[test_case(MathOp::SLL, OpWidth::U8, 0, 0 => AluResultForFlags::invariant_ok(0))]
+#[test_case(MathOp::SLL, OpWidth::U8, 1, 0 => AluResultForFlags::invariant_ok(1))]
+#[test_case(MathOp::SLL, OpWidth::U8, 1, 3 => AluResultForFlags::invariant_ok(0b1000))]
+#[test_case(MathOp::SLL, OpWidth::U8, 1, 10 => AluResultForFlags::invariant_ok(0))]
+#[test_case(MathOp::SLL, OpWidth::U8, 1, 100 => AluResultForFlags::invariant_ok(0))]
+#[test_case(MathOp::SLL, OpWidth::U8, 1, u8::MAX as u64 => AluResultForFlags::invariant_ok(0))]
+#[test_case(MathOp::SLL, OpWidth::U16, 1, 15 => AluResultForFlags::invariant_ok(1 << 15))]
+#[test_case(MathOp::SLL, OpWidth::U16, 1, u16::MAX as u64 => AluResultForFlags::invariant_ok(0))]
+#[test_case(MathOp::SLL, OpWidth::U32, 1, 15 => AluResultForFlags::invariant_ok(1 << 15))]
+#[test_case(MathOp::SLL, OpWidth::U32, 1, 31 => AluResultForFlags::invariant_ok(1 << 31))]
+#[test_case(MathOp::SLL, OpWidth::U32, 1, 32 => AluResultForFlags::invariant_ok(0))]
+#[test_case(MathOp::SLL, OpWidth::U32, 1, u32::MAX as u64 => AluResultForFlags::invariant_ok(0))]
+#[test_case(MathOp::XNOR, OpWidth::U8, 0, 0 => AluResultForFlags::invariant_ok(u8::MAX as u64))]
+#[test_case(MathOp::XNOR, OpWidth::U16, 0, 0 => AluResultForFlags::invariant_ok(u16::MAX as u64))]
+#[test_case(MathOp::XNOR, OpWidth::U32, 0, 0 => AluResultForFlags::invariant_ok(u32::MAX as u64))]
+#[test_case(MathOp::XNOR, OpWidth::U8, 0b_1111_0000, 1 => AluResultForFlags::invariant_ok(0b_0000_1110))]
+#[test_case(MathOp::XNOR, OpWidth::U32, u32::MAX as u64, u32::MAX as u64 => AluResultForFlags::invariant_ok(u32::MAX as u64))]
+fn test_niop(op: MathOp, width: OpWidth, lhs: Word, rhs: Word) -> AluResultForFlags {
+    let args = MathArgs { op, width };
+    let run = |flags| {
+        run_alu_op(
+            op::niop(0x20, 0x10, 0x11, args.to_imm().into()),
+            vec![lhs, rhs],
+            flags,
+        )
+    };
     AluResultForFlags {
         normal: run(Flags::empty()),
         wrapping: run(Flags::WRAPPING),

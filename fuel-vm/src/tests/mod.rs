@@ -23,6 +23,7 @@ mod external;
 mod flow;
 mod gas_factor;
 mod jump_absolute;
+mod jump_and_link;
 mod jump_relative;
 mod limits;
 mod log;

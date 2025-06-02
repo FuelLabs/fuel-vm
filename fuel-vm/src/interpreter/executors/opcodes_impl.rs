@@ -22,7 +22,10 @@ use crate::{
 };
 use core::ops::Div;
 use fuel_asm::{
+    Instruction,
     PanicReason,
+    RegId,
+    narrowint,
     op::{
         ADD,
         ADDI,
@@ -844,6 +847,33 @@ where
     }
 }
 
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::NIOP
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute(
+        self,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter
+            .gas_charge(interpreter.gas_costs().niop().map_err(PanicReason::from)?)?;
+        let (a, b, c, imm) = self.unpack();
+        let args = narrowint::MathArgs::from_imm(imm)
+            .ok_or(PanicReason::InvalidImmediateValue)?;
+        interpreter.alu_narrowint_op(
+            a,
+            interpreter.registers[b],
+            interpreter.registers[c],
+            args,
+        )?;
+        Ok(ExecuteState::Proceed)
+    }
+}
+
 impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::NOOP
 where
     M: Memory,
@@ -1122,7 +1152,7 @@ where
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().ji())?;
         let imm = self.unpack();
-        interpreter.jump(JumpArgs::new(JumpMode::Absolute).to_address(imm.into()))?;
+        interpreter.jump(JumpArgs::new(JumpMode::RelativeIS).to_address(imm.into()))?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1142,7 +1172,7 @@ where
         interpreter.gas_charge(interpreter.gas_costs().jnei())?;
         let (a, b, imm) = self.unpack();
         interpreter.jump(
-            JumpArgs::new(JumpMode::Absolute)
+            JumpArgs::new(JumpMode::RelativeIS)
                 .with_condition(interpreter.registers[a] != interpreter.registers[b])
                 .to_address(imm.into()),
         )?;
@@ -1165,7 +1195,7 @@ where
         interpreter.gas_charge(interpreter.gas_costs().jnzi())?;
         let (a, imm) = self.unpack();
         interpreter.jump(
-            JumpArgs::new(JumpMode::Absolute)
+            JumpArgs::new(JumpMode::RelativeIS)
                 .with_condition(interpreter.registers[a] != 0)
                 .to_address(imm.into()),
         )?;
@@ -1188,7 +1218,7 @@ where
         interpreter.gas_charge(interpreter.gas_costs().jmp())?;
         let a = self.unpack();
         interpreter.jump(
-            JumpArgs::new(JumpMode::Absolute).to_address(interpreter.registers[a]),
+            JumpArgs::new(JumpMode::RelativeIS).to_address(interpreter.registers[a]),
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -1209,7 +1239,7 @@ where
         interpreter.gas_charge(interpreter.gas_costs().jne())?;
         let (a, b, c) = self.unpack();
         interpreter.jump(
-            JumpArgs::new(JumpMode::Absolute)
+            JumpArgs::new(JumpMode::RelativeIS)
                 .with_condition(interpreter.registers[a] != interpreter.registers[b])
                 .to_address(interpreter.registers[c]),
         )?;
@@ -1353,6 +1383,37 @@ where
             JumpArgs::new(JumpMode::RelativeBackwards)
                 .with_condition(interpreter.registers[a] != interpreter.registers[b])
                 .to_address(interpreter.registers[c])
+                .plus_fixed(offset.into()),
+        )?;
+        Ok(ExecuteState::Proceed)
+    }
+}
+
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::JAL
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute(
+        self,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge(interpreter.gas_costs().jmp())?;
+        let (reg_ret_addr, reg_target, offset) = self.unpack();
+
+        // Storing return address to zero register discards it instead
+        // While we use saturating_add here, the PC shoudln't ever have values above the
+        // memory size anyway
+        let ret_addr =
+            interpreter.registers[RegId::PC].saturating_add(Instruction::SIZE as u64);
+        interpreter.set_user_reg_or_discard(reg_ret_addr, ret_addr)?;
+
+        interpreter.jump(
+            JumpArgs::new(JumpMode::Assign)
+                .to_address(interpreter.registers[reg_target])
                 .plus_fixed(offset.into()),
         )?;
         Ok(ExecuteState::Proceed)

@@ -1,5 +1,6 @@
 #![allow(deprecated)]
 
+pub mod narrowint;
 pub mod wideint;
 
 /// 12-bits immediate value type

@@ -15,6 +15,7 @@ use fuel_asm::{
     Flags,
     Instruction,
     PanicReason,
+    RegId,
 };
 use fuel_tx::{
     Output,
@@ -44,6 +45,21 @@ where
     pub(crate) fn update_memory_output(&mut self, idx: usize) -> SimpleResult<()> {
         let tx_offset = self.tx_offset();
         update_memory_output(&self.tx, self.memory.as_mut(), tx_offset, idx)
+    }
+
+    /// Sets a non-system register to a value. If a system register is passed, return a
+    /// panic. Writes to the zero register are ignored.
+    pub fn set_user_reg_or_discard(&mut self, reg: RegId, val: Word) -> SimpleResult<()> {
+        if reg == RegId::ZERO {
+            return Ok(());
+        }
+
+        if reg < RegId::WRITABLE {
+            return Err(PanicReason::ReservedRegisterNotWritable.into());
+        }
+
+        self.registers[reg] = val;
+        Ok(())
     }
 }
 

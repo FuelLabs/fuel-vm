@@ -35,6 +35,7 @@ mod encoding_tests;
 pub use args::{
     GMArgs,
     GTFArgs,
+    narrowint,
     wideint,
 };
 
@@ -153,6 +154,8 @@ impl_instructions! {
     0x21 XOR xor [dst: RegId lhs: RegId rhs: RegId]
     "Fused multiply-divide with arbitrary precision intermediate step."
     0x22 MLDV mldv [dst: RegId mul_lhs: RegId mul_rhs: RegId divisor: RegId]
+    "Narrow-integer arithmetic operation."
+    0x23 NIOP niop [dst: RegId lhs: RegId rhs: RegId flags: Imm06]
 
     "Return from context."
     0x24 RET ret [value: RegId]
@@ -316,6 +319,8 @@ impl_instructions! {
     0x97 POPL popl [bitmask: Imm24]
     "Pop a bitmask-selected set of registers in range 40..64 to the stack."
     0x98 POPH poph [bitmask: Imm24]
+    "Store return address and jump to an absolute address."
+    0x99 JAL jal [ret_addr: RegId target: RegId offset: Imm12]
 
     "Compare 128bit integers"
     0xa0 WDCM wdcm [dst: RegId lhs: RegId rhs: RegId flags: Imm06]
@@ -463,7 +468,7 @@ impl RegId {
     pub const SP: Self = Self(0x05);
     /// Stack start pointer. Memory address of bottom of current writable stack area.
     pub const SSP: Self = Self(0x04);
-    /// Smallest writable register.
+    /// Smallest user-writable register.
     pub const WRITABLE: Self = Self(0x10);
     /// Contains zero (0), for convenience.
     pub const ZERO: Self = Self(0x00);
@@ -707,14 +712,14 @@ impl Opcode {
         use Opcode::*;
         match self {
             ADD | AND | DIV | EQ | EXP | GT | LT | MLOG | MROO | MOD | MOVE | MUL
-            | NOT | OR | SLL | SRL | SUB | XOR | WDCM | WQCM | WDOP | WQOP | WDML
-            | WQML | WDDV | WQDV | WDMD | WQMD | WDAM | WQAM | WDMM | WQMM | PSHH
-            | PSHL | POPH | POPL | RET | ALOC | MCL | MCP | MEQ | ECK1 | ECR1 | ED19
-            | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI | MODI | MULI
-            | MLDV | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LQW | LHW | LW
-            | SB | SQW | SHW | SW | MCPI | MCLI | GM | MOVI | JNZI | JI | JMP | JNE
-            | JMPF | JMPB | JNZF | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF
-            | LDC | BSIZ | BLDD | ECOP | EPAR => true,
+            | NOT | OR | SLL | SRL | SUB | XOR | NIOP | WDCM | WQCM | WDOP | WQOP
+            | WDML | WQML | WDDV | WQDV | WDMD | WQMD | WDAM | WQAM | WDMM | WQMM
+            | PSHH | PSHL | POPH | POPL | RET | ALOC | MCL | MCP | MEQ | ECK1 | ECR1
+            | ED19 | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI | MODI
+            | MULI | MLDV | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LQW | LHW
+            | LW | SB | SQW | SHW | SW | MCPI | MCLI | GM | MOVI | JNZI | JI | JMP
+            | JNE | JMPF | JMPB | JNZF | JNZB | JNEF | JNEB | JAL | CFEI | CFSI | CFE
+            | CFS | GTF | LDC | BSIZ | BLDD | ECOP | EPAR => true,
             _ => false,
         }
     }

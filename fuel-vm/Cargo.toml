@@ -11,10 +11,40 @@ license = "BUSL-1.1"
 repository = { workspace = true }
 description = "FuelVM interpreter."
 
-[[bench]]
-name = "execution"
-harness = false
-required-features = ["std"]
+[features]
+default = ["std"]
+std = [
+    "alloc",
+    "fuel-crypto/std",
+    "fuel-types/std",
+    "fuel-asm/std",
+    "fuel-tx/std",
+    "itertools/use_std",
+    "sha3/std",
+]
+alloc = ["fuel-asm/alloc", "fuel-tx/alloc", "fuel-crypto/alloc"]
+random = ["fuel-crypto/random", "fuel-types/random", "fuel-tx/random", "rand"]
+da-compression = ["fuel-compression", "fuel-tx/da-compression"]
+serde = [
+    "dep:serde",
+    "dep:serde_with",
+    "hashbrown/serde",
+    "fuel-asm/serde",
+    "fuel-types/serde",
+    "fuel-merkle/serde",
+    "fuel-crypto/serde",
+    "backtrace?/serde",
+]
+test-helpers = [
+    "fuel-tx/test-helpers",
+    "alloc",
+    "random",
+    "dep:anyhow",
+    "tai64",
+    "fuel-crypto/test-helpers",
+]
+u32-tx-pointer = ["fuel-tx/u32-tx-pointer"]
+chargeable-tx-v2 = ["fuel-tx/chargeable-tx-v2"]
 
 [dependencies]
 anyhow = { version = "1.0", optional = true }
@@ -73,40 +103,10 @@ test-case = "3.3"
 tokio = { version = "1.27", features = ["full"] }
 tokio-rayon = "2.1.0"
 
-[features]
-default = ["std"]
-std = [
-    "alloc",
-    "fuel-crypto/std",
-    "fuel-types/std",
-    "fuel-asm/std",
-    "fuel-tx/std",
-    "itertools/use_std",
-    "sha3/std"
-]
-alloc = ["fuel-asm/alloc", "fuel-tx/alloc", "fuel-crypto/alloc"]
-random = ["fuel-crypto/random", "fuel-types/random", "fuel-tx/random", "rand"]
-da-compression = ["fuel-compression", "fuel-tx/da-compression"]
-serde = [
-    "dep:serde",
-    "dep:serde_with",
-    "hashbrown/serde",
-    "fuel-asm/serde",
-    "fuel-types/serde",
-    "fuel-merkle/serde",
-    "fuel-crypto/serde",
-    "backtrace?/serde",
-]
-test-helpers = [
-    "fuel-tx/test-helpers",
-    "alloc",
-    "random",
-    "dep:anyhow",
-    "tai64",
-    "fuel-crypto/test-helpers",
-]
-u32-tx-pointer = ["fuel-tx/u32-tx-pointer"]
-chargeable-tx-v2 = ["fuel-tx/chargeable-tx-v2"]
+[[bench]]
+name = "execution"
+harness = false
+required-features = ["std"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }

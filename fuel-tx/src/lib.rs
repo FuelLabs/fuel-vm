@@ -14,6 +14,7 @@
 #![deny(unused_crate_dependencies)]
 #![deny(unsafe_code)]
 
+#[cfg(feature = "typescript")]
 use serde_wasm_bindgen as _;
 
 // TODO: Add docs

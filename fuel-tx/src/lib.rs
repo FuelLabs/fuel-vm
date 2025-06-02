@@ -14,6 +14,8 @@
 #![deny(unused_crate_dependencies)]
 #![deny(unsafe_code)]
 
+use serde_wasm_bindgen as _;
+
 // TODO: Add docs
 
 #[cfg(feature = "alloc")]

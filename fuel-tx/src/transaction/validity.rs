@@ -29,7 +29,6 @@ use crate::{
             PredicateParameters,
             TxParameters,
         },
-        field,
     },
 };
 use core::hash::Hash;
@@ -279,6 +278,8 @@ impl FormatValidityChecks for Transaction {
             Self::Upgrade(tx) => tx.check_signatures(chain_id),
             Self::Upload(tx) => tx.check_signatures(chain_id),
             Self::Blob(tx) => tx.check_signatures(chain_id),
+            #[cfg(feature = "chargeable-tx-v2")]
+            Self::ScriptV2(tx) => tx.check_signatures(chain_id),
         }
     }
 
@@ -302,6 +303,10 @@ impl FormatValidityChecks for Transaction {
                 tx.check_without_signatures(block_height, consensus_params)
             }
             Self::Blob(tx) => tx.check_without_signatures(block_height, consensus_params),
+            #[cfg(feature = "chargeable-tx-v2")]
+            Self::ScriptV2(tx) => {
+                tx.check_without_signatures(block_height, consensus_params)
+            }
         }
     }
 }
@@ -327,7 +332,7 @@ pub(crate) fn check_common_part<T>(
     consensus_params: &ConsensusParameters,
 ) -> Result<(), ValidityError>
 where
-    T: canonical::Serialize + Chargeable + field::Outputs,
+    T: canonical::Serialize + Chargeable + Executable,
 {
     let tx_params = consensus_params.tx_params();
     let predicate_params = consensus_params.predicate_params();
@@ -377,18 +382,8 @@ where
         Err(ValidityError::TransactionWitnessesMax)?
     }
 
-    let any_spendable_input = tx.inputs().iter().find(|input| match input {
-        Input::CoinSigned(_)
-        | Input::CoinPredicate(_)
-        | Input::MessageCoinSigned(_)
-        | Input::MessageCoinPredicate(_) => true,
-        Input::MessageDataSigned(_)
-        | Input::MessageDataPredicate(_)
-        | Input::Contract(_) => false,
-    });
-
-    if any_spendable_input.is_none() {
-        Err(ValidityError::NoSpendableInput)?
+    if !tx.has_spendable_input() {
+        return Err(ValidityError::NoSpendableInput)
     }
 
     tx.input_asset_ids_unique(base_asset_id)

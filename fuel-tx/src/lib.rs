@@ -129,6 +129,7 @@ pub use transaction::{
 
 #[cfg(feature = "da-compression")]
 pub use transaction::{
+    BodyConstraints,
     CompressedMint,
     CompressedTransaction,
     CompressedUtxoId,

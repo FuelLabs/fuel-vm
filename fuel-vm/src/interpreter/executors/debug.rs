@@ -10,12 +10,14 @@ use crate::{
     storage::InterpreterStorage,
     verification::Verifier,
 };
+use fuel_tx::field::Inputs;
 
 impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
+    Tx: Inputs,
     Ecal: EcalHandler,
     V: Verifier,
 {

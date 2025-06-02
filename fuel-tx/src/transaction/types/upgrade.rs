@@ -182,6 +182,10 @@ impl Chargeable for Upgrade {
 
         tx_id_gas.saturating_add(purpose_gas)
     }
+
+    fn has_spendable_input(&self) -> bool {
+        self.has_spendable_input_inner()
+    }
 }
 
 impl UniqueFormatValidityChecks for Upgrade {

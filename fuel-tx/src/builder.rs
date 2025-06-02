@@ -56,6 +56,10 @@ use crate::{
         UpgradeBody,
     },
 };
+
+#[cfg(feature = "chargeable-tx-v2")]
+use crate::transaction::ScriptV2;
+
 use alloc::{
     collections::BTreeMap,
     vec::Vec,
@@ -144,6 +148,27 @@ impl TransactionBuilder<Script> {
             inputs: Default::default(),
             outputs: Default::default(),
             witnesses: Default::default(),
+            metadata: None,
+        };
+        Self::with_tx(tx)
+    }
+}
+
+#[cfg(feature = "chargeable-tx-v2")]
+impl TransactionBuilder<ScriptV2> {
+    pub fn script_v2(script: Vec<u8>, script_data: Vec<u8>) -> Self {
+        let tx = ScriptV2 {
+            body: ScriptBody {
+                script_gas_limit: Default::default(),
+                receipts_root: Default::default(),
+                script: script.into(),
+                script_data,
+            },
+            policies: Policies::new().with_max_fee(0),
+            inputs: Default::default(),
+            outputs: Default::default(),
+            witnesses: Default::default(),
+            static_witnesses: Default::default(),
             metadata: None,
         };
         Self::with_tx(tx)
@@ -397,6 +422,30 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     }
 
     pub fn add_unsigned_coin_input(
+        &mut self,
+        secret: SecretKey,
+        utxo_id: crate::UtxoId,
+        amount: Word,
+        asset_id: fuel_types::AssetId,
+        tx_pointer: TxPointer,
+    ) -> &mut Self {
+        let pk = secret.public_key();
+
+        let witness_index = self.upsert_secret(secret);
+
+        self.tx.add_unsigned_coin_input(
+            utxo_id,
+            &pk,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+        );
+
+        self
+    }
+
+    pub fn add_unsigned_coin_input_v2(
         &mut self,
         secret: SecretKey,
         utxo_id: crate::UtxoId,

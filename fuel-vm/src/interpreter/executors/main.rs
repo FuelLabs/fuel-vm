@@ -86,6 +86,7 @@ use fuel_tx::{
         BlobId as _,
         BytecodeRoot,
         BytecodeWitnessIndex,
+        Inputs,
         ReceiptsRoot,
         Salt,
         Script as ScriptField,
@@ -147,6 +148,7 @@ enum PredicateAction {
 pub mod predicates {
     use super::*;
     use crate::storage::predicate::PredicateStorageProvider;
+    use fuel_tx::field::Inputs;
 
     /// Initialize the VM with the provided transaction and check all predicates defined
     /// in the inputs.
@@ -162,6 +164,7 @@ pub mod predicates {
     where
         Tx: ExecutableTransaction,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
+        Tx: Inputs,
     {
         let tx = checked.transaction();
         run_predicates(
@@ -184,9 +187,9 @@ pub mod predicates {
         storage: &impl PredicateStorageProvider,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
-        Tx: ExecutableTransaction + Send + 'static,
-        <Tx as IntoChecked>::Metadata: CheckedMetadata,
         E: ParallelExecutor,
+        Tx: ExecutableTransaction + Send + 'static,
+        Tx: Inputs,
     {
         let tx = checked.transaction();
 
@@ -215,6 +218,7 @@ pub mod predicates {
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
+        Tx: Inputs,
     {
         let predicates_checked = run_predicates(
             PredicateRunKind::Estimating(transaction),
@@ -239,6 +243,7 @@ pub mod predicates {
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + Send + 'static,
+        Tx: Inputs,
         E: ParallelExecutor,
     {
         let predicates_checked = run_predicate_async::<Tx, E>(
@@ -260,6 +265,7 @@ pub mod predicates {
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + Send + 'static,
+        Tx: Inputs,
         E: ParallelExecutor,
     {
         let mut checks = vec![];
@@ -316,6 +322,7 @@ pub mod predicates {
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
+        Tx: Inputs,
     {
         let mut checks = vec![];
 
@@ -365,6 +372,7 @@ pub mod predicates {
     ) -> (Word, Result<(), PredicateVerificationFailed>)
     where
         Tx: ExecutableTransaction,
+        Tx: Inputs,
     {
         if predicate_action == PredicateAction::Verifying {
             match &tx.inputs()[index] {
@@ -463,6 +471,7 @@ pub mod predicates {
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
+        Tx: Inputs,
     {
         if let PredicateRunKind::Estimating(tx) = &mut kind {
             checks.iter().for_each(|(input_index, result)| {
@@ -861,6 +870,7 @@ where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
     V: Verifier,
+    Tx: Inputs,
 {
     fn update_transaction_outputs(
         &mut self,
@@ -920,6 +930,10 @@ where
                 }
                 Transaction::Mint(_) => {
                     // The `Mint` transaction doesn't implement `ExecutableTransaction`.
+                }
+                #[cfg(feature = "chargeable-tx-v2")]
+                Transaction::ScriptV2(_) => {
+                    todo!()
                 }
             };
         }
@@ -1085,6 +1099,7 @@ where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
+    Tx: Inputs,
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
     Ecal: EcalHandler,
     V: Verifier,

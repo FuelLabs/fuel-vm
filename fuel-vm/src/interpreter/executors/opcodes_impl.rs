@@ -32,6 +32,7 @@ use fuel_asm::{
     },
     wideint,
 };
+use fuel_tx::field::Inputs;
 use fuel_types::Word;
 
 impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for ADD
@@ -2492,6 +2493,7 @@ where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
+    Tx: Inputs,
     Ecal: EcalHandler,
     V: Verifier,
 {
@@ -2511,6 +2513,7 @@ where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
+    Tx: Inputs,
     Ecal: EcalHandler,
     V: Verifier,
 {

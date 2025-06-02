@@ -19,6 +19,8 @@ pub enum TransactionRepr {
     Upgrade = 0x03,
     Upload = 0x04,
     Blob = 0x05,
+    #[cfg(feature = "chargeable-tx-v2")]
+    ScriptV2 = 0x06,
 }
 
 impl From<&Transaction> for TransactionRepr {
@@ -30,6 +32,8 @@ impl From<&Transaction> for TransactionRepr {
             Transaction::Upgrade { .. } => Self::Upgrade,
             Transaction::Upload { .. } => Self::Upload,
             Transaction::Blob { .. } => Self::Blob,
+            #[cfg(feature = "chargeable-tx-v2")]
+            Transaction::ScriptV2(_) => Self::ScriptV2,
         }
     }
 }

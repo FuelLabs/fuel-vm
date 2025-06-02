@@ -22,12 +22,14 @@ use fuel_asm::{
     RawInstruction,
     RegId,
 };
+use fuel_tx::field::Inputs;
 
 impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
+    Tx: Inputs,
     Ecal: EcalHandler,
     V: Verifier,
 {
@@ -128,6 +130,7 @@ where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
+    Tx: Inputs,
     Ecal: EcalHandler,
     V: Verifier,
 {

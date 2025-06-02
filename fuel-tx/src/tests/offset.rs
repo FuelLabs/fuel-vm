@@ -71,6 +71,7 @@ struct TestedFields {
 fn chargeable_transaction_parts<Tx>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields)
 where
     Tx: Buildable,
+    Tx: Inputs,
 {
     inputs_assert(tx, bytes, cases);
     outputs_assert(tx, bytes, cases);

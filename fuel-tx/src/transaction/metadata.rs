@@ -31,6 +31,8 @@ impl Cacheable for super::Transaction {
             Self::Upgrade(tx) => tx.is_computed(),
             Self::Upload(tx) => tx.is_computed(),
             Self::Blob(tx) => tx.is_computed(),
+            #[cfg(feature = "chargeable-tx-v2")]
+            Self::ScriptV2(tx) => tx.is_computed(),
         }
     }
 
@@ -42,6 +44,8 @@ impl Cacheable for super::Transaction {
             Self::Upgrade(tx) => tx.precompute(chain_id),
             Self::Upload(tx) => tx.precompute(chain_id),
             Self::Blob(tx) => tx.precompute(chain_id),
+            #[cfg(feature = "chargeable-tx-v2")]
+            Self::ScriptV2(tx) => tx.precompute(chain_id),
         }
     }
 }

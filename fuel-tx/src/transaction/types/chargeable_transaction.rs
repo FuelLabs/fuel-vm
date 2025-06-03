@@ -256,6 +256,7 @@ where
             Input::MessageDataSigned(_)
             | Input::MessageDataPredicate(_)
             | Input::Contract(_) => false,
+            #[cfg(feature = "chargeable-tx-v2")]
             Input::InputV2(_) => {
                 todo!()
             }

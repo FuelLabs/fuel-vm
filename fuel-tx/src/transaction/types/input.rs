@@ -247,6 +247,7 @@ pub enum Input {
     MessageCoinPredicate(MessageCoinPredicate),
     MessageDataSigned(MessageDataSigned),
     MessageDataPredicate(MessageDataPredicate),
+    #[cfg(feature = "chargeable-tx-v2")]
     InputV2(InputV2),
 }
 

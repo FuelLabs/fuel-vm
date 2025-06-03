@@ -120,6 +120,7 @@ mod use_std {
                         Input::MessageCoinPredicate(_) => (),
                         Input::MessageDataSigned(_) => (),
                         Input::MessageDataPredicate(_) => (),
+                        #[cfg(feature = "chargeable-tx-v2")]
                         Input::InputV2(_) => {
                             todo!()
                         }

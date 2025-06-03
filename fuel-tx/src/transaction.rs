@@ -494,6 +494,7 @@ pub trait Executable: Inputs + field::Outputs + field::Witnesses {
                 | Input::MessageCoinPredicate(_)
                 | Input::MessageDataPredicate(_)
                 | Input::MessageDataSigned(_) => Some(base_asset_id),
+                #[cfg(feature = "chargeable-tx-v2")]
                 Input::InputV2(inner) => match inner {
                     InputV2::Coin(coin) => Some(&coin.asset_id),
                     InputV2::Contract(_) => None,

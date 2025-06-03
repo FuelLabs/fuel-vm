@@ -164,16 +164,16 @@ pub mod predicates {
         predicate,
         predicate::PredicateStorageProvider,
     };
-    use fuel_tx::{
-        field::Inputs,
-        input::{
-            InputV2,
-            coin::{
-                CoinV2,
-                CoinValidation,
-            },
+    use fuel_tx::field::Inputs;
+    #[cfg(feature = "chargeable-tx-v2")]
+    use fuel_tx::input::{
+        InputV2,
+        coin::{
+            CoinV2,
+            CoinValidation,
         },
     };
+    #[cfg(feature = "chargeable-tx-v2")]
     use hashbrown::HashMap;
 
     /// Initialize the VM with the provided transaction and check all predicates defined
@@ -356,6 +356,7 @@ pub mod predicates {
         let mut global_available_gas = max_gas_per_tx.saturating_sub(max_gas);
 
         let mut v1_input_indices = Vec::new();
+        #[cfg(feature = "chargeable-tx-v2")]
         let mut v2_input_indices: HashMap<(u16, u16), Vec<usize>> = HashMap::new();
         for (index, input) in kind.tx().inputs().iter().enumerate() {
             match input {
@@ -368,6 +369,7 @@ pub mod predicates {
                 | Input::MessageDataPredicate(_) => {
                     v1_input_indices.push(index);
                 }
+                #[cfg(feature = "chargeable-tx-v2")]
                 Input::InputV2(inner) => match inner {
                     InputV2::Coin(CoinV2 { validation, .. }) => {
                         if let CoinValidation::Predicate {
@@ -660,6 +662,7 @@ pub mod predicates {
                         }) => {
                             *predicate_gas_used = *gas_used;
                         }
+                        #[cfg(feature = "chargeable-tx-v2")]
                         Input::InputV2(InputV2::Coin(CoinV2 { validation, .. })) => {
                             if let CoinValidation::Predicate {
                                 predicate_gas_used, ..

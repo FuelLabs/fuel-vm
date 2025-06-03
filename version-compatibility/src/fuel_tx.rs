@@ -31,7 +31,7 @@ fn latest_can_deserialize_previous_tx_pointer() {
     for idx in 0..=u16::MAX {
         // Given
         let tx_pointer = fuel_tx_0_59_1::TxPointer::new(1u32.into(), idx);
-        let expected = latest_fuel_tx::TxPointer::new(1u32.into(), idx.into());
+        let expected = latest_fuel_tx::TxPointer::new(1u32.into(), idx);
         let bytes_expected = postcard::to_allocvec(&expected).unwrap();
         let str_expected = format!("{}", expected);
         let bytes_0_59_1 = postcard::to_allocvec(&tx_pointer).unwrap();

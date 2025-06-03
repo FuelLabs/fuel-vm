@@ -25,6 +25,7 @@ pub(super) const INPUT_COIN_FIXED_SIZE: usize = INPUT_COIN_TX_POINTER_OFFSET
     + WORD_SIZE // Predicate data size
     + WORD_SIZE; // Predicate gas used
 
+#[cfg(feature = "chargeable-tx-v2")]
 pub(super) const INPUT_COIN_V2_FIXED_SIZE: usize = INPUT_COIN_TX_POINTER_OFFSET
     + TxPointer::LEN // TxPointer
     + WORD_SIZE // Witness index

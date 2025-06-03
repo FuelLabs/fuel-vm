@@ -323,7 +323,8 @@ pub enum CoinValidation {
         witness_index: u16,
     },
     Predicate {
-        predicate: PredicateCode,
-        predicate_data: Vec<u8>,
+        predicate_index: u16,
+        predicate_data_index: u16,
+        predicate_gas_used: Word,
     },
 }

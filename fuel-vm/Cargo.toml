@@ -44,7 +44,7 @@ test-helpers = [
     "fuel-crypto/test-helpers",
 ]
 u32-tx-pointer = ["fuel-tx/u32-tx-pointer"]
-chargeable-tx-v2 = []
+chargeable-tx-v2 = ["fuel-tx/chargeable-tx-v2"]
 
 [dependencies]
 anyhow = { version = "1.0", optional = true }

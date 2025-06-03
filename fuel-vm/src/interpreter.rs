@@ -26,6 +26,8 @@ use fuel_asm::{
     Flags,
     PanicReason,
 };
+#[cfg(feature = "chargeable-tx-v2")]
+use fuel_tx::ScriptV2;
 use fuel_tx::{
     Blob,
     Chargeable,
@@ -569,6 +571,17 @@ impl ExecutableTransaction for Script {
 
     fn executable_type(&self) -> ExecutableTxType {
         ExecutableTxType::Script(self)
+    }
+}
+
+#[cfg(feature = "chargeable-tx-v2")]
+impl ExecutableTransaction for ScriptV2 {
+    fn transaction_type() -> TransactionRepr {
+        TransactionRepr::ScriptV2
+    }
+
+    fn executable_type(&self) -> ExecutableTxType {
+        todo!()
     }
 }
 

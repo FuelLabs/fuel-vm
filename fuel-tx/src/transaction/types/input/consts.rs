@@ -25,6 +25,13 @@ pub(super) const INPUT_COIN_FIXED_SIZE: usize = INPUT_COIN_TX_POINTER_OFFSET
     + WORD_SIZE // Predicate data size
     + WORD_SIZE; // Predicate gas used
 
+#[cfg(feature = "chargeable-tx-v2")]
+pub(super) const INPUT_COIN_V2_FIXED_SIZE: usize = INPUT_COIN_TX_POINTER_OFFSET
+    + TxPointer::LEN // TxPointer
+    + WORD_SIZE // Witness index
+    + WORD_SIZE // Predicate data index
+    + WORD_SIZE; // Predicate data index
+
 pub(super) const INPUT_CONTRACT_BALANCE_ROOT_OFFSET: usize =
     INPUT_UTXO_ID_OFFSET + UtxoId::LEN; // UtxoId
 pub(super) const INPUT_CONTRACT_STATE_ROOT_OFFSET: usize =

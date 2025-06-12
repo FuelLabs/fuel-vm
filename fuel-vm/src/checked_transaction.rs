@@ -647,6 +647,10 @@ impl CheckPredicates for Checked<Transaction> {
             CheckedTransaction::Blob(tx) => {
                 CheckPredicates::check_predicates(tx, params, memory, storage)?.into()
             }
+            #[cfg(feature = "chargeable-tx-v2")]
+            CheckedTransaction::ScriptV2(tx) => {
+                CheckPredicates::check_predicates(tx, params, memory, storage)?.into()
+            }
         };
         Ok(checked_transaction.into())
     }
@@ -693,6 +697,12 @@ impl CheckPredicates for Checked<Transaction> {
                     .await?
                     .into()
             }
+            #[cfg(feature = "chargeable-tx-v2")]
+            CheckedTransaction::ScriptV2(tx) => {
+                CheckPredicates::check_predicates_async::<E>(tx, params, pool, storage)
+                    .await?
+                    .into()
+            }
         };
 
         Ok(checked_transaction.into())
@@ -713,6 +723,8 @@ pub enum CheckedTransaction {
     Upgrade(Checked<Upgrade>),
     Upload(Checked<Upload>),
     Blob(Checked<Blob>),
+    #[cfg(feature = "chargeable-tx-v2")]
+    ScriptV2(Checked<ScriptV2>),
 }
 
 impl From<Checked<Transaction>> for CheckedTransaction {
@@ -797,6 +809,13 @@ impl From<Checked<Blob>> for CheckedTransaction {
     }
 }
 
+#[cfg(feature = "chargeable-tx-v2")]
+impl From<Checked<ScriptV2>> for CheckedTransaction {
+    fn from(checked: Checked<ScriptV2>) -> Self {
+        Self::ScriptV2(checked)
+    }
+}
+
 impl From<CheckedTransaction> for Checked<Transaction> {
     fn from(checked: CheckedTransaction) -> Self {
         match checked {
@@ -826,6 +845,12 @@ impl From<CheckedTransaction> for Checked<Transaction> {
                 checks_bitmask,
             }) => Checked::new(transaction.into(), metadata.into(), checks_bitmask),
             CheckedTransaction::Blob(Checked {
+                transaction,
+                metadata,
+                checks_bitmask,
+            }) => Checked::new(transaction.into(), metadata.into(), checks_bitmask),
+            #[cfg(feature = "chargeable-tx-v2")]
+            CheckedTransaction::ScriptV2(Checked {
                 transaction,
                 metadata,
                 checks_bitmask,
@@ -952,7 +977,6 @@ impl From<PredicateVerificationFailed> for CheckError {
 #[allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use alloc::vec;
     use fuel_asm::op;

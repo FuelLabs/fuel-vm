@@ -1,6 +1,6 @@
 #![allow(clippy::cast_possible_truncation)]
+#![allow(non_snake_case)]
 
-use super::PREDICATE_PARAMS;
 use crate::{
     ConsensusParameters,
     builder::TransactionBuilder,
@@ -28,6 +28,9 @@ use rand::{
     rngs::StdRng,
 };
 
+#[cfg(not(feature = "chargeable-tx-v2"))]
+use tests::valid_cases::PREDICATE_PARAMS;
+
 #[test]
 fn input_coin_message_signature() {
     fn test<Tx>(txs: &mut impl Iterator<Item = (Tx, Vec<SecretKey>)>)
@@ -45,6 +48,8 @@ fn input_coin_message_signature() {
             let txhash = tx.id(&chain_id);
             let outputs = tx.outputs();
             let witnesses = tx.witnesses();
+            #[cfg(feature = "chargeable-tx-v2")]
+            let static_witnesses = tx.static_witnesses();
 
             tx.inputs()
                 .iter()
@@ -57,6 +62,8 @@ fn input_coin_message_signature() {
                         &txhash,
                         outputs,
                         witnesses,
+                        #[cfg(feature = "chargeable-tx-v2")]
+                        static_witnesses,
                         &Default::default(),
                         &mut None,
                     ),
@@ -207,6 +214,7 @@ fn duplicate_secrets_reuse_witness() {
     )
 }
 
+#[cfg(not(feature = "chargeable-tx-v2"))]
 #[test]
 fn coin_predicate() {
     let rng = &mut StdRng::seed_from_u64(8586);
@@ -268,7 +276,82 @@ fn coin_predicate() {
 
     assert_eq!(ValidityError::InputPredicateOwner { index: 1 }, err);
 }
+#[cfg(feature = "chargeable-tx-v2")]
+#[test]
+fn coin_predicate_v2__check__correct_number_of_static_witnesses_passes() {
+    // given
+    let rng = &mut StdRng::seed_from_u64(8586);
 
+    let txhash: Bytes32 = rng.r#gen();
+
+    let predicate = generate_nonempty_padded_bytes(rng);
+    let owner = Input::predicate_owner(&predicate);
+    let static_witnesses = vec![Witness::default(); 2];
+    let predicate_index = 0;
+    let predicate_data_index = 1;
+
+    // when
+    let res = Input::coin_predicate_v2(
+        rng.r#gen(),
+        owner,
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        predicate_index,
+        predicate_data_index,
+    )
+    .check(
+        1,
+        &txhash,
+        &[],
+        &[],
+        &static_witnesses,
+        &Default::default(),
+        &mut None,
+    );
+
+    // then
+    assert!(res.is_ok(), "Expected check to pass");
+}
+
+#[cfg(feature = "chargeable-tx-v2")]
+#[test]
+fn coin_predicate_v2__check__incorrect_number_of_static_witnesses_fails() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let txhash: Bytes32 = rng.r#gen();
+
+    let predicate = generate_nonempty_padded_bytes(rng);
+    let owner = Input::predicate_owner(&predicate);
+    let static_witnesses = vec![Witness::default(); 2];
+    let predicate_index = 2;
+    let predicate_data_index = 3;
+
+    let res = Input::coin_predicate_v2(
+        rng.r#gen(),
+        owner,
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        predicate_index,
+        predicate_data_index,
+    )
+    .check(
+        1,
+        &txhash,
+        &[],
+        &[],
+        &static_witnesses,
+        &Default::default(),
+        &mut None,
+    );
+
+    // then
+    let err = res.unwrap_err();
+    assert!(matches!(err, ValidityError::InputWitnessIndexBounds { .. }));
+}
+
+#[cfg(not(feature = "chargeable-tx-v2"))]
 #[test]
 fn contract() {
     let rng = &mut StdRng::seed_from_u64(8586);
@@ -355,6 +438,7 @@ fn contract() {
     );
 }
 
+#[cfg(not(feature = "chargeable-tx-v2"))]
 #[test]
 fn message_metadata() {
     let rng = &mut StdRng::seed_from_u64(8586);
@@ -491,6 +575,7 @@ fn message_metadata() {
     assert_eq!(ValidityError::InputPredicateDataLength { index: 1 }, err,);
 }
 
+#[cfg(not(feature = "chargeable-tx-v2"))]
 #[test]
 fn message_message_coin() {
     let rng = &mut StdRng::seed_from_u64(8586);

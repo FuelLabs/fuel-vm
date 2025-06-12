@@ -183,6 +183,11 @@ impl Chargeable for Script {
     fn has_spendable_input(&self) -> bool {
         self.has_spendable_input_inner()
     }
+
+    #[cfg(feature = "chargeable-tx-v2")]
+    fn contains_invalid_inputs(&self) -> bool {
+        !self.inputs.iter().all(|input| input.is_v1())
+    }
 }
 
 #[cfg(feature = "chargeable-tx-v2")]
@@ -214,6 +219,11 @@ impl Chargeable for ScriptV2 {
 
     fn has_spendable_input(&self) -> bool {
         self.has_spendable_input_inner()
+    }
+
+    #[cfg(feature = "chargeable-tx-v2")]
+    fn contains_invalid_inputs(&self) -> bool {
+        !self.inputs.iter().all(|input| input.is_v2())
     }
 }
 
@@ -428,7 +438,8 @@ mod field {
                     + WORD_SIZE // Policies size
                     + WORD_SIZE // Inputs size
                     + WORD_SIZE // Outputs size
-                    + WORD_SIZE, // Witnesses size
+                    + WORD_SIZE // Witnesses size
+                    + WORD_SIZE, // Static witnesses size
             )
         }
     }

@@ -23,7 +23,17 @@ use crate::{
         },
     },
 };
+#[cfg(feature = "chargeable-tx-v2")]
+use crate::{
+    TxPointer,
+    UtxoId,
+};
 use educe::Educe;
+#[cfg(feature = "chargeable-tx-v2")]
+use fuel_types::{
+    AssetId,
+    Word,
+};
 use fuel_types::{
     BlockHeight,
     Bytes32,
@@ -47,6 +57,8 @@ use crate::input::InputV2;
 
 #[cfg(feature = "da-compression")]
 use fuel_compression::Compressible;
+#[cfg(feature = "chargeable-tx-v2")]
+use fuel_crypto::PublicKey;
 
 #[cfg(feature = "da-compression")]
 pub trait BodyConstraints:
@@ -244,10 +256,35 @@ where
             Input::MessageDataSigned(_)
             | Input::MessageDataPredicate(_)
             | Input::Contract(_) => false,
+            #[cfg(feature = "chargeable-tx-v2")]
             Input::InputV2(_) => {
                 todo!()
             }
         })
+    }
+
+    #[cfg(feature = "chargeable-tx-v2")]
+    #[cfg(feature = "test-helpers")]
+    pub fn add_unsigned_coin_input_v2(
+        &mut self,
+        utxo_id: UtxoId,
+        owner: &PublicKey,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        witness_index: u16,
+    ) {
+        let owner = Input::owner(owner);
+
+        let input = Input::coin_signed_v2(
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+        );
+        self.inputs_mut().push(input);
     }
 }
 
@@ -272,6 +309,52 @@ where
                 InputV2::Contract(_) => false,
             },
         })
+    }
+
+    #[cfg(feature = "test-helpers")]
+    pub fn add_unsigned_coin_input_v1(
+        &mut self,
+        utxo_id: UtxoId,
+        owner: &PublicKey,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        witness_index: u16,
+    ) {
+        let owner = Input::owner(owner);
+
+        let input = Input::coin_signed(
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+        );
+        self.inputs_mut().push(input);
+    }
+
+    #[cfg(feature = "test-helpers")]
+    pub fn add_unsigned_coin_input_v2(
+        &mut self,
+        utxo_id: UtxoId,
+        owner: &PublicKey,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        witness_index: u16,
+    ) {
+        let owner = Input::owner(owner);
+
+        let input = Input::coin_signed(
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+        );
+        self.inputs_mut().push(input);
     }
 }
 
@@ -803,6 +886,26 @@ mod field {
                 None
             }
         }
+
+        #[cfg(feature = "chargeable-tx-v2")]
+        fn static_witnesses(&self) -> &[Witness] {
+            &[]
+        }
+
+        #[cfg(feature = "chargeable-tx-v2")]
+        fn static_witnesses_mut(&mut self) -> Option<&mut Vec<Witness>> {
+            None
+        }
+
+        #[cfg(feature = "chargeable-tx-v2")]
+        fn static_witnesses_offset(&self) -> usize {
+            self.witnesses_offset()
+        }
+
+        #[cfg(feature = "chargeable-tx-v2")]
+        fn static_witnesses_offset_at(&self, _idx: usize) -> Option<usize> {
+            None
+        }
     }
 
     #[cfg(feature = "chargeable-tx-v2")]
@@ -834,13 +937,14 @@ mod field {
                 return *witnesses_offset;
             }
 
-            self.outputs_offset().saturating_add(
-                self.outputs()
-                    .iter()
-                    .map(|i| i.size())
-                    .reduce(usize::saturating_add)
-                    .unwrap_or_default(),
-            )
+            let outputs_offset = self.outputs_offset();
+            let outputs_len = self
+                .outputs()
+                .iter()
+                .map(|i| i.size())
+                .reduce(usize::saturating_add)
+                .unwrap_or_default();
+            outputs_offset.saturating_add(outputs_len)
         }
 
         #[inline(always)]
@@ -854,13 +958,71 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return witnesses_offset_at.get(idx).cloned();
+                witnesses_offset_at.get(idx).cloned()
+            } else if idx < self.witnesses.len() {
+                Some(
+                    self.witnesses_offset().saturating_add(
+                        self.witnesses()
+                            .iter()
+                            .take(idx)
+                            .map(|i| i.size())
+                            .reduce(usize::saturating_add)
+                            .unwrap_or_default(),
+                    ),
+                )
+            } else {
+                None
+            }
+        }
+
+        #[cfg(feature = "chargeable-tx-v2")]
+        fn static_witnesses(&self) -> &[Witness] {
+            &self.static_witnesses
+        }
+
+        fn static_witnesses_mut(&mut self) -> Option<&mut Vec<Witness>> {
+            Some(&mut self.static_witnesses)
+        }
+
+        fn static_witnesses_offset(&self) -> usize {
+            if let Some(ChargeableMetadata {
+                common:
+                    CommonMetadata {
+                        static_witnesses_offset,
+                        ..
+                    },
+                ..
+            }) = &self.metadata
+            {
+                *static_witnesses_offset
+            } else {
+                self.witnesses_offset().saturating_add(
+                    self.witnesses()
+                        .iter()
+                        .map(|i| i.size())
+                        .reduce(usize::saturating_add)
+                        .unwrap_or_default(),
+                )
+            }
+        }
+
+        fn static_witnesses_offset_at(&self, idx: usize) -> Option<usize> {
+            if let Some(ChargeableMetadata {
+                common:
+                    CommonMetadata {
+                        static_witnesses_offset_at,
+                        ..
+                    },
+                ..
+            }) = &self.metadata
+            {
+                return static_witnesses_offset_at.get(idx).cloned();
             }
 
             if idx < self.witnesses.len() {
                 Some(
-                    self.witnesses_offset().saturating_add(
-                        self.witnesses()
+                    self.static_witnesses_offset().saturating_add(
+                        self.static_witnesses()
                             .iter()
                             .take(idx)
                             .map(|i| i.size())

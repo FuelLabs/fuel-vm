@@ -292,4 +292,7 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
     fn gas_used_by_metadata(&self, gas_costs: &GasCosts) -> Word;
 
     fn has_spendable_input(&self) -> bool;
+
+    #[cfg(feature = "chargeable-tx-v2")]
+    fn contains_invalid_inputs(&self) -> bool;
 }

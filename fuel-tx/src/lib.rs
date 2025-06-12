@@ -14,6 +14,9 @@
 #![deny(unused_crate_dependencies)]
 #![deny(unsafe_code)]
 
+#[cfg(feature = "typescript")]
+use serde_wasm_bindgen as _;
+
 // TODO: Add docs
 
 #[cfg(feature = "alloc")]
@@ -126,6 +129,9 @@ pub use transaction::{
     output::OutputRepr,
     policies,
 };
+
+#[cfg(feature = "chargeable-tx-v2")]
+pub use transaction::ScriptV2;
 
 #[cfg(feature = "da-compression")]
 pub use transaction::{

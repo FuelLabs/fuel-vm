@@ -48,6 +48,11 @@ mod error;
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "chargeable-tx-v2")]
+use crate::input::{
+    InputV2,
+    coin::CoinValidation,
+};
 pub use error::ValidityError;
 
 impl Input {
@@ -58,10 +63,20 @@ impl Input {
         txhash: &Bytes32,
         outputs: &[Output],
         witnesses: &[Witness],
+        #[cfg(feature = "chargeable-tx-v2")] static_witnesses: &[Witness],
         predicate_params: &PredicateParameters,
         recovery_cache: &mut Option<HashMap<u16, Address>>,
     ) -> Result<(), ValidityError> {
+        #[cfg(not(feature = "chargeable-tx-v2"))]
         self.check_without_signature(index, outputs, witnesses, predicate_params)?;
+        #[cfg(feature = "chargeable-tx-v2")]
+        self.check_without_signature(
+            index,
+            outputs,
+            witnesses,
+            static_witnesses,
+            predicate_params,
+        )?;
         self.check_signature(index, txhash, witnesses, recovery_cache)?;
 
         Ok(())
@@ -147,6 +162,7 @@ impl Input {
         index: usize,
         outputs: &[Output],
         witnesses: &[Witness],
+        #[cfg(feature = "chargeable-tx-v2")] static_witnesses: &[Witness],
         predicate_params: &PredicateParameters,
     ) -> Result<(), ValidityError> {
         match self {
@@ -210,6 +226,31 @@ impl Input {
             {
                 Err(ValidityError::InputMessageDataLength { index })
             }
+
+            #[cfg(feature = "chargeable-tx-v2")]
+            Self::InputV2(inner) => match inner {
+                InputV2::Coin(coin) => match coin.validation {
+                    CoinValidation::Signed { .. } => {
+                        // TODO: Do we need to check anything here?
+                        Ok(())
+                    }
+                    CoinValidation::Predicate {
+                        predicate_index,
+                        predicate_data_index,
+                        ..
+                    } => {
+                        if predicate_index as usize >= static_witnesses.len() {
+                            return Err(ValidityError::InputWitnessIndexBounds { index });
+                        }
+
+                        if predicate_data_index as usize >= static_witnesses.len() {
+                            return Err(ValidityError::InputWitnessIndexBounds { index });
+                        }
+                        Ok(())
+                    }
+                },
+                _ => todo!(),
+            },
 
             // TODO: If h is the block height the UTXO being spent was created,
             // transaction is  invalid if `blockheight() < h + maturity`.
@@ -386,6 +427,11 @@ where
         return Err(ValidityError::NoSpendableInput)
     }
 
+    #[cfg(feature = "chargeable-tx-v2")]
+    if tx.contains_invalid_inputs() {
+        return Err(ValidityError::WrongInputVersion)
+    }
+
     tx.input_asset_ids_unique(base_asset_id)
         .try_for_each(|input_asset_id| {
             // check for duplicate change outputs
@@ -441,6 +487,8 @@ where
                 index,
                 tx.outputs(),
                 tx.witnesses(),
+                #[cfg(feature = "chargeable-tx-v2")]
+                tx.static_witnesses(),
                 predicate_params,
             )
         })?;
@@ -500,6 +548,7 @@ where
 }
 
 #[cfg(feature = "typescript")]
+#[cfg(not(feature = "chargeable-tx-v2"))]
 mod typescript {
     use crate::{
         Witness,
@@ -539,7 +588,7 @@ mod typescript {
             .collect::<Result<Vec<_>, _>>()
             .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))?;
 
-        input
+        let result = input
             .0
             .check(
                 index,
@@ -549,7 +598,8 @@ mod typescript {
                 predicate_params.as_ref(),
                 &mut None,
             )
-            .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))
+            .map_err(|e| js_sys::Error::new(&format!("{:?}", e)));
+        result
     }
 
     #[wasm_bindgen::prelude::wasm_bindgen]

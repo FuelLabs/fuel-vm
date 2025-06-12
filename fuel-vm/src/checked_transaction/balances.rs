@@ -83,6 +83,7 @@ fn add_up_input_balances<T: field::Inputs>(
                 retryable_balance = retryable_balance.checked_add(*amount)?;
             }
             Input::Contract(_) => {}
+            #[cfg(feature = "chargeable-tx-v2")]
             Input::InputV2(_) => {
                 todo!()
             }

@@ -181,6 +181,8 @@ pub mod script {
         NonRetryableFreeBalances,
         RetryableAmount,
     };
+    #[cfg(feature = "chargeable-tx-v2")]
+    use fuel_tx::ScriptV2;
     use fuel_tx::{
         Cacheable,
         Chargeable,
@@ -243,6 +245,19 @@ pub mod script {
             };
 
             Ok(Checked::basic(self, metadata))
+        }
+    }
+
+    #[cfg(feature = "chargeable-tx-v2")]
+    impl IntoChecked for ScriptV2 {
+        type Metadata = CheckedMetadata;
+
+        fn into_checked_basic(
+            self,
+            _block_height: BlockHeight,
+            _consensus_params: &ConsensusParameters,
+        ) -> Result<Checked<Self>, CheckError> {
+            todo!()
         }
     }
 }

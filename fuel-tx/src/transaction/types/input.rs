@@ -247,6 +247,7 @@ pub enum Input {
     MessageCoinPredicate(MessageCoinPredicate),
     MessageDataSigned(MessageDataSigned),
     MessageDataPredicate(MessageDataPredicate),
+    #[cfg(feature = "chargeable-tx-v2")]
     InputV2(InputV2),
 }
 
@@ -322,6 +323,33 @@ impl Input {
         })
     }
 
+    #[cfg(feature = "chargeable-tx-v2")]
+    pub const fn coin_predicate_v2(
+        utxo_id: UtxoId,
+        owner: Address,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        predicate_index: u16,
+        predicate_data_index: u16,
+    ) -> Self {
+        let validation = CoinValidation::Predicate {
+            predicate_gas_used: 0,
+            predicate_index,
+            predicate_data_index,
+        };
+        let coin = CoinV2 {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            validation,
+        };
+        let inner = InputV2::Coin(coin);
+        Self::InputV2(inner)
+    }
+
     pub const fn coin_signed(
         utxo_id: UtxoId,
         owner: Address,
@@ -343,6 +371,7 @@ impl Input {
         })
     }
 
+    #[cfg(feature = "chargeable-tx-v2")]
     pub const fn coin_signed_v2(
         utxo_id: UtxoId,
         owner: Address,
@@ -475,6 +504,7 @@ impl Input {
             Self::MessageCoinPredicate(_) => None,
             Self::MessageDataSigned(_) => None,
             Self::MessageDataPredicate(_) => None,
+            #[cfg(feature = "chargeable-tx-v2")]
             Self::InputV2(_) => {
                 todo!()
             }
@@ -492,6 +522,7 @@ impl Input {
                 Some(recipient)
             }
             Self::Contract(_) => None,
+            #[cfg(feature = "chargeable-tx-v2")]
             Self::InputV2(_) => {
                 todo!()
             }
@@ -510,6 +541,7 @@ impl Input {
             | Input::MessageDataSigned(_)
             | Input::MessageDataPredicate(_) => Some(base_asset_id),
             Input::Contract(_) => None,
+            #[cfg(feature = "chargeable-tx-v2")]
             Self::InputV2(_) => {
                 todo!()
             }
@@ -534,6 +566,7 @@ impl Input {
                 Some(*amount)
             }
             Input::Contract(_) => None,
+            #[cfg(feature = "chargeable-tx-v2")]
             Self::InputV2(_) => {
                 todo!()
             }
@@ -551,6 +584,7 @@ impl Input {
             | Input::Contract(_)
             | Input::MessageCoinPredicate(_)
             | Input::MessageDataPredicate(_) => None,
+            #[cfg(feature = "chargeable-tx-v2")]
             Self::InputV2(_) => {
                 todo!()
             }
@@ -570,6 +604,7 @@ impl Input {
             | Input::Contract(_)
             | Input::MessageCoinSigned(_)
             | Input::MessageDataSigned(_) => None,
+            #[cfg(feature = "chargeable-tx-v2")]
             Self::InputV2(inner) => {
                 match inner {
                     InputV2::Coin(coin) => {
@@ -600,6 +635,7 @@ impl Input {
             | Input::Contract(_)
             | Input::MessageCoinSigned(_)
             | Input::MessageDataSigned(_) => None,
+            #[cfg(feature = "chargeable-tx-v2")]
             Self::InputV2(_) => {
                 todo!()
             }
@@ -617,13 +653,8 @@ impl Input {
             | Input::MessageCoinSigned(_)
             | Input::MessageDataSigned(_) => Some(0),
             Input::Contract(_) => None,
-            Self::InputV2(inner) => match inner {
-                InputV2::Coin(coin) => match &coin.validation {
-                    CoinValidation::Signed { .. } => Some(0),
-                    CoinValidation::Predicate { predicate, .. } => Some(predicate.len()),
-                },
-                _ => todo!(),
-            },
+            #[cfg(feature = "chargeable-tx-v2")]
+            Self::InputV2(_) => None,
         }
     }
 
@@ -640,15 +671,8 @@ impl Input {
             | Input::MessageCoinSigned(_)
             | Input::MessageDataSigned(_) => Some(0),
             Input::Contract(_) => None,
-            Self::InputV2(inner) => match inner {
-                InputV2::Coin(coin) => match &coin.validation {
-                    CoinValidation::Signed { .. } => Some(0),
-                    CoinValidation::Predicate { predicate_data, .. } => {
-                        Some(predicate_data.len())
-                    }
-                },
-                _ => todo!(),
-            },
+            #[cfg(feature = "chargeable-tx-v2")]
+            Self::InputV2(_) => None,
         }
     }
 
@@ -669,9 +693,17 @@ impl Input {
             | Input::MessageCoinSigned(_)
             | Input::MessageDataSigned(_)
             | Input::Contract(_) => None,
-            Self::InputV2(_) => {
-                todo!()
-            }
+            #[cfg(feature = "chargeable-tx-v2")]
+            Self::InputV2(inner) => match inner {
+                InputV2::Coin(coin) => match coin.validation {
+                    CoinValidation::Signed { .. } => None,
+                    CoinValidation::Predicate {
+                        predicate_gas_used, ..
+                    } => Some(predicate_gas_used),
+                },
+                InputV2::Message(_) => todo!(),
+                InputV2::Contract(_) => None,
+            },
         }
     }
 
@@ -692,6 +724,7 @@ impl Input {
             | Input::MessageCoinSigned(_)
             | Input::MessageDataSigned(_)
             | Input::Contract(_) => {}
+            #[cfg(feature = "chargeable-tx-v2")]
             Self::InputV2(_) => {
                 todo!()
             }
@@ -704,6 +737,7 @@ impl Input {
             Self::MessageCoinPredicate(message) => Some(message.message_id()),
             Self::MessageDataPredicate(message) => Some(message.message_id()),
             Self::MessageDataSigned(message) => Some(message.message_id()),
+            #[cfg(feature = "chargeable-tx-v2")]
             Self::InputV2(_) => {
                 todo!()
             }
@@ -716,6 +750,7 @@ impl Input {
             Input::CoinSigned(CoinSigned { tx_pointer, .. })
             | Input::CoinPredicate(CoinPredicate { tx_pointer, .. })
             | Input::Contract(Contract { tx_pointer, .. }) => Some(tx_pointer),
+            #[cfg(feature = "chargeable-tx-v2")]
             Self::InputV2(_) => {
                 todo!()
             }
@@ -729,6 +764,7 @@ impl Input {
             | Input::MessageDataPredicate(MessageDataPredicate { data, .. }) => {
                 Some(data)
             }
+            #[cfg(feature = "chargeable-tx-v2")]
             Self::InputV2(_) => {
                 todo!()
             }
@@ -743,6 +779,7 @@ impl Input {
                 Some(data.len())
             }
             Input::MessageCoinSigned(_) | Input::MessageCoinPredicate(_) => Some(0),
+            #[cfg(feature = "chargeable-tx-v2")]
             Self::InputV2(_) => {
                 todo!()
             }
@@ -757,6 +794,7 @@ impl Input {
             | Input::MessageDataPredicate(MessageDataPredicate { predicate, .. }) => {
                 Some(predicate)
             }
+            #[cfg(feature = "chargeable-tx-v2")]
             Self::InputV2(_) => {
                 todo!()
             }
@@ -774,6 +812,7 @@ impl Input {
             | Input::MessageDataPredicate(MessageDataPredicate {
                 predicate_data, ..
             }) => Some(predicate_data),
+            #[cfg(feature = "chargeable-tx-v2")]
             Self::InputV2(_) => {
                 todo!()
             }
@@ -808,6 +847,7 @@ impl Input {
                 predicate_data.as_slice(),
                 predicate_gas_used,
             )),
+            #[cfg(feature = "chargeable-tx-v2")]
             Self::InputV2(_) => {
                 todo!()
             }
@@ -923,6 +963,7 @@ impl Input {
             Input::MessageCoinPredicate(message) => message.prepare_sign(),
             Input::MessageDataSigned(message) => message.prepare_sign(),
             Input::MessageDataPredicate(message) => message.prepare_sign(),
+            #[cfg(feature = "chargeable-tx-v2")]
             Self::InputV2(inner) => match inner {
                 InputV2::Coin(coin) => coin.prepare_sign(),
                 _ => todo!(),
@@ -962,6 +1003,36 @@ impl Input {
     {
         owner == &Self::predicate_owner(predicate)
     }
+
+    #[cfg(feature = "chargeable-tx-v2")]
+    pub fn is_v1(&self) -> bool {
+        match self {
+            Input::CoinSigned(_)
+            | Input::CoinPredicate(_)
+            | Input::Contract(_)
+            | Input::MessageCoinSigned(_)
+            | Input::MessageCoinPredicate(_)
+            | Input::MessageDataSigned(_)
+            | Input::MessageDataPredicate(_) => true,
+            #[cfg(feature = "chargeable-tx-v2")]
+            Input::InputV2(_) => false,
+        }
+    }
+
+    #[cfg(feature = "chargeable-tx-v2")]
+    pub fn is_v2(&self) -> bool {
+        match self {
+            Input::CoinSigned(_)
+            | Input::CoinPredicate(_)
+            | Input::Contract(_)
+            | Input::MessageCoinSigned(_)
+            | Input::MessageCoinPredicate(_)
+            | Input::MessageDataSigned(_)
+            | Input::MessageDataPredicate(_) => false,
+            #[cfg(feature = "chargeable-tx-v2")]
+            Input::InputV2(_) => true,
+        }
+    }
 }
 
 impl Serialize for Input {
@@ -974,6 +1045,7 @@ impl Serialize for Input {
             Input::MessageCoinPredicate(message) => message.size_static(),
             Input::MessageDataSigned(message) => message.size_static(),
             Input::MessageDataPredicate(message) => message.size_static(),
+            #[cfg(feature = "chargeable-tx-v2")]
             Self::InputV2(inner) => match inner {
                 InputV2::Coin(coin) => coin.size_static(),
                 InputV2::Message(message) => message.size_static(),
@@ -992,6 +1064,7 @@ impl Serialize for Input {
             Input::MessageCoinPredicate(message) => message.size_dynamic(),
             Input::MessageDataSigned(message) => message.size_dynamic(),
             Input::MessageDataPredicate(message) => message.size_dynamic(),
+            #[cfg(feature = "chargeable-tx-v2")]
             Self::InputV2(inner) => match inner {
                 InputV2::Coin(coin) => coin.size_dynamic(),
                 InputV2::Message(message) => message.size_dynamic(),
@@ -1011,6 +1084,7 @@ impl Serialize for Input {
             Input::MessageCoinPredicate(message) => message.encode_static(buffer),
             Input::MessageDataSigned(message) => message.encode_static(buffer),
             Input::MessageDataPredicate(message) => message.encode_static(buffer),
+            #[cfg(feature = "chargeable-tx-v2")]
             Input::InputV2(inner) => match inner {
                 InputV2::Coin(coin) => coin.encode_static(buffer),
                 InputV2::Message(message) => message.encode_static(buffer),
@@ -1030,6 +1104,7 @@ impl Serialize for Input {
             Input::MessageCoinPredicate(message) => message.encode_dynamic(buffer),
             Input::MessageDataSigned(message) => message.encode_dynamic(buffer),
             Input::MessageDataPredicate(message) => message.encode_dynamic(buffer),
+            #[cfg(feature = "chargeable-tx-v2")]
             Input::InputV2(inner) => match inner {
                 InputV2::Coin(coin) => coin.encode_dynamic(buffer),
                 InputV2::Message(message) => message.encode_dynamic(buffer),
@@ -1096,6 +1171,10 @@ impl Deserialize for Input {
                         ),
                     }
                 }
+                #[cfg(feature = "chargeable-tx-v2")]
+                InputRepr::CoinV2 => {
+                    todo!()
+                }
             },
         )
     }
@@ -1112,6 +1191,7 @@ impl Deserialize for Input {
             Input::MessageCoinPredicate(message) => message.decode_dynamic(buffer),
             Input::MessageDataSigned(message) => message.decode_dynamic(buffer),
             Input::MessageDataPredicate(message) => message.decode_dynamic(buffer),
+            #[cfg(feature = "chargeable-tx-v2")]
             Self::InputV2(_) => {
                 todo!()
             }

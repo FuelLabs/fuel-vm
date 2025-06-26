@@ -20,7 +20,12 @@ use alloc::{
         Cow,
         ToOwned,
     },
+    collections::BTreeMap,
     vec::Vec,
+};
+use core::ops::Bound::{
+    Excluded,
+    Unbounded,
 };
 
 /// Merkle root alias type
@@ -57,6 +62,40 @@ pub trait Mappable {
     type OwnedValue: From<<Self::Value as ToOwned>::Owned> + Borrow<Self::Value> + Clone;
 }
 
+/// The direction of the key retrieval in the storage.
+pub enum Direction {
+    /// The next key in the storage.
+    Next,
+    /// The previous key in the storage.
+    Previous,
+}
+
+impl Direction {
+    /// Returns the next key and value from the `BTreeMap` based on the `start_key` and
+    /// `direction`.
+    pub fn next_from_map<'a, T, K, V>(
+        &self,
+        start_key: &T,
+        map: &'a BTreeMap<K, V>,
+    ) -> Option<(Cow<'a, K>, Cow<'a, V>)>
+    where
+        T: Ord + ?Sized,
+        K: Borrow<T> + Ord + Clone,
+        V: Clone,
+    {
+        let entry = match self {
+            Direction::Next => map.range((Excluded(start_key), Unbounded)).next(),
+            Direction::Previous => {
+                map.range((Unbounded, Excluded(start_key))).next_back()
+            }
+        };
+
+        let entry = entry.map(|(key, value)| (Cow::Borrowed(key), Cow::Borrowed(value)));
+
+        entry
+    }
+}
+
 /// Base read storage trait for Fuel infrastructure.
 ///
 /// Generic should implement [`Mappable`] trait with all storage type information.
@@ -65,6 +104,14 @@ pub trait StorageInspect<Type: Mappable> {
 
     /// Retrieve `Cow<Value>` such as `Key->Value`.
     fn get(&self, key: &Type::Key) -> Result<Option<Cow<Type::OwnedValue>>, Self::Error>;
+
+    /// Retrieves the next key and value after `start_key` in a `direction`.
+    #[allow(clippy::type_complexity)]
+    fn get_next(
+        &self,
+        start_key: &Type::Key,
+        direction: Direction,
+    ) -> Result<Option<(Cow<Type::OwnedKey>, Cow<Type::OwnedValue>)>, Self::Error>;
 
     /// Return `true` if there is a `Key` mapping to a value in the storage.
     fn contains_key(&self, key: &Type::Key) -> Result<bool, Self::Error>;
@@ -305,3 +352,64 @@ pub trait StorageAsMut {
 }
 
 impl<T> StorageAsMut for T {}
+
+#[cfg(test)]
+#[allow(non_snake_case)]
+mod tests {
+
+    #[test]
+    fn direction_next_from_map__next() {
+        use super::*;
+
+        let map: BTreeMap<u32, u32> = BTreeMap::from([(1, 10), (2, 20), (4, 40)]);
+        let direction = Direction::Next;
+
+        assert_eq!(
+            direction.next_from_map(&0, &map),
+            Some((Cow::Borrowed(&1), Cow::Borrowed(&10)))
+        );
+        assert_eq!(
+            direction.next_from_map(&1, &map),
+            Some((Cow::Borrowed(&2), Cow::Borrowed(&20)))
+        );
+        assert_eq!(
+            direction.next_from_map(&2, &map),
+            Some((Cow::Borrowed(&4), Cow::Borrowed(&40)))
+        );
+        assert_eq!(
+            direction.next_from_map(&3, &map),
+            Some((Cow::Borrowed(&4), Cow::Borrowed(&40)))
+        );
+        assert_eq!(direction.next_from_map(&4, &map), None);
+    }
+
+    #[test]
+    fn direction_next_from_map__previous() {
+        use super::*;
+
+        let map: BTreeMap<u32, u32> = BTreeMap::from([(1, 10), (2, 20), (4, 40)]);
+        let direction = Direction::Previous;
+
+        assert_eq!(direction.next_from_map(&1, &map), None);
+        assert_eq!(
+            direction.next_from_map(&2, &map),
+            Some((Cow::Borrowed(&1), Cow::Borrowed(&10)))
+        );
+        assert_eq!(
+            direction.next_from_map(&3, &map),
+            Some((Cow::Borrowed(&2), Cow::Borrowed(&20)))
+        );
+        assert_eq!(
+            direction.next_from_map(&4, &map),
+            Some((Cow::Borrowed(&2), Cow::Borrowed(&20)))
+        );
+        assert_eq!(
+            direction.next_from_map(&5, &map),
+            Some((Cow::Borrowed(&4), Cow::Borrowed(&40)))
+        );
+        assert_eq!(
+            direction.next_from_map(&6, &map),
+            Some((Cow::Borrowed(&4), Cow::Borrowed(&40)))
+        );
+    }
+}

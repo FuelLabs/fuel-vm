@@ -234,6 +234,7 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
     /// Returns the gas used by the inputs.
     fn gas_used_by_inputs(&self, gas_costs: &GasCosts) -> Word {
         let mut witness_cache: HashSet<u16> = HashSet::new();
+        let bytes_size = self.metered_bytes_size();
         self.inputs()
             .iter()
             .filter(|input| match input {
@@ -274,7 +275,6 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
                     predicate_gas_used,
                     ..
                 }) => {
-                    let bytes_size = self.metered_bytes_size();
                     let vm_initialization_gas =
                         gas_costs.vm_initialization().resolve(bytes_size as Word);
                     gas_costs

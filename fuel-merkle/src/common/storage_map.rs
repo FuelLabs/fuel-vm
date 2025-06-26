@@ -7,15 +7,18 @@ use crate::{
     },
 };
 
-use alloc::borrow::Cow;
-use hashbrown::HashMap;
+use alloc::{
+    borrow::Cow,
+    collections::BTreeMap,
+};
+use fuel_storage::Direction;
 
 #[derive(Debug, Clone)]
 pub struct StorageMap<Type>
 where
     Type: Mappable,
 {
-    map: HashMap<Type::OwnedKey, Type::OwnedValue>,
+    map: BTreeMap<Type::OwnedKey, Type::OwnedValue>,
 }
 
 impl<Type> Default for StorageMap<Type>
@@ -49,8 +52,8 @@ where
 impl<Type> StorageInspect<Type> for StorageMap<Type>
 where
     Type: Mappable,
-    Type::Key: Eq + core::hash::Hash,
-    Type::OwnedKey: Eq + core::hash::Hash + core::borrow::Borrow<Type::Key>,
+    Type::Key: Ord + Eq + core::hash::Hash,
+    Type::OwnedKey: Ord + Eq + core::hash::Hash + core::borrow::Borrow<Type::Key>,
 {
     type Error = core::convert::Infallible;
 
@@ -58,6 +61,14 @@ where
         let result = self.map.get(key);
         let value = result.map(Cow::Borrowed);
         Ok(value)
+    }
+
+    fn get_next(
+        &self,
+        start_key: &Type::Key,
+        direction: Direction,
+    ) -> Result<Option<(Cow<Type::OwnedKey>, Cow<Type::OwnedValue>)>, Self::Error> {
+        Ok(direction.next_from_map(start_key, &self.map))
     }
 
     fn contains_key(&self, key: &Type::Key) -> Result<bool, Self::Error> {
@@ -69,8 +80,8 @@ where
 impl<Type> StorageMutate<Type> for StorageMap<Type>
 where
     Type: Mappable,
-    Type::Key: Eq + core::hash::Hash,
-    Type::OwnedKey: Eq + core::hash::Hash + core::borrow::Borrow<Type::Key>,
+    Type::Key: Ord + Eq + core::hash::Hash,
+    Type::OwnedKey: Ord + Eq + core::hash::Hash + core::borrow::Borrow<Type::Key>,
 {
     fn replace(
         &mut self,
@@ -93,7 +104,7 @@ where
 mod test {
     use super::*;
 
-    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
     struct TestKey(u32);
 
     #[derive(Debug, Copy, Clone, PartialEq, Eq)]

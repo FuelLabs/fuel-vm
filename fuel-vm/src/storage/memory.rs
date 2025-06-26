@@ -21,6 +21,7 @@ use crate::{
 
 use fuel_crypto::Hasher;
 use fuel_storage::{
+    Direction,
     Mappable,
     StorageAsRef,
     StorageInspect,
@@ -233,6 +234,14 @@ impl StorageInspect<ContractsRawCode> for MemoryStorage {
         Ok(self.memory.contracts.get(key).map(Cow::Borrowed))
     }
 
+    fn get_next(
+        &self,
+        start_key: &ContractId,
+        direction: Direction,
+    ) -> Result<Option<(Cow<ContractId>, Cow<Contract>)>, Self::Error> {
+        Ok(direction.next_from_map(start_key, &self.memory.contracts))
+    }
+
     fn contains_key(&self, key: &ContractId) -> Result<bool, Self::Error> {
         Ok(self.memory.contracts.contains_key(key))
     }
@@ -327,6 +336,20 @@ impl StorageInspect<UploadedBytecodes> for MemoryStorage {
             .map(Cow::Borrowed))
     }
 
+    fn get_next(
+        &self,
+        start_key: &<UploadedBytecodes as Mappable>::Key,
+        direction: Direction,
+    ) -> Result<
+        Option<(
+            Cow<<UploadedBytecodes as Mappable>::OwnedKey>,
+            Cow<<UploadedBytecodes as Mappable>::OwnedValue>,
+        )>,
+        Self::Error,
+    > {
+        Ok(direction.next_from_map(start_key, &self.memory.state_transition_bytecodes))
+    }
+
     fn contains_key(
         &self,
         key: &<UploadedBytecodes as Mappable>::Key,
@@ -365,6 +388,20 @@ impl StorageInspect<ContractsAssets> for MemoryStorage {
         Ok(self.memory.balances.get(key).map(Cow::Borrowed))
     }
 
+    fn get_next(
+        &self,
+        start_key: &<ContractsAssets as Mappable>::Key,
+        direction: Direction,
+    ) -> Result<
+        Option<(
+            Cow<<ContractsAssets as Mappable>::OwnedKey>,
+            Cow<<ContractsAssets as Mappable>::OwnedValue>,
+        )>,
+        Self::Error,
+    > {
+        Ok(direction.next_from_map(start_key, &self.memory.balances))
+    }
+
     fn contains_key(
         &self,
         key: &<ContractsAssets as Mappable>::Key,
@@ -399,6 +436,20 @@ impl StorageInspect<ContractsState> for MemoryStorage {
     ) -> Result<Option<Cow<'_, <ContractsState as Mappable>::OwnedValue>>, Self::Error>
     {
         Ok(self.memory.contract_state.get(key).map(Cow::Borrowed))
+    }
+
+    fn get_next(
+        &self,
+        start_key: &<ContractsState as Mappable>::Key,
+        direction: Direction,
+    ) -> Result<
+        Option<(
+            Cow<<ContractsState as Mappable>::OwnedKey>,
+            Cow<<ContractsState as Mappable>::OwnedValue>,
+        )>,
+        Self::Error,
+    > {
+        Ok(direction.next_from_map(start_key, &self.memory.contract_state))
     }
 
     fn contains_key(
@@ -568,6 +619,20 @@ impl StorageInspect<BlobData> for MemoryStorage {
         key: &<BlobData as Mappable>::Key,
     ) -> Result<Option<Cow<'_, <BlobData as Mappable>::OwnedValue>>, Self::Error> {
         Ok(self.memory.blobs.get(key).map(Cow::Borrowed))
+    }
+
+    fn get_next(
+        &self,
+        start_key: &<BlobData as Mappable>::Key,
+        direction: Direction,
+    ) -> Result<
+        Option<(
+            Cow<<BlobData as Mappable>::OwnedKey>,
+            Cow<<BlobData as Mappable>::OwnedValue>,
+        )>,
+        Self::Error,
+    > {
+        Ok(direction.next_from_map(start_key, &self.memory.blobs))
     }
 
     fn contains_key(

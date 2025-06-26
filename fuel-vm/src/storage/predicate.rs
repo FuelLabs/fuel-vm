@@ -16,6 +16,7 @@ use core::fmt::Debug;
 
 use fuel_asm::Word;
 use fuel_storage::{
+    Direction,
     Mappable,
     StorageInspect,
     StorageMutate,
@@ -127,6 +128,20 @@ impl StorageInspect<BlobData> for EmptyStorage {
         Err(Self::Error::UnsupportedStorageOperation)
     }
 
+    fn get_next(
+        &self,
+        _: &<BlobData as Mappable>::Key,
+        _: Direction,
+    ) -> Result<
+        Option<(
+            Cow<<BlobData as Mappable>::OwnedKey>,
+            Cow<<BlobData as Mappable>::OwnedValue>,
+        )>,
+        Self::Error,
+    > {
+        Err(Self::Error::UnsupportedStorageOperation)
+    }
+
     fn contains_key(&self, _: &BlobId) -> Result<bool, Self::Error> {
         Err(Self::Error::UnsupportedStorageOperation)
     }
@@ -182,6 +197,14 @@ where
         Err(Self::Error::UnsupportedStorageOperation)
     }
 
+    fn get_next(
+        &self,
+        _: &Type::Key,
+        _: Direction,
+    ) -> Result<Option<(Cow<Type::OwnedKey>, Cow<Type::OwnedValue>)>, Self::Error> {
+        Err(Self::Error::UnsupportedStorageOperation)
+    }
+
     fn contains_key(&self, _key: &Type::Key) -> Result<bool, Self::Error> {
         Err(Self::Error::UnsupportedStorageOperation)
     }
@@ -198,6 +221,21 @@ where
         key: &<BlobData as Mappable>::Key,
     ) -> Result<Option<Cow<'_, <BlobData as Mappable>::OwnedValue>>, Self::Error> {
         <D as StorageInspect<BlobData>>::get(&self.storage, key)
+            .map_err(|e| Self::Error::StorageError(D::storage_error_to_string(e)))
+    }
+
+    fn get_next(
+        &self,
+        start_key: &<BlobData as Mappable>::Key,
+        direction: Direction,
+    ) -> Result<
+        Option<(
+            Cow<<BlobData as Mappable>::OwnedKey>,
+            Cow<<BlobData as Mappable>::OwnedValue>,
+        )>,
+        Self::Error,
+    > {
+        <D as StorageInspect<BlobData>>::get_next(&self.storage, start_key, direction)
             .map_err(|e| Self::Error::StorageError(D::storage_error_to_string(e)))
     }
 

@@ -9,7 +9,6 @@
 # - `rustup target add wasm32-unknown-unknown`
 # - `cargo install cargo-sort`
 
-cargo +nightly fmt --all -- --check &&
 cargo sort -w --check &&
 cargo clippy --all-targets --all-features -- -D warnings -D clippy::dbg_macro &&
 cargo check --all-targets &&

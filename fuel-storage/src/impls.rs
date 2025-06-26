@@ -1,4 +1,5 @@
 use crate::{
+    Direction,
     Mappable,
     MerkleRoot,
     MerkleRootStorage,
@@ -25,6 +26,14 @@ impl<T: StorageInspect<Type> + ?Sized, Type: Mappable> StorageInspect<Type> for 
         <T as StorageInspect<Type>>::get(self, key)
     }
 
+    fn get_next(
+        &self,
+        start_key: &Type::Key,
+        direction: Direction,
+    ) -> Result<Option<(Cow<Type::OwnedKey>, Cow<Type::OwnedValue>)>, Self::Error> {
+        <T as StorageInspect<Type>>::get_next(self, start_key, direction)
+    }
+
     fn contains_key(&self, key: &Type::Key) -> Result<bool, Self::Error> {
         <T as StorageInspect<Type>>::contains_key(self, key)
     }
@@ -40,6 +49,14 @@ impl<T: StorageInspect<Type> + ?Sized, Type: Mappable> StorageInspect<Type>
         key: &Type::Key,
     ) -> Result<Option<Cow<'_, Type::OwnedValue>>, Self::Error> {
         <T as StorageInspect<Type>>::get(self, key)
+    }
+
+    fn get_next(
+        &self,
+        start_key: &Type::Key,
+        direction: Direction,
+    ) -> Result<Option<(Cow<Type::OwnedKey>, Cow<Type::OwnedValue>)>, Self::Error> {
+        <T as StorageInspect<Type>>::get_next(self, start_key, direction)
     }
 
     fn contains_key(&self, key: &Type::Key) -> Result<bool, Self::Error> {

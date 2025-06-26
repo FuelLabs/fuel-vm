@@ -11,6 +11,34 @@ license = "Apache-2.0"
 repository = { workspace = true }
 description = "Fuel cryptographic primitives."
 
+# docs.rs-specific configuration
+[package.metadata.docs.rs]
+# document all features
+all-features = true
+# defines the configuration attribute `docsrs`
+rustdoc-args = ["--cfg", "docsrs"]
+
+[features]
+default = ["fuel-types/default", "std"]
+alloc = ["rand?/alloc", "secp256k1?/alloc", "fuel-types/alloc"]
+random = ["fuel-types/random", "rand"]
+serde = ["dep:serde", "fuel-types/serde"]
+std = [
+    "alloc",
+    "coins-bip32",
+    "secp256k1",
+    "coins-bip39",
+    "fuel-types/std",
+    "rand?/std_rng",
+    "serde?/default",
+    "k256/std",
+    "ed25519-dalek/std",
+    "sha2/std",
+    "p256/std",
+    "ecdsa/std",
+]
+test-helpers = []
+
 [dependencies]
 base64ct = "=1.6" # HACK: transitive dependency breaking MSRV requirement
 coins-bip32 = { version = "0.8", default-features = false, optional = true }
@@ -35,14 +63,6 @@ fuel-crypto = { path = ".", features = ["random", "test-helpers"] }
 sha2 = "0.10"
 test-case = "3.3"
 
-[features]
-default = ["fuel-types/default", "std"]
-alloc = ["rand?/alloc", "secp256k1?/alloc", "fuel-types/alloc"]
-random = ["fuel-types/random", "rand"]
-serde = ["dep:serde", "fuel-types/serde"]
-std = ["alloc", "coins-bip32", "secp256k1", "coins-bip39", "fuel-types/std", "rand?/std_rng", "serde?/default", "k256/std", "ed25519-dalek/std", "sha2/std", "p256/std", "ecdsa/std"]
-test-helpers = []
-
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }
 
@@ -50,10 +70,3 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }
 name = "signature"
 harness = false
 required-features = ["std"]
-
-# docs.rs-specific configuration
-[package.metadata.docs.rs]
-# document all features
-all-features = true
-# defines the configuration attribute `docsrs`
-rustdoc-args = ["--cfg", "docsrs"]

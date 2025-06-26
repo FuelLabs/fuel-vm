@@ -11,11 +11,16 @@ license = "Apache-2.0"
 repository = { workspace = true }
 description = "Fuel Merkle tree libraries."
 
+[features]
+default = ["std"]
+std = ["digest/default", "hex/default", "sha2/default"]
+test-helpers = []
+serde = ["dep:serde"]
+
 [dependencies]
 derive_more = { version = "0.99", default-features = false, features = ["display"] }
 digest = { version = "0.10", default-features = false }
 fuel-storage = { workspace = true, default-features = false }
-hashbrown = "0.13"
 hex = { version = "0.4", default-features = false, features = ["alloc"] }
 serde = { version = "1.0", default-features = false, optional = true }
 sha2 = { version = "0.10", default-features = false }
@@ -30,14 +35,6 @@ proptest-derive = "0.5.1"
 rand = "0.8"
 serde_json = "1.0"
 serde_yaml = "0.9"
-
-[features]
-default = ["std"]
-std = ["digest/default", "hex/default", "sha2/default"]
-test-helpers = []
-serde = [
-    "dep:serde",
-]
 
 [[test]]
 name = "tests-data"

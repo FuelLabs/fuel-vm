@@ -62,6 +62,7 @@ pub trait Mappable {
     type OwnedValue: From<<Self::Value as ToOwned>::Owned> + Borrow<Self::Value> + Clone;
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
 /// The direction of the key retrieval in the storage.
 pub enum Direction {
     /// The next key in the storage.

@@ -1059,7 +1059,7 @@ macro_rules! impl_instructions {
     // Define the `Opcode` enum.
     (decl_opcode_enum $($doc:literal $ix:literal $Op:ident $op:ident [$($fname:ident: $field:ident)*])*) => {
         /// Solely the opcode portion of an instruction represented as a single byte.
-        #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+        #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Ord, PartialOrd)]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         #[repr(u8)]
         pub enum Opcode {

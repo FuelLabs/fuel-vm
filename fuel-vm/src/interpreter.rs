@@ -24,6 +24,7 @@ use core::{
 
 use fuel_asm::{
     Flags,
+    Opcode,
     PanicReason,
 };
 use fuel_tx::{
@@ -108,6 +109,15 @@ use self::receipts::ReceiptsCtx;
 #[derive(Debug, Copy, Clone, Default)]
 pub struct NotSupportedEcal;
 
+/// Statistics for the executed opcode.
+#[derive(Default, Debug, Copy, Clone)]
+pub struct OpcodeStat {
+    /// Number of times the opcode was executed
+    pub count: u64,
+    /// Total gas cost of the opcode
+    pub gas: u64,
+}
+
 /// VM interpreter.
 ///
 /// The internal state of the VM isn't exposed because the intended usage is to
@@ -136,6 +146,7 @@ pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal, V = verification:
     panic_context: PanicContext,
     ecal_state: Ecal,
     verifier: V,
+    statistic: alloc::collections::BTreeMap<Opcode, OpcodeStat>,
 }
 
 /// Interpreter parameters

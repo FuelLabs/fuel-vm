@@ -61,6 +61,7 @@ where
 
 impl<M, S, Tx, Ecal, V> Transactor<M, S, Tx, Ecal, V>
 where
+    M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,

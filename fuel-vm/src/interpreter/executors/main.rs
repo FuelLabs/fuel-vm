@@ -449,6 +449,16 @@ pub mod predicates {
         }
 
         let result = vm.verify_predicate();
+        let tx_id = vm
+            .tx
+            .cached_id()
+            .expect("Transaction ID should be cached at this point");
+
+        tracing::info!(
+            "Predicate statistic for input {index} of transaction {tx_id}: {:?}",
+            vm.statistic
+        );
+
         let is_successful = matches!(result, Ok(ProgramState::Return(0x01)));
 
         let Some(gas_used) = available_gas.checked_sub(vm.remaining_gas()) else {
@@ -996,7 +1006,19 @@ where
             ProgramState::Return(1)
         } else {
             // This must be a `Script`.
-            self.run_program()?
+            let result = self.run_program()?;
+
+            let tx_id = self
+                .tx
+                .cached_id()
+                .expect("Transaction ID should be cached at this point");
+
+            tracing::info!(
+                "Script execution of transaction {tx_id}: {:?}",
+                self.statistic
+            );
+
+            result
         };
 
         Ok(state)
@@ -1019,51 +1041,65 @@ where
                 ProgramState::Return(return_val),
             )
         } else {
-            // TODO set tree balance
-            loop {
-                // Check whether the instruction will be executed in a call context
-                let in_call = !self.frames.is_empty();
+            // // TODO set tree balance
+            // loop {
+            //     // Check whether the instruction will be executed in a call context
+            //     let in_call = !self.frames.is_empty();
+            //
+            //     match self.execute::<false>() {
+            //         // Proceeding with the execution normally
+            //         Ok(ExecuteState::Proceed) => continue,
+            //         // Debugger events are returned directly to the caller
+            //         Ok(ExecuteState::DebugEvent(d)) => {
+            //             self.debugger_set_last_state(ProgramState::RunProgram(d));
+            //             return Ok(ProgramState::RunProgram(d));
+            //         }
+            //         // Reverting terminated execution immediately
+            //         Ok(ExecuteState::Revert(r)) => {
+            //             break (ScriptExecutionResult::Revert, ProgramState::Revert(r))
+            //         }
+            //         // Returning in call context is ignored
+            //         Ok(ExecuteState::Return(_) | ExecuteState::ReturnData(_))
+            //             if in_call =>
+            //         {
+            //             continue
+            //         }
+            //         // In non-call context, returning terminates the execution
+            //         Ok(ExecuteState::Return(r)) => {
+            //             break (ScriptExecutionResult::Success, ProgramState::Return(r))
+            //         }
+            //         Ok(ExecuteState::ReturnData(d)) => {
+            //             break (
+            //                 ScriptExecutionResult::Success,
+            //                 ProgramState::ReturnData(d),
+            //             )
+            //         }
+            //         // Error always terminates the execution
+            //         Err(e) => match e.instruction_result() {
+            //             Some(result) => {
+            //                 self.append_panic_receipt(result);
+            //                 break (ScriptExecutionResult::Panic,
+            // ProgramState::Revert(0));             }
+            //             // This isn't a specified case of an erroneous program and
+            // should             // be propagated. If applicable, OS errors
+            //             // will fall into this category.
+            //             // The VM state is not finalized in this case.
+            //             None => return Err(e),
+            //         },
+            //     }
+            // }
 
-                match self.execute::<false>() {
-                    // Proceeding with the execution normally
-                    Ok(ExecuteState::Proceed) => continue,
-                    // Debugger events are returned directly to the caller
-                    Ok(ExecuteState::DebugEvent(d)) => {
-                        self.debugger_set_last_state(ProgramState::RunProgram(d));
-                        return Ok(ProgramState::RunProgram(d));
-                    }
-                    // Reverting terminated execution immediately
-                    Ok(ExecuteState::Revert(r)) => {
-                        break (ScriptExecutionResult::Revert, ProgramState::Revert(r))
-                    }
-                    // Returning in call context is ignored
-                    Ok(ExecuteState::Return(_) | ExecuteState::ReturnData(_))
-                        if in_call =>
-                    {
-                        continue
-                    }
-                    // In non-call context, returning terminates the execution
-                    Ok(ExecuteState::Return(r)) => {
-                        break (ScriptExecutionResult::Success, ProgramState::Return(r))
-                    }
-                    Ok(ExecuteState::ReturnData(d)) => {
-                        break (
-                            ScriptExecutionResult::Success,
-                            ProgramState::ReturnData(d),
-                        )
-                    }
-                    // Error always terminates the execution
-                    Err(e) => match e.instruction_result() {
-                        Some(result) => {
-                            self.append_panic_receipt(result);
-                            break (ScriptExecutionResult::Panic, ProgramState::Revert(0));
-                        }
-                        // This isn't a specified case of an erroneous program and should
-                        // be propagated. If applicable, OS errors
-                        // will fall into this category.
-                        // The VM state is not finalized in this case.
-                        None => return Err(e),
-                    },
+            loop {
+                self.execute_op::<false>();
+
+                if let Some(err) = self.error.take() {
+                    return Err(err.into())
+                }
+
+                if let Some(state) = self.status.take()
+                    && let ExecuteState::Return(r) = state
+                {
+                    break (ScriptExecutionResult::Success, ProgramState::Return(r))
                 }
             }
         };

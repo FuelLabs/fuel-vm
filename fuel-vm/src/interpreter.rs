@@ -24,6 +24,7 @@ use core::{
 
 use fuel_asm::{
     Flags,
+    Opcode,
     PanicReason,
 };
 use fuel_tx::{
@@ -61,7 +62,7 @@ mod constructors;
 pub mod contract;
 mod crypto;
 pub mod diff;
-mod executors;
+pub mod executors;
 mod flow;
 mod gas;
 mod initialization;
@@ -84,26 +85,37 @@ pub use memory::{
     MemoryRange,
 };
 
-use crate::checked_transaction::{
-    CreateCheckedMetadata,
-    EstimatePredicates,
-    IntoChecked,
-    NonRetryableFreeBalances,
-    RetryableAmount,
-    ScriptCheckedMetadata,
-    UpgradeCheckedMetadata,
-    UploadCheckedMetadata,
-};
-
 #[cfg(feature = "test-helpers")]
 pub use self::receipts::ReceiptsCtx;
-
 #[cfg(not(feature = "test-helpers"))]
 use self::receipts::ReceiptsCtx;
+use crate::{
+    checked_transaction::{
+        CreateCheckedMetadata,
+        EstimatePredicates,
+        IntoChecked,
+        NonRetryableFreeBalances,
+        RetryableAmount,
+        ScriptCheckedMetadata,
+        UpgradeCheckedMetadata,
+        UploadCheckedMetadata,
+    },
+    error::PanicOrBug,
+    state::ExecuteState,
+};
 
 /// ECAL opcode is not supported and return an error if you try to call.
 #[derive(Debug, Copy, Clone, Default)]
 pub struct NotSupportedEcal;
+
+/// Statistics for the executed opcode.
+#[derive(Default, Debug, Copy, Clone)]
+pub struct OpcodeStat {
+    /// Number of times the opcode was executed
+    pub count: u64,
+    /// Total gas cost of the opcode
+    pub gas: u64,
+}
 
 /// VM interpreter.
 ///
@@ -135,6 +147,10 @@ pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal, V = verification:
     verifier: V,
     /// Pointer to the memory, where the owner of the transaction lies.
     owner_ptr: Option<Word>,
+    statistic: alloc::collections::BTreeMap<Opcode, OpcodeStat>,
+    pub error: Option<PanicOrBug>,
+    pub status: Option<ExecuteState>,
+    pub handlers: [Option<for<'a> fn(&'a mut Self, [u8; 3])>; 256],
 }
 
 /// Interpreter parameters

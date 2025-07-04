@@ -1,4 +1,4 @@
-mod instruction;
+pub mod instruction;
 mod main;
 mod predicate;
 

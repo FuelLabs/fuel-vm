@@ -718,50 +718,59 @@ macro_rules! op_unpack {
 // cannot be constructed outside this crate.
 macro_rules! op_reserved_part {
     (RegId) => {
-        pub(crate) fn reserved_part_is_zero(self) -> bool {
+        /// Check that the reserved part of the instruction is zero.
+        pub fn reserved_part_is_zero(self) -> bool {
             let (_, imm) = unpack::ra_imm18_from_bytes(self.0);
             imm.0 == 0
         }
     };
     (RegId RegId) => {
-        pub(crate) fn reserved_part_is_zero(self) -> bool {
+        /// Check that the reserved part of the instruction is zero.
+        pub fn reserved_part_is_zero(self) -> bool {
             let (_, _, imm) = unpack::ra_rb_imm12_from_bytes(self.0);
             imm.0 == 0
         }
     };
     (RegId RegId RegId) => {
-        pub(crate) fn reserved_part_is_zero(self) -> bool {
+        /// Check that the reserved part of the instruction is zero.
+        pub fn reserved_part_is_zero(self) -> bool {
             let (_, _, _, imm) = unpack::ra_rb_rc_imm06_from_bytes(self.0);
             imm.0 == 0
         }
     };
     (RegId RegId RegId RegId) => {
-        pub(crate) fn reserved_part_is_zero(self) -> bool {
+        /// Check that the reserved part of the instruction is zero.
+        pub fn reserved_part_is_zero(self) -> bool {
             true
         }
     };
     (RegId RegId RegId Imm06) => {
-        pub(crate) fn reserved_part_is_zero(self) -> bool {
+        /// Check that the reserved part of the instruction is zero.
+        pub fn reserved_part_is_zero(self) -> bool {
             true
         }
     };
     (RegId RegId Imm12) => {
-        pub(crate) fn reserved_part_is_zero(self) -> bool {
+        /// Check that the reserved part of the instruction is zero.
+        pub fn reserved_part_is_zero(self) -> bool {
             true
         }
     };
     (RegId Imm18) => {
-        pub(crate) fn reserved_part_is_zero(self) -> bool {
+        /// Check that the reserved part of the instruction is zero.
+        pub fn reserved_part_is_zero(self) -> bool {
             true
         }
     };
     (Imm24) => {
-        pub(crate) fn reserved_part_is_zero(self) -> bool {
+        /// Check that the reserved part of the instruction is zero.
+        pub fn reserved_part_is_zero(self) -> bool {
             true
         }
     };
     () => {
-        pub(crate) fn reserved_part_is_zero(self) -> bool {
+        /// Check that the reserved part of the instruction is zero.
+        pub fn reserved_part_is_zero(self) -> bool {
             self.0 == [0; 3]
         }
     };
@@ -1047,7 +1056,7 @@ macro_rules! decl_op_struct {
         #[derive(Clone, Copy, Eq, Hash, PartialEq)]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
-        pub struct $Op(pub (super) [u8; 3]);
+        pub struct $Op(pub [u8; 3]);
         decl_op_struct!($($rest)*);
     };
     () => {};
@@ -1059,7 +1068,7 @@ macro_rules! impl_instructions {
     // Define the `Opcode` enum.
     (decl_opcode_enum $($doc:literal $ix:literal $Op:ident $op:ident [$($fname:ident: $field:ident)*])*) => {
         /// Solely the opcode portion of an instruction represented as a single byte.
-        #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+        #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Ord, PartialOrd)]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         #[repr(u8)]
         pub enum Opcode {

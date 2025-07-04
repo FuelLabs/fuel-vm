@@ -78,6 +78,7 @@ sha3 = { version = "0.10", default-features = false }
 static_assertions = "1.1"
 strum = { version = "0.24", features = ["derive"], default-features = false }
 tai64 = { version = "4.0", default-features = false, optional = true }
+tracing = { version = "0.1.41", default-features = false }
 
 [dev-dependencies]
 criterion = { workspace = true }

@@ -1,6 +1,29 @@
 use core::fmt::Debug;
 use hashbrown::HashMap;
 
+use super::{
+    ExecutableTransaction,
+    Interpreter,
+    *,
+};
+use crate::{
+    interpreter::{
+        EcalHandler,
+        constructors::handlers,
+    },
+    storage::{
+        BlobBytes,
+        BlobData,
+        ContractsAssetKey,
+        ContractsAssetsStorage,
+        ContractsStateData,
+        ContractsStateKey,
+        InterpreterStorage,
+        UploadedBytecode,
+        UploadedBytecodes,
+    },
+    verification::Verifier,
+};
 use fuel_storage::{
     StorageRead,
     StorageSize,
@@ -12,24 +35,6 @@ use fuel_types::{
     BlockHeight,
     Bytes32,
     ContractId,
-};
-
-use crate::storage::{
-    BlobBytes,
-    BlobData,
-    ContractsAssetKey,
-    ContractsAssetsStorage,
-    ContractsStateData,
-    ContractsStateKey,
-    InterpreterStorage,
-    UploadedBytecode,
-    UploadedBytecodes,
-};
-
-use super::{
-    ExecutableTransaction,
-    Interpreter,
-    *,
 };
 
 #[derive(Debug)]
@@ -84,15 +89,18 @@ pub struct Record<S>(pub(super) S, pub(super) Vec<StorageDelta>)
 where
     S: InterpreterStorage;
 
-impl<M, S, Tx, Ecal> Interpreter<M, Record<S>, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, Record<S>, Tx, Ecal, V>
 where
+    M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
 {
     /// Remove the [`Recording`] wrapper from the storage.
     /// Recording storage changes has an overhead so it's
     /// useful to be able to remove it once the diff is generated.
-    pub fn remove_recording(self) -> Interpreter<M, S, Tx, Ecal> {
+    pub fn remove_recording(self) -> Interpreter<M, S, Tx, Ecal, V> {
         Interpreter {
             registers: self.registers,
             memory: self.memory,
@@ -112,6 +120,10 @@ where
             ecal_state: self.ecal_state,
             verifier: self.verifier,
             owner_ptr: self.owner_ptr,
+            statistic: Default::default(),
+            error: self.error,
+            status: self.status,
+            handlers: handlers::<M, S, Tx, Ecal, V>(),
         }
     }
 
@@ -178,6 +190,8 @@ where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
 {
     /// Add a [`Recording`] wrapper around the storage to
     /// record any changes this VM makes to it's storage.
@@ -203,6 +217,10 @@ where
             ecal_state: self.ecal_state,
             verifier: self.verifier,
             owner_ptr: self.owner_ptr,
+            statistic: Default::default(),
+            error: self.error,
+            status: self.status,
+            handlers: handlers::<M, Record<S>, Tx, Ecal, V>(),
         }
     }
 

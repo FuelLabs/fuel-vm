@@ -133,4 +133,11 @@ mod tests {
             out_of_gas_panic_instruction.to_bytes()
         );
     }
+
+    #[test]
+    fn panic_instruction_word_conversion() {
+        let number: Word = 18446744073709486086;
+        let instruction: PanicInstruction = PanicInstruction::from(number);
+        println!("{:?}", instruction);
+    }
 }

@@ -952,6 +952,42 @@ macro_rules! store_load {
 
                 Ok(inc_pc(pc)?)
             }
+
+            pub(crate) fn [< load_ $t _op>](
+                &mut self,
+                result: RegId,
+                src_addr: Word,
+                offset: Imm12,
+            ) {
+                let (SystemRegisters { mut pc, .. }, mut w) = split_registers(&mut self.registers);
+
+                let ra = match WriteRegKey::try_from(result) {
+                    Ok(reg) => reg,
+                    Err(err) => {
+                        self.error = Some(err.into());
+                        return;
+                    }
+                };
+
+                let result = &mut w[ra];
+
+                let offset = u64::from(offset)
+                    .checked_mul(core::mem::size_of::<$t>() as u64)
+                    .expect("u12 * size_of cannot overflow a Word");
+                let addr = src_addr.saturating_add(offset);
+
+                let bytes = match self.memory.as_ref().read_bytes(addr) {
+                    Ok(bytes) => bytes,
+                    Err(err) => {
+                        self.error = Some(err.into());
+                        return;
+                    }
+                };
+
+                *result = $t::from_be_bytes(bytes) as u64;
+
+                *pc = pc.saturating_add($crate::prelude::Instruction::SIZE as Word);
+            }
         }
     }};
 }

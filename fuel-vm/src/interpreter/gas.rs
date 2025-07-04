@@ -56,6 +56,36 @@ impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
 
         gas_charge(cgas, ggas, gas)
     }
+
+    /// Do a gas charge with the given amount, panicing when running out of gas.
+    pub fn gas_charge_op(&mut self, gas: Word) {
+        let SystemRegisters {
+            mut ggas, mut cgas, ..
+        } = split_registers(&mut self.registers).0;
+
+        if *cgas > *ggas {
+            self.error = Some(Bug::new(BugVariant::GlobalGasLessThanContext).into());
+        } else if gas > *cgas {
+            *ggas = (*ggas).saturating_sub(*cgas);
+            *cgas = 0;
+
+            self.error = Some(PanicReason::OutOfGas.into());
+        } else {
+            if let Some(new_cgas) = (*cgas).checked_sub(gas) {
+                *cgas = new_cgas;
+            } else {
+                self.error = Some(Bug::new(BugVariant::ContextGasUnderflow).into());
+                return;
+            }
+
+            if let Some(new_ggas) = (*ggas).checked_sub(gas) {
+                *ggas = new_ggas;
+            } else {
+                self.error = Some(Bug::new(BugVariant::GlobalGasUnderflow).into());
+                return;
+            }
+        }
+    }
 }
 
 pub(crate) fn dependent_gas_charge_without_base(

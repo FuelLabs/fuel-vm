@@ -66,6 +66,7 @@ impl<M, Ecal: EcalHandler, V> AsMut<MemoryStorage> for MemoryClient<M, Ecal, V> 
 
 impl<M, Ecal, V> MemoryClient<M, Ecal, V>
 where
+    M: Memory,
     Ecal: EcalHandler + Default,
     V: Verifier + Default,
 {

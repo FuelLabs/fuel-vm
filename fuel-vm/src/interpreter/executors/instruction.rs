@@ -14,14 +14,37 @@ use crate::{
     storage::InterpreterStorage,
     verification::Verifier,
 };
+use std::ops::Div;
 
+use crate::interpreter::flow::{
+    JumpArgs,
+    JumpMode,
+};
 use fuel_asm::{
     Instruction,
     PanicInstruction,
     PanicReason,
     RawInstruction,
     RegId,
+    op::{
+        ADD,
+        DIV,
+        EQ,
+        GT,
+        JMPB,
+        JMPF,
+        JNZF,
+        LOG,
+        LT,
+        LW,
+        MOD,
+        MOVE,
+        MOVI,
+        MUL,
+        RET,
+    },
 };
+use fuel_types::Word;
 
 impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
@@ -37,6 +60,34 @@ where
     ) -> Result<ExecuteState, InterpreterError<S::DataError>> {
         let raw_instruction = self.fetch_instruction()?;
         self.instruction_per_inner::<PREDICATE>(raw_instruction)
+    }
+
+    /// Execute the current instruction located in `$m[$pc]`.
+    pub fn execute_op<const PREDICATE: bool>(&mut self) {
+        let pc = self.registers[RegId::PC];
+
+        let raw_instruction: [u8; 4] = match self.memory().read_bytes(pc) {
+            Ok(bytes) => bytes,
+            Err(reason) => {
+                self.error = Some(reason.into());
+                return;
+            }
+        };
+
+        if pc < self.registers[RegId::IS] || pc >= self.registers[RegId::SSP] {
+            self.error = Some(PanicReason::MemoryNotExecutable.into());
+            return
+        }
+
+        if let Some(f) = self.handlers[raw_instruction[0] as usize] {
+            f(
+                self,
+                [raw_instruction[1], raw_instruction[2], raw_instruction[3]],
+            );
+        } else {
+            self.error = Some(PanicReason::InvalidInstruction.into());
+            return;
+        }
     }
 
     /// Reads the current instruction located in `$m[$pc]`,
@@ -105,7 +156,17 @@ where
             }
         }
 
-        instruction.execute(self)
+        let opcode = instruction.opcode();
+
+        let gas_before = self.remaining_gas();
+        let result = instruction.execute(self);
+
+        let gas = gas_before.saturating_sub(self.remaining_gas());
+        let stat = self.statistic.entry(opcode).or_default();
+        stat.count = stat.count.saturating_add(1);
+        stat.gas = gas;
+
+        result
     }
 }
 
@@ -121,6 +182,458 @@ where
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError>;
+}
+
+pub trait ExecuteOptimized<M, S, Tx, Ecal, V>
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]);
+}
+
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for ADD
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
+        interpreter.gas_charge_op(interpreter.gas_costs().add());
+
+        if interpreter.error.is_some() {
+            return;
+        }
+
+        let op = Self(args);
+        // if !op.reserved_part_is_zero() {
+        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
+        //     return;
+        // }
+
+        let (a, b, c) = op.unpack();
+        interpreter.alu_capture_overflow_op(
+            a,
+            u128::overflowing_add,
+            interpreter.registers[b].into(),
+            interpreter.registers[c].into(),
+        );
+    }
+}
+
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for DIV
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
+        interpreter.gas_charge_op(interpreter.gas_costs().div());
+
+        if interpreter.error.is_some() {
+            return;
+        }
+
+        let op = Self(args);
+        // if !op.reserved_part_is_zero() {
+        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
+        //     return;
+        // }
+
+        let (a, b, c) = op.unpack();
+        let c = interpreter.registers[c];
+        interpreter.alu_error_op(a, Word::div, interpreter.registers[b], c, c == 0);
+    }
+}
+
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for EQ
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
+        interpreter.gas_charge_op(interpreter.gas_costs().eq_());
+
+        if interpreter.error.is_some() {
+            return;
+        }
+
+        let op = Self(args);
+        // if !op.reserved_part_is_zero() {
+        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
+        //     return;
+        // }
+
+        let (a, b, c) = op.unpack();
+        interpreter.alu_set_op(
+            a,
+            (interpreter.registers[b] == interpreter.registers[c]) as Word,
+        );
+    }
+}
+
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for LT
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
+        interpreter.gas_charge_op(interpreter.gas_costs().lt());
+
+        if interpreter.error.is_some() {
+            return;
+        }
+
+        let op = Self(args);
+        // if !op.reserved_part_is_zero() {
+        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
+        //     return;
+        // }
+
+        let (a, b, c) = op.unpack();
+        interpreter.alu_set_op(
+            a,
+            (interpreter.registers[b] < interpreter.registers[c]) as Word,
+        );
+    }
+}
+
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for GT
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
+        interpreter.gas_charge_op(interpreter.gas_costs().gt());
+
+        if interpreter.error.is_some() {
+            return;
+        }
+
+        let op = Self(args);
+        // if !op.reserved_part_is_zero() {
+        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
+        //     return;
+        // }
+
+        let (a, b, c) = op.unpack();
+        interpreter.alu_set_op(
+            a,
+            (interpreter.registers[b] > interpreter.registers[c]) as Word,
+        );
+    }
+}
+
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for MOD
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
+        interpreter.gas_charge_op(interpreter.gas_costs().mod_op());
+
+        if interpreter.error.is_some() {
+            return;
+        }
+
+        let op = Self(args);
+        // if !op.reserved_part_is_zero() {
+        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
+        //     return;
+        // }
+
+        let (a, b, c) = op.unpack();
+        let rhs = interpreter.registers[c];
+        interpreter.alu_error_op(
+            a,
+            Word::wrapping_rem,
+            interpreter.registers[b],
+            rhs,
+            rhs == 0,
+        );
+    }
+}
+
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for MOVE
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
+        interpreter.gas_charge_op(interpreter.gas_costs().move_op());
+
+        if interpreter.error.is_some() {
+            return;
+        }
+
+        let op = Self(args);
+        // if !op.reserved_part_is_zero() {
+        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
+        //     return;
+        // }
+
+        let (a, b) = op.unpack();
+        interpreter.alu_set_op(a, interpreter.registers[b]);
+    }
+}
+
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for MUL
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
+        interpreter.gas_charge_op(interpreter.gas_costs().mul());
+
+        if interpreter.error.is_some() {
+            return;
+        }
+
+        let op = Self(args);
+        // if !op.reserved_part_is_zero() {
+        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
+        //     return;
+        // }
+
+        let (a, b, c) = op.unpack();
+        interpreter.alu_capture_overflow_op(
+            a,
+            u128::overflowing_mul,
+            interpreter.registers[b].into(),
+            interpreter.registers[c].into(),
+        );
+    }
+}
+
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for RET
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
+        interpreter.gas_charge_op(interpreter.gas_costs().ret());
+
+        if interpreter.error.is_some() {
+            return;
+        }
+
+        let op = Self(args);
+        // if !op.reserved_part_is_zero() {
+        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
+        //     return;
+        // }
+
+        let a = op.unpack();
+        let ra = interpreter.registers[a];
+        interpreter.ret(ra).expect("RET failed");
+        interpreter.status = Some(ExecuteState::Return(ra));
+    }
+}
+
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for LOG
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
+        interpreter.gas_charge_op(interpreter.gas_costs().log());
+
+        if interpreter.error.is_some() {
+            return;
+        }
+
+        let op = Self(args);
+        // if !op.reserved_part_is_zero() {
+        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
+        //     return;
+        // }
+
+        let (a, b, c, d) = op.unpack();
+        interpreter
+            .log(
+                interpreter.registers[a],
+                interpreter.registers[b],
+                interpreter.registers[c],
+                interpreter.registers[d],
+            )
+            .expect("LOG failed");
+    }
+}
+
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for LW
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
+        interpreter.gas_charge_op(interpreter.gas_costs().lw());
+
+        if interpreter.error.is_some() {
+            return;
+        }
+
+        let op = Self(args);
+        // if !op.reserved_part_is_zero() {
+        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
+        //     return;
+        // }
+
+        let (a, b, imm) = op.unpack();
+        interpreter.load_u64_op(a, interpreter.registers[b], imm);
+    }
+}
+
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for MOVI
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
+        interpreter.gas_charge_op(interpreter.gas_costs().movi());
+
+        if interpreter.error.is_some() {
+            return;
+        }
+
+        let op = Self(args);
+        // if !op.reserved_part_is_zero() {
+        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
+        //     return;
+        // }
+
+        let (a, imm) = op.unpack();
+        interpreter.alu_set_op(a, Word::from(imm));
+    }
+}
+
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for JMPF
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
+        interpreter.gas_charge_op(interpreter.gas_costs().jmpf());
+
+        if interpreter.error.is_some() {
+            return;
+        }
+
+        let op = Self(args);
+        // if !op.reserved_part_is_zero() {
+        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
+        //     return;
+        // }
+
+        let (a, offset) = op.unpack();
+        interpreter.jump_op(
+            JumpArgs::new(JumpMode::RelativeForwards)
+                .to_address(interpreter.registers[a])
+                .plus_fixed(offset.into()),
+        );
+    }
+}
+
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for JMPB
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
+        interpreter.gas_charge_op(interpreter.gas_costs().jmpb());
+
+        if interpreter.error.is_some() {
+            return;
+        }
+
+        let op = Self(args);
+        // if !op.reserved_part_is_zero() {
+        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
+        //     return;
+        // }
+
+        let (a, offset) = op.unpack();
+        interpreter.jump_op(
+            JumpArgs::new(JumpMode::RelativeBackwards)
+                .to_address(interpreter.registers[a])
+                .plus_fixed(offset.into()),
+        );
+    }
+}
+
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for JNZF
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
+        interpreter.gas_charge_op(interpreter.gas_costs().jnzf());
+
+        if interpreter.error.is_some() {
+            return;
+        }
+
+        let op = Self(args);
+        // if !op.reserved_part_is_zero() {
+        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
+        //     return;
+        // }
+
+        let (a, b, offset) = op.unpack();
+        let ra = interpreter.registers[a];
+        let rb = interpreter.registers[b];
+        interpreter.jump_op(
+            JumpArgs::new(JumpMode::RelativeForwards)
+                .with_condition(ra != 0)
+                .to_address(rb)
+                .plus_fixed(offset.into()),
+        );
+    }
 }
 
 impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for Instruction

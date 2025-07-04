@@ -85,7 +85,7 @@ cargo cov -- show target/x86_64-unknown-linux-gnu/coverage/x86_64-unknown-linux-
 ```
 
 ### Execute a Test Case
-The fuzzing campain will output any crashes to `artifacts/grammar_aware_advanced`. To further investigate these crashes, the `execute` binary can be used.
+The fuzzing campaign will output any crashes to `artifacts/grammar_aware_advanced`. To further investigate these crashes, the `execute` binary can be used.
 ```
 cargo run --bin execute artifacts/grammar_aware_advanced/<crash file>
 ```

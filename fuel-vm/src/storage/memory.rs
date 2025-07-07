@@ -23,6 +23,7 @@ use fuel_crypto::Hasher;
 use fuel_storage::{
     Direction,
     Mappable,
+    NextMappableEntry,
     StorageAsRef,
     StorageInspect,
     StorageMutate,
@@ -238,7 +239,8 @@ impl StorageInspect<ContractsRawCode> for MemoryStorage {
         &self,
         start_key: &ContractId,
         direction: Direction,
-    ) -> Result<Option<(Cow<ContractId>, Cow<Contract>)>, Self::Error> {
+        _: usize,
+    ) -> Result<NextMappableEntry<ContractsRawCode>, Self::Error> {
         Ok(direction.next_from_map(start_key, &self.memory.contracts))
     }
 
@@ -340,13 +342,8 @@ impl StorageInspect<UploadedBytecodes> for MemoryStorage {
         &self,
         start_key: &<UploadedBytecodes as Mappable>::Key,
         direction: Direction,
-    ) -> Result<
-        Option<(
-            Cow<<UploadedBytecodes as Mappable>::OwnedKey>,
-            Cow<<UploadedBytecodes as Mappable>::OwnedValue>,
-        )>,
-        Self::Error,
-    > {
+        _: usize,
+    ) -> Result<NextMappableEntry<UploadedBytecodes>, Self::Error> {
         Ok(direction.next_from_map(start_key, &self.memory.state_transition_bytecodes))
     }
 
@@ -392,13 +389,8 @@ impl StorageInspect<ContractsAssets> for MemoryStorage {
         &self,
         start_key: &<ContractsAssets as Mappable>::Key,
         direction: Direction,
-    ) -> Result<
-        Option<(
-            Cow<<ContractsAssets as Mappable>::OwnedKey>,
-            Cow<<ContractsAssets as Mappable>::OwnedValue>,
-        )>,
-        Self::Error,
-    > {
+        _: usize,
+    ) -> Result<NextMappableEntry<ContractsAssets>, Self::Error> {
         Ok(direction.next_from_map(start_key, &self.memory.balances))
     }
 
@@ -442,13 +434,8 @@ impl StorageInspect<ContractsState> for MemoryStorage {
         &self,
         start_key: &<ContractsState as Mappable>::Key,
         direction: Direction,
-    ) -> Result<
-        Option<(
-            Cow<<ContractsState as Mappable>::OwnedKey>,
-            Cow<<ContractsState as Mappable>::OwnedValue>,
-        )>,
-        Self::Error,
-    > {
+        _: usize,
+    ) -> Result<NextMappableEntry<ContractsState>, Self::Error> {
         Ok(direction.next_from_map(start_key, &self.memory.contract_state))
     }
 
@@ -625,13 +612,8 @@ impl StorageInspect<BlobData> for MemoryStorage {
         &self,
         start_key: &<BlobData as Mappable>::Key,
         direction: Direction,
-    ) -> Result<
-        Option<(
-            Cow<<BlobData as Mappable>::OwnedKey>,
-            Cow<<BlobData as Mappable>::OwnedValue>,
-        )>,
-        Self::Error,
-    > {
+        _: usize,
+    ) -> Result<NextMappableEntry<BlobData>, Self::Error> {
         Ok(direction.next_from_map(start_key, &self.memory.blobs))
     }
 

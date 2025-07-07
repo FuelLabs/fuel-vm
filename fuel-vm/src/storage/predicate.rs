@@ -18,6 +18,7 @@ use fuel_asm::Word;
 use fuel_storage::{
     Direction,
     Mappable,
+    NextMappableEntry,
     StorageInspect,
     StorageMutate,
     StorageRead,
@@ -132,13 +133,8 @@ impl StorageInspect<BlobData> for EmptyStorage {
         &self,
         _: &<BlobData as Mappable>::Key,
         _: Direction,
-    ) -> Result<
-        Option<(
-            Cow<<BlobData as Mappable>::OwnedKey>,
-            Cow<<BlobData as Mappable>::OwnedValue>,
-        )>,
-        Self::Error,
-    > {
+        _: usize,
+    ) -> Result<NextMappableEntry<BlobData>, Self::Error> {
         Err(Self::Error::UnsupportedStorageOperation)
     }
 
@@ -201,7 +197,8 @@ where
         &self,
         _: &Type::Key,
         _: Direction,
-    ) -> Result<Option<(Cow<Type::OwnedKey>, Cow<Type::OwnedValue>)>, Self::Error> {
+        _: usize,
+    ) -> Result<NextMappableEntry<Type>, Self::Error> {
         Err(Self::Error::UnsupportedStorageOperation)
     }
 
@@ -228,15 +225,15 @@ where
         &self,
         start_key: &<BlobData as Mappable>::Key,
         direction: Direction,
-    ) -> Result<
-        Option<(
-            Cow<<BlobData as Mappable>::OwnedKey>,
-            Cow<<BlobData as Mappable>::OwnedValue>,
-        )>,
-        Self::Error,
-    > {
-        <D as StorageInspect<BlobData>>::get_next(&self.storage, start_key, direction)
-            .map_err(|e| Self::Error::StorageError(D::storage_error_to_string(e)))
+        max_iterations: usize,
+    ) -> Result<NextMappableEntry<BlobData>, Self::Error> {
+        <D as StorageInspect<BlobData>>::get_next(
+            &self.storage,
+            start_key,
+            direction,
+            max_iterations,
+        )
+        .map_err(|e| Self::Error::StorageError(D::storage_error_to_string(e)))
     }
 
     fn contains_key(

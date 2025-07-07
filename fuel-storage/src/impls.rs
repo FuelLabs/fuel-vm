@@ -3,6 +3,7 @@ use crate::{
     Mappable,
     MerkleRoot,
     MerkleRootStorage,
+    NextEntry,
     StorageInspect,
     StorageMut,
     StorageMutate,
@@ -30,8 +31,9 @@ impl<T: StorageInspect<Type> + ?Sized, Type: Mappable> StorageInspect<Type> for 
         &self,
         start_key: &Type::Key,
         direction: Direction,
-    ) -> Result<Option<(Cow<Type::OwnedKey>, Cow<Type::OwnedValue>)>, Self::Error> {
-        <T as StorageInspect<Type>>::get_next(self, start_key, direction)
+        max_iterations: usize,
+    ) -> Result<NextEntry<Type::OwnedKey, Type::OwnedValue>, Self::Error> {
+        <T as StorageInspect<Type>>::get_next(self, start_key, direction, max_iterations)
     }
 
     fn contains_key(&self, key: &Type::Key) -> Result<bool, Self::Error> {
@@ -55,8 +57,9 @@ impl<T: StorageInspect<Type> + ?Sized, Type: Mappable> StorageInspect<Type>
         &self,
         start_key: &Type::Key,
         direction: Direction,
-    ) -> Result<Option<(Cow<Type::OwnedKey>, Cow<Type::OwnedValue>)>, Self::Error> {
-        <T as StorageInspect<Type>>::get_next(self, start_key, direction)
+        max_iterations: usize,
+    ) -> Result<NextEntry<Type::OwnedKey, Type::OwnedValue>, Self::Error> {
+        <T as StorageInspect<Type>>::get_next(self, start_key, direction, max_iterations)
     }
 
     fn contains_key(&self, key: &Type::Key) -> Result<bool, Self::Error> {

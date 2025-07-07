@@ -19,7 +19,11 @@ use alloc::{
     borrow::Cow,
     vec::Vec,
 };
-use fuel_storage::Direction;
+use fuel_storage::{
+    Direction,
+    NextEntry,
+    NextMappableEntry,
+};
 
 /// The table of the Sparse Merkle tree's nodes. [`MerkleTree`] works with it as a sparse
 /// merkle tree, where the storage key is `Bytes32` and the value is the
@@ -94,14 +98,12 @@ impl MerkleTree {
                 &self,
                 _: &<NodesTable as Mappable>::Key,
                 _: Direction,
-            ) -> Result<
-                Option<(
-                    Cow<<NodesTable as Mappable>::OwnedKey>,
-                    Cow<<NodesTable as Mappable>::OwnedValue>,
-                )>,
-                Self::Error,
-            > {
-                Ok(None)
+                _: usize,
+            ) -> Result<NextMappableEntry<NodesTable>, Self::Error> {
+                Ok(NextEntry {
+                    entry: None,
+                    iterations: 0,
+                })
             }
 
             fn contains_key(&self, _: &Bytes32) -> Result<bool, Self::Error> {
@@ -165,13 +167,8 @@ impl MerkleTree {
                 &self,
                 _: &<NodesTable as Mappable>::Key,
                 _: Direction,
-            ) -> Result<
-                Option<(
-                    Cow<<NodesTable as Mappable>::OwnedKey>,
-                    Cow<<NodesTable as Mappable>::OwnedValue>,
-                )>,
-                Self::Error,
-            > {
+                _: usize,
+            ) -> Result<NextMappableEntry<NodesTable>, Self::Error> {
                 unimplemented!("Read operation is not supported")
             }
 

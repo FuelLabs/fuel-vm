@@ -78,7 +78,7 @@ impl Direction {
         &self,
         start_key: &T,
         map: &'a BTreeMap<K, V>,
-    ) -> Option<(Cow<'a, K>, Cow<'a, V>)>
+    ) -> NextEntry<'a, K, V>
     where
         T: Ord + ?Sized,
         K: Borrow<T> + Ord + Clone,
@@ -93,9 +93,33 @@ impl Direction {
 
         let entry = entry.map(|(key, value)| (Cow::Borrowed(key), Cow::Borrowed(value)));
 
-        entry
+        NextEntry {
+            entry,
+            iterations: 1,
+        }
     }
 }
+
+/// The next entry in the storage with the number of iterations it took to find it.
+#[derive(Debug, Clone)]
+pub struct NextEntry<'a, Key, Value>
+where
+    Key: Clone,
+    Value: Clone,
+{
+    #[allow(clippy::type_complexity)]
+    /// The entry found in the storage.
+    pub entry: Option<(Cow<'a, Key>, Cow<'a, Value>)>,
+    /// The number of iterations it took to find the entry.
+    pub iterations: usize,
+}
+
+/// The next mappable entry in the storage.
+#[allow(type_alias_bounds)]
+pub type NextMappableEntry<'a, Type>
+where
+    Type: Mappable,
+= NextEntry<'a, Type::OwnedKey, Type::OwnedValue>;
 
 /// Base read storage trait for Fuel infrastructure.
 ///
@@ -107,12 +131,14 @@ pub trait StorageInspect<Type: Mappable> {
     fn get(&self, key: &Type::Key) -> Result<Option<Cow<Type::OwnedValue>>, Self::Error>;
 
     /// Retrieves the next key and value after `start_key` in a `direction`.
-    #[allow(clippy::type_complexity)]
+    ///
+    /// If it requires more iterations than `max_iterations`, it will return an error.
     fn get_next(
         &self,
         start_key: &Type::Key,
         direction: Direction,
-    ) -> Result<Option<(Cow<Type::OwnedKey>, Cow<Type::OwnedValue>)>, Self::Error>;
+        max_iterations: usize,
+    ) -> Result<NextEntry<Type::OwnedKey, Type::OwnedValue>, Self::Error>;
 
     /// Return `true` if there is a `Key` mapping to a value in the storage.
     fn contains_key(&self, key: &Type::Key) -> Result<bool, Self::Error>;
@@ -355,6 +381,17 @@ pub trait StorageAsMut {
 impl<T> StorageAsMut for T {}
 
 #[cfg(test)]
+impl<'a, Key, Value> NextEntry<'a, Key, Value>
+where
+    Key: Clone,
+    Value: Clone,
+{
+    pub(crate) fn into_entry(self) -> Option<(Cow<'a, Key>, Cow<'a, Value>)> {
+        self.entry
+    }
+}
+
+#[cfg(test)]
 #[allow(non_snake_case)]
 mod tests {
 
@@ -366,22 +403,22 @@ mod tests {
         let direction = Direction::Next;
 
         assert_eq!(
-            direction.next_from_map(&0, &map),
+            direction.next_from_map(&0, &map).into_entry(),
             Some((Cow::Borrowed(&1), Cow::Borrowed(&10)))
         );
         assert_eq!(
-            direction.next_from_map(&1, &map),
+            direction.next_from_map(&1, &map).into_entry(),
             Some((Cow::Borrowed(&2), Cow::Borrowed(&20)))
         );
         assert_eq!(
-            direction.next_from_map(&2, &map),
+            direction.next_from_map(&2, &map).into_entry(),
             Some((Cow::Borrowed(&4), Cow::Borrowed(&40)))
         );
         assert_eq!(
-            direction.next_from_map(&3, &map),
+            direction.next_from_map(&3, &map).into_entry(),
             Some((Cow::Borrowed(&4), Cow::Borrowed(&40)))
         );
-        assert_eq!(direction.next_from_map(&4, &map), None);
+        assert_eq!(direction.next_from_map(&4, &map).into_entry(), None);
     }
 
     #[test]
@@ -391,25 +428,25 @@ mod tests {
         let map: BTreeMap<u32, u32> = BTreeMap::from([(1, 10), (2, 20), (4, 40)]);
         let direction = Direction::Previous;
 
-        assert_eq!(direction.next_from_map(&1, &map), None);
+        assert_eq!(direction.next_from_map(&1, &map).into_entry(), None);
         assert_eq!(
-            direction.next_from_map(&2, &map),
+            direction.next_from_map(&2, &map).into_entry(),
             Some((Cow::Borrowed(&1), Cow::Borrowed(&10)))
         );
         assert_eq!(
-            direction.next_from_map(&3, &map),
+            direction.next_from_map(&3, &map).into_entry(),
             Some((Cow::Borrowed(&2), Cow::Borrowed(&20)))
         );
         assert_eq!(
-            direction.next_from_map(&4, &map),
+            direction.next_from_map(&4, &map).into_entry(),
             Some((Cow::Borrowed(&2), Cow::Borrowed(&20)))
         );
         assert_eq!(
-            direction.next_from_map(&5, &map),
+            direction.next_from_map(&5, &map).into_entry(),
             Some((Cow::Borrowed(&4), Cow::Borrowed(&40)))
         );
         assert_eq!(
-            direction.next_from_map(&6, &map),
+            direction.next_from_map(&6, &map).into_entry(),
             Some((Cow::Borrowed(&4), Cow::Borrowed(&40)))
         );
     }

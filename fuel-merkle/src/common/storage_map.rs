@@ -11,7 +11,10 @@ use alloc::{
     borrow::Cow,
     collections::BTreeMap,
 };
-use fuel_storage::Direction;
+use fuel_storage::{
+    Direction,
+    NextEntry,
+};
 
 #[derive(Debug, Clone)]
 pub struct StorageMap<Type>
@@ -67,7 +70,8 @@ where
         &self,
         start_key: &Type::Key,
         direction: Direction,
-    ) -> Result<Option<(Cow<Type::OwnedKey>, Cow<Type::OwnedValue>)>, Self::Error> {
+        _: usize,
+    ) -> Result<NextEntry<Type::OwnedKey, Type::OwnedValue>, Self::Error> {
         Ok(direction.next_from_map(start_key, &self.map))
     }
 

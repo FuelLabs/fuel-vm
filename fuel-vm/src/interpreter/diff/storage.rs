@@ -1,9 +1,9 @@
-use alloc::borrow::Cow;
 use core::fmt::Debug;
 use hashbrown::HashMap;
 
 use fuel_storage::{
     Direction,
+    NextMappableEntry,
     StorageRead,
     StorageSize,
     StorageWrite,
@@ -349,8 +349,14 @@ where
         &self,
         start_key: &Type::Key,
         direction: Direction,
-    ) -> Result<Option<(Cow<Type::OwnedKey>, Cow<Type::OwnedValue>)>, Self::Error> {
-        <S as StorageInspect<Type>>::get_next(&self.0, start_key, direction)
+        max_iterations: usize,
+    ) -> Result<NextMappableEntry<Type>, Self::Error> {
+        <S as StorageInspect<Type>>::get_next(
+            &self.0,
+            start_key,
+            direction,
+            max_iterations,
+        )
     }
 
     fn contains_key(&self, key: &<Type as Mappable>::Key) -> Result<bool, Self::Error> {

@@ -70,9 +70,9 @@ where
         &self,
         start_key: &Type::Key,
         direction: Direction,
-        _: usize,
+        max_iterations: usize,
     ) -> Result<NextEntry<Type::OwnedKey, Type::OwnedValue>, Self::Error> {
-        Ok(direction.next_from_map(start_key, &self.map))
+        Ok(direction.next_from_map(start_key, &self.map, max_iterations))
     }
 
     fn contains_key(&self, key: &Type::Key) -> Result<bool, Self::Error> {

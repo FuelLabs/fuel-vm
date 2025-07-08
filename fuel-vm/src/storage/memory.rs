@@ -239,9 +239,9 @@ impl StorageInspect<ContractsRawCode> for MemoryStorage {
         &self,
         start_key: &ContractId,
         direction: Direction,
-        _: usize,
+        max_iterations: usize,
     ) -> Result<NextMappableEntry<ContractsRawCode>, Self::Error> {
-        Ok(direction.next_from_map(start_key, &self.memory.contracts))
+        Ok(direction.next_from_map(start_key, &self.memory.contracts, max_iterations))
     }
 
     fn contains_key(&self, key: &ContractId) -> Result<bool, Self::Error> {
@@ -342,9 +342,13 @@ impl StorageInspect<UploadedBytecodes> for MemoryStorage {
         &self,
         start_key: &<UploadedBytecodes as Mappable>::Key,
         direction: Direction,
-        _: usize,
+        max_iterations: usize,
     ) -> Result<NextMappableEntry<UploadedBytecodes>, Self::Error> {
-        Ok(direction.next_from_map(start_key, &self.memory.state_transition_bytecodes))
+        Ok(direction.next_from_map(
+            start_key,
+            &self.memory.state_transition_bytecodes,
+            max_iterations,
+        ))
     }
 
     fn contains_key(
@@ -389,9 +393,9 @@ impl StorageInspect<ContractsAssets> for MemoryStorage {
         &self,
         start_key: &<ContractsAssets as Mappable>::Key,
         direction: Direction,
-        _: usize,
+        max_iterations: usize,
     ) -> Result<NextMappableEntry<ContractsAssets>, Self::Error> {
-        Ok(direction.next_from_map(start_key, &self.memory.balances))
+        Ok(direction.next_from_map(start_key, &self.memory.balances, max_iterations))
     }
 
     fn contains_key(
@@ -434,9 +438,13 @@ impl StorageInspect<ContractsState> for MemoryStorage {
         &self,
         start_key: &<ContractsState as Mappable>::Key,
         direction: Direction,
-        _: usize,
+        max_iterations: usize,
     ) -> Result<NextMappableEntry<ContractsState>, Self::Error> {
-        Ok(direction.next_from_map(start_key, &self.memory.contract_state))
+        Ok(direction.next_from_map(
+            start_key,
+            &self.memory.contract_state,
+            max_iterations,
+        ))
     }
 
     fn contains_key(
@@ -612,9 +620,9 @@ impl StorageInspect<BlobData> for MemoryStorage {
         &self,
         start_key: &<BlobData as Mappable>::Key,
         direction: Direction,
-        _: usize,
+        max_iterations: usize,
     ) -> Result<NextMappableEntry<BlobData>, Self::Error> {
-        Ok(direction.next_from_map(start_key, &self.memory.blobs))
+        Ok(direction.next_from_map(start_key, &self.memory.blobs, max_iterations))
     }
 
     fn contains_key(

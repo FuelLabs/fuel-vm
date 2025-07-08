@@ -100,7 +100,7 @@ impl MerkleTree {
                 _: Direction,
                 _: usize,
             ) -> Result<NextMappableEntry<NodesTable>, Self::Error> {
-                Ok(NextEntry {
+                Ok(NextEntry::Entry {
                     entry: None,
                     iterations: 0,
                 })

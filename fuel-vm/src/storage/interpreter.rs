@@ -1,6 +1,9 @@
 //! Trait definitions for storage backend
 
 use fuel_storage::{
+    Direction,
+    NextEntry,
+    NextMappableEntry,
     StorageAsRef,
     StorageInspect,
     StorageMutate,
@@ -21,6 +24,7 @@ use fuel_types::{
     Word,
 };
 
+use super::blob_data::BlobData;
 use crate::{
     prelude::{
         InterpreterError,
@@ -43,8 +47,6 @@ use core::ops::{
     Deref,
     DerefMut,
 };
-
-use super::blob_data::BlobData;
 
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
@@ -186,6 +188,40 @@ pub trait InterpreterStorage:
         key: &Bytes32,
     ) -> Result<Option<Cow<'_, ContractsStateData>>, Self::DataError> {
         StorageInspect::<ContractsState>::get(self, &(id, key).into())
+    }
+
+    /// Fetch the next key-value from the contract storage.
+    fn contract_next_state(
+        &self,
+        id: &ContractId,
+        start_key: &Bytes32,
+        direction: Direction,
+        max_iterations: usize,
+    ) -> Result<NextMappableEntry<ContractsState>, Self::DataError> {
+        let entry = StorageInspect::<ContractsState>::get_next(
+            self,
+            &(id, start_key).into(),
+            direction,
+            max_iterations,
+        )?;
+
+        let entry = match entry {
+            NextEntry::Entry { entry, iterations } => {
+                let entry = entry.and_then(|(key, value)| {
+                    // We don't want to return entries for other contracts
+                    if key.contract_id() != id {
+                        None
+                    } else {
+                        Some((key, value))
+                    }
+                });
+
+                NextEntry::Entry { entry, iterations }
+            }
+            NextEntry::ReachedMaxIterations => NextEntry::ReachedMaxIterations,
+        };
+
+        Ok(entry)
     }
 
     /// Insert a key-value mapping in a contract storage.

@@ -360,6 +360,10 @@ impl_instructions! {
     0xbb BLDD bldd [dst_ptr: RegId blob_id_ptr: RegId offset: RegId len: RegId]
     "Given some curve, performs an operation on points"
     0xbc ECOP ecop [dst: RegId curve_id: RegId operation_type: RegId points_ptr: RegId]
+    "Get next storage entry after `start_key`. The result is stores as a key value into \
+    the `dst_key_value`. If the next value exists, `status` is 1, otherwise it is 0.\
+    `direction` is 0 for forwards, 1 for backwards iteration."
+    0xbd GNSE gnse [status: RegId start_key: RegId dst_key_value: RegId direction: Imm06]
     "Given some curve, performs a pairing on groups of points"
     0xbe EPAR epar [success: RegId curve_id: RegId number_elements: RegId points_ptr: RegId]
 }
@@ -1011,7 +1015,7 @@ fn check_predicate_allowed() {
             let should_allow = match repr {
                 BAL | BHEI | BHSH | BURN | CALL | CB | CCP | CROO | CSIZ | LOG | LOGD
                 | MINT | RETD | RVRT | SMO | SCWQ | SRW | SRWQ | SWW | SWWQ | TIME
-                | TR | TRO | ECAL => false,
+                | TR | TRO | ECAL | GNSE => false,
                 _ => true,
             };
             assert_eq!(should_allow, repr.is_predicate_allowed());

@@ -52,51 +52,53 @@ impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
 
     /// Do a gas charge with the given amount, panicing when running out of gas.
     pub fn gas_charge(&mut self, gas: Word) -> SimpleResult<()> {
-        let SystemRegisters { ggas, cgas, .. } = split_registers(&mut self.registers).0;
+        let SystemRegisters {
+            mut ggas, mut cgas, ..
+        } = split_registers(&mut self.registers).0;
 
-        gas_charge(cgas, ggas, gas)
+        gas_charge(&mut cgas, &mut ggas, gas)
     }
 }
 
 pub(crate) fn dependent_gas_charge_without_base(
     mut cgas: RegMut<CGAS>,
-    ggas: RegMut<GGAS>,
+    mut ggas: RegMut<GGAS>,
     gas_cost: DependentCost,
     arg: Word,
 ) -> SimpleResult<()> {
     let cost = gas_cost.resolve_without_base(arg);
-    gas_charge(cgas.as_mut(), ggas, cost)
+    gas_charge(&mut cgas.as_mut(), &mut ggas, cost)
 }
 
 pub(crate) fn dependent_gas_charge(
     mut cgas: RegMut<CGAS>,
-    ggas: RegMut<GGAS>,
+    mut ggas: RegMut<GGAS>,
     gas_cost: DependentCost,
     arg: Word,
 ) -> SimpleResult<()> {
     let cost = gas_cost.resolve(arg);
-    gas_charge(cgas.as_mut(), ggas, cost)
+    gas_charge(&mut cgas.as_mut(), &mut ggas, cost)
 }
 
 pub(crate) fn gas_charge(
-    mut cgas: RegMut<CGAS>,
-    mut ggas: RegMut<GGAS>,
+    cgas: &mut RegMut<CGAS>,
+    ggas: &mut RegMut<GGAS>,
     gas: Word,
 ) -> SimpleResult<()> {
-    if *cgas > *ggas {
+    if **cgas > **ggas {
         Err(Bug::new(BugVariant::GlobalGasLessThanContext).into())
-    } else if gas > *cgas {
-        *ggas = (*ggas)
-            .checked_sub(*cgas)
+    } else if gas > **cgas {
+        **ggas = (*ggas)
+            .checked_sub(**cgas)
             .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
-        *cgas = 0;
+        **cgas = 0;
 
         Err(PanicReason::OutOfGas.into())
     } else {
-        *cgas = (*cgas)
+        **cgas = (**cgas)
             .checked_sub(gas)
             .ok_or_else(|| Bug::new(BugVariant::ContextGasUnderflow))?;
-        *ggas = (*ggas)
+        **ggas = (**ggas)
             .checked_sub(gas)
             .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
 

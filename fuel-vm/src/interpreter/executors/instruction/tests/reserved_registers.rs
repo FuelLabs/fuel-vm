@@ -102,6 +102,10 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
             {
                 return TestResult::discard();
             }
+            // `GNSE` opcode only supports 0 or 1 as a direction.
+            Err(Some(PanicReason::UnknownDirection)) if opcode == Opcode::GNSE => {
+                return TestResult::discard();
+            }
             _ => {
                 return TestResult::error(format!(
                     "expected ReservedRegisterNotWritable error {:?}",
@@ -258,6 +262,7 @@ fn writes_to_ra(opcode: Opcode) -> bool {
         Opcode::BSIZ => true,
         Opcode::BLDD => false,
         Opcode::ECOP => false,
+        Opcode::GNSE => true,
         Opcode::EPAR => true,
     }
 }
@@ -383,6 +388,7 @@ fn writes_to_rb(opcode: Opcode) -> bool {
         Opcode::BSIZ => false,
         Opcode::BLDD => false,
         Opcode::ECOP => false,
+        Opcode::GNSE => false,
         Opcode::EPAR => false,
     }
 }

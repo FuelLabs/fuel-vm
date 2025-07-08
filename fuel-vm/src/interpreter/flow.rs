@@ -528,8 +528,8 @@ impl<S, V> PrepareCallCtx<'_, S, V> {
         if created_new_entry {
             // If a new entry was created, we must charge gas for it
             gas_charge(
-                self.registers.system_registers.cgas.as_mut(),
-                self.registers.system_registers.ggas.as_mut(),
+                &mut self.registers.system_registers.cgas.as_mut(),
+                &mut self.registers.system_registers.ggas.as_mut(),
                 ((Bytes32::LEN + WORD_SIZE) as u64)
                     .saturating_mul(self.new_storage_gas_per_byte),
             )?;

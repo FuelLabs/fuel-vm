@@ -27,9 +27,11 @@ fn test_gas_charge(input: GasChargeInput) -> SimpleResult<GasChargeOutput> {
     } = input;
     let mut cgas = RegMut::new(&mut cgas);
     let mut ggas = RegMut::new(&mut ggas);
-    gas_charge(cgas.as_mut(), ggas.as_mut(), dependent_factor).map(|_| GasChargeOutput {
-        cgas: *cgas,
-        ggas: *ggas,
+    gas_charge(&mut cgas.as_mut(), &mut ggas.as_mut(), dependent_factor).map(|_| {
+        GasChargeOutput {
+            cgas: *cgas,
+            ggas: *ggas,
+        }
     })
 }
 
@@ -40,7 +42,7 @@ fn test_gas_charges_ggas_on_out_of_gas() {
     let gas = 20;
     let mut cgas = RegMut::new(&mut cgas);
     let mut ggas = RegMut::new(&mut ggas);
-    let _ = gas_charge(cgas.as_mut(), ggas.as_mut(), gas)
+    let _ = gas_charge(&mut cgas.as_mut(), &mut ggas.as_mut(), gas)
         .expect_err("Gas charge should fail");
     assert_eq!(*ggas, 5);
     assert_eq!(*cgas, 0);

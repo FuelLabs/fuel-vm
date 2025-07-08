@@ -32,6 +32,7 @@ use fuel_asm::{
     },
     wideint,
 };
+use fuel_storage::Direction;
 use fuel_types::Word;
 
 impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for ADD
@@ -2653,6 +2654,36 @@ where
             interpreter.registers[b],
             interpreter.registers[c],
             interpreter.registers[d],
+        )?;
+        Ok(ExecuteState::Proceed)
+    }
+}
+
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::GNSE
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute(
+        self,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+    ) -> IoResult<ExecuteState, S::DataError> {
+        let (status_r, start_key_r, dst_key_value_r, direction) = self.unpack();
+
+        let direction = match direction.into() {
+            0u8 => Direction::Next,
+            1u8 => Direction::Previous,
+            _ => return Err(PanicReason::UnknownDirection.into()),
+        };
+
+        interpreter.get_next_entry(
+            status_r,
+            interpreter.registers[start_key_r],
+            interpreter.registers[dst_key_value_r],
+            direction,
         )?;
         Ok(ExecuteState::Proceed)
     }

@@ -55,11 +55,16 @@ use fuel_asm::{
     PanicReason,
     RegId,
 };
-use fuel_storage::StorageSize;
+use fuel_storage::{
+    Direction,
+    NextEntry,
+    StorageSize,
+};
 use fuel_tx::{
     BlobId,
     ContractIdExt,
     DependentCost,
+    GasCosts,
     Receipt,
     consts::BALANCE_ENTRY_SIZE,
 };
@@ -352,6 +357,50 @@ where
             result,
             got_result,
             c,
+        )
+    }
+
+    pub(crate) fn get_next_entry(
+        &mut self,
+        status_r: RegId,
+        start_key_ptr: Word,
+        dst_key_value_ptr: Word,
+        direction: Direction,
+    ) -> IoResult<(), S::DataError> {
+        let owner = self.ownership_registers();
+        let &mut Self {
+            ref mut storage,
+            ref mut memory,
+            ref context,
+            ref mut registers,
+            ref interpreter_params,
+            ..
+        } = self;
+        let (
+            SystemRegisters {
+                fp, pc, cgas, ggas, ..
+            },
+            mut w,
+        ) = split_registers(registers);
+        let status = &mut w[WriteRegKey::try_from(status_r)?];
+        let gas_costs = &interpreter_params.gas_costs;
+
+        get_next_entry(
+            NextStateReadCtx {
+                storage,
+                owner,
+                memory: memory.as_mut(),
+                context,
+                gas_costs,
+                cgas,
+                ggas,
+                fp: fp.as_ref(),
+                pc,
+            },
+            status,
+            start_key_ptr,
+            dst_key_value_ptr,
+            direction,
         )
     }
 
@@ -840,7 +889,7 @@ impl<S> MintCtx<'_, S>
 where
     S: ContractsAssetsStorage,
 {
-    pub(crate) fn mint(self, a: Word, b: Word) -> Result<(), RuntimeError<S::Error>> {
+    pub(crate) fn mint(mut self, a: Word, b: Word) -> Result<(), RuntimeError<S::Error>> {
         let contract_id = internal_contract(self.context, self.fp, self.memory)?;
         let sub_id = SubAssetId::new(self.memory.read_bytes(b)?);
         let asset_id = contract_id.asset_id(&sub_id);
@@ -856,8 +905,8 @@ where
         if old_value.is_none() {
             // New data was written, charge gas for it
             gas_charge(
-                self.cgas,
-                self.ggas,
+                &mut self.cgas,
+                &mut self.ggas,
                 (BALANCE_ENTRY_SIZE as u64).saturating_mul(self.new_storage_gas_per_byte),
             )?;
         }
@@ -1077,6 +1126,18 @@ pub(crate) struct StateReadWordCtx<'vm, S> {
     pub pc: RegMut<'vm, PC>,
 }
 
+pub(crate) struct NextStateReadCtx<'vm, S> {
+    pub storage: &'vm mut S,
+    pub owner: OwnershipRegisters,
+    pub memory: &'vm mut MemoryInstance,
+    pub context: &'vm Context,
+    pub gas_costs: &'vm GasCosts,
+    pub cgas: RegMut<'vm, CGAS>,
+    pub ggas: RegMut<'vm, GGAS>,
+    pub fp: Reg<'vm, FP>,
+    pub pc: RegMut<'vm, PC>,
+}
+
 pub(crate) fn state_read_word<S: InterpreterStorage>(
     StateReadWordCtx {
         storage,
@@ -1110,6 +1171,91 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
     Ok(inc_pc(pc)?)
 }
 
+pub(crate) fn get_next_entry<S: InterpreterStorage>(
+    NextStateReadCtx {
+        storage,
+        owner,
+        memory,
+        context,
+        gas_costs,
+        mut cgas,
+        mut ggas,
+        fp,
+        pc,
+    }: NextStateReadCtx<S>,
+    status: &mut Word,
+    start_key_ptr: Word,
+    dst_key_value_ptr: Word,
+    direction: Direction,
+) -> IoResult<(), S::DataError> {
+    // TODO: Use its own cost in the future
+    let gas_per_iteration = gas_costs.srw();
+
+    let max_iterations = if gas_per_iteration != 0 {
+        cgas.checked_div(gas_per_iteration)
+            .expect("Gas cost is not zero; qed")
+    } else {
+        *cgas
+    };
+    let max_iterations = u32::try_from(max_iterations).unwrap_or(u32::MAX);
+
+    // Charge for one iteration because in the best case we will at least do one
+    // iteration.
+    gas_charge(&mut cgas, &mut ggas, gas_per_iteration)?;
+
+    let start_key = if start_key_ptr == 0 {
+        match direction {
+            Direction::Next => Bytes32::zeroed(),
+            Direction::Previous => Bytes32::new([255; 32]),
+        }
+    } else {
+        Bytes32::new(memory.read_bytes(start_key_ptr)?)
+    };
+
+    let contract = internal_contract(context, fp, memory)?;
+
+    let entry = storage
+        .contract_next_state(&contract, &start_key, direction, max_iterations as usize)
+        .map_err(RuntimeError::Storage)?;
+
+    match entry {
+        NextEntry::Entry { entry, iterations } => {
+            let gas_for_iterations = gas_per_iteration.saturating_mul(iterations as u64);
+            // We charged for the first iteration already.
+            gas_charge(
+                &mut cgas,
+                &mut ggas,
+                gas_for_iterations.saturating_sub(gas_per_iteration),
+            )?;
+            *status = entry.is_some() as Word;
+
+            if let Some((combined_key, value)) = entry {
+                let entry_key = combined_key.state_key();
+                let value = &value.0;
+
+                let size = entry_key.len().saturating_add(value.len());
+
+                let write_buffer = memory.write(owner, dst_key_value_ptr, size)?;
+                write_buffer[..Bytes32::LEN].copy_from_slice(entry_key.as_ref());
+                write_buffer[Bytes32::LEN..].copy_from_slice(value);
+            }
+        }
+        NextEntry::ReachedMaxIterations => {
+            let gas_for_maximum_iterations =
+                gas_per_iteration.saturating_mul(max_iterations as u64);
+            // We charged for the first iteration already.
+            gas_charge(
+                &mut cgas,
+                &mut ggas,
+                gas_for_maximum_iterations.saturating_sub(gas_per_iteration),
+            )?;
+            *status = 0;
+        }
+    }
+
+    Ok(inc_pc(pc)?)
+}
+
 pub(crate) struct StateWriteWordCtx<'vm, S> {
     pub storage: &'vm mut S,
     pub memory: &'vm MemoryInstance,
@@ -1127,8 +1273,8 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
         memory,
         context,
         new_storage_gas_per_byte,
-        cgas,
-        ggas,
+        mut cgas,
+        mut ggas,
         fp,
         pc,
     }: StateWriteWordCtx<S>,
@@ -1151,8 +1297,8 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
     if prev.is_none() {
         // New data was written, charge gas for it
         gas_charge(
-            cgas,
-            ggas,
+            &mut cgas,
+            &mut ggas,
             (Bytes32::LEN as u64)
                 .saturating_mul(2)
                 .saturating_mul(new_storage_gas_per_byte),
@@ -1320,8 +1466,8 @@ fn state_write_qword<'vm, S: InterpreterStorage>(
     storage: &mut S,
     memory: &MemoryInstance,
     new_storage_gas_per_byte: Word,
-    cgas: RegMut<'vm, CGAS>,
-    ggas: RegMut<'vm, GGAS>,
+    mut cgas: RegMut<'vm, CGAS>,
+    mut ggas: RegMut<'vm, GGAS>,
     pc: RegMut<PC>,
     result_register: &mut Word,
     input: StateWriteQWord,
@@ -1344,8 +1490,8 @@ fn state_write_qword<'vm, S: InterpreterStorage>(
     if unset_count > 0 {
         // New data was written, charge gas for it
         gas_charge(
-            cgas,
-            ggas,
+            &mut cgas,
+            &mut ggas,
             (unset_count as u64)
                 .saturating_mul(2)
                 .saturating_mul(Bytes32::LEN as u64)

@@ -255,6 +255,7 @@ where
             Instruction::BLDD(op) => op.execute(interpreter),
             Instruction::ECOP(op) => op.execute(interpreter),
             Instruction::EPAR(op) => op.execute(interpreter),
+            Instruction::GNSE(op) => op.execute(interpreter),
         }
     }
 }

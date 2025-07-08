@@ -234,7 +234,7 @@ impl<S, Tx, V> TransferCtx<'_, S, Tx, V> {
     /// $rB -> transfer_amount
     /// $rC -> asset_id_offset
     pub(crate) fn transfer(
-        self,
+        mut self,
         recipient_contract_id_offset: Word,
         transfer_amount: Word,
         asset_id_offset: Word,
@@ -282,8 +282,8 @@ impl<S, Tx, V> TransferCtx<'_, S, Tx, V> {
         if created_new_entry {
             // If a new entry was created, we must charge gas for it
             gas_charge(
-                self.cgas,
-                self.ggas,
+                &mut self.cgas,
+                &mut self.ggas,
                 ((Bytes32::LEN + WORD_SIZE) as u64)
                     .saturating_mul(self.new_storage_gas_per_byte),
             )?;

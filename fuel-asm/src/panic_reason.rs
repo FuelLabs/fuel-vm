@@ -168,6 +168,8 @@ enum_from! {
         InvalidUpgradePurposeType = 0x3f,
         /// Cannot get gas price in predicate
         CanNotGetGasPriceInPredicate = 0x40,
+        /// Unknown direction for the instruction.
+        UnknownDirection = 0x41,
     }
 }
 

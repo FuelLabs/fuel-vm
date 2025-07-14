@@ -427,6 +427,16 @@ pub mod predicates {
         }
 
         let result = vm.verify_predicate();
+        let tx_id = vm
+            .tx
+            .cached_id()
+            .expect("Transaction ID should be cached at this point");
+
+        tracing::info!(
+            "Predicate statistic for input {index} of transaction {tx_id}: {:?}",
+            vm.statistic
+        );
+
         let is_successful = matches!(result, Ok(ProgramState::Return(0x01)));
 
         let Some(gas_used) = available_gas.checked_sub(vm.remaining_gas()) else {
@@ -974,7 +984,19 @@ where
             ProgramState::Return(1)
         } else {
             // This must be a `Script`.
-            self.run_program()?
+            let result = self.run_program()?;
+
+            let tx_id = self
+                .tx
+                .cached_id()
+                .expect("Transaction ID should be cached at this point");
+
+            tracing::info!(
+                "Script execution of transaction {tx_id}: {:?}",
+                self.statistic
+            );
+
+            result
         };
 
         Ok(state)

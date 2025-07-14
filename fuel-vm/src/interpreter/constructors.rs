@@ -81,6 +81,7 @@ where
             panic_context: PanicContext::None,
             ecal_state,
             verifier: Default::default(),
+            statistic: Default::default(),
         }
     }
 }

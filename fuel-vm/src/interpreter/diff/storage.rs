@@ -113,6 +113,7 @@ where
             interpreter_params: self.interpreter_params,
             ecal_state: self.ecal_state,
             verifier: self.verifier,
+            statistic: Default::default(),
         }
     }
 
@@ -203,6 +204,7 @@ where
             interpreter_params: self.interpreter_params,
             ecal_state: self.ecal_state,
             verifier: self.verifier,
+            statistic: Default::default(),
         }
     }
 

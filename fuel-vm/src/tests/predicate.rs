@@ -18,6 +18,7 @@ use tokio_rayon::AsyncRayonHandle;
 
 use crate::{
     error::PredicateVerificationFailed,
+    interpreter::NotSupportedEcal,
     pool::DummyPool,
     prelude::*,
 };
@@ -132,11 +133,12 @@ where
         .expect("Should successfully convert into Checked");
 
     let parallel_execution = {
-        check_predicates_async::<_, TokioWithRayon>(
+        check_predicates_async::<_, _, TokioWithRayon>(
             &checked,
             &check_params,
             &DummyPool,
             &EmptyStorage,
+            NotSupportedEcal::default(),
         )
         .await
         .map(|checked| checked.gas_used())
@@ -147,6 +149,7 @@ where
         &check_params,
         MemoryInstance::new(),
         &EmptyStorage,
+        NotSupportedEcal::default(),
     )
     .map(|checked| checked.gas_used());
 
@@ -390,11 +393,12 @@ async fn execute_gas_metered_predicates(
             .into_checked_basic(Default::default(), &ConsensusParameters::standard())
             .expect("Should successfully create checked tranaction with predicate");
 
-        check_predicates_async::<_, TokioWithRayon>(
+        check_predicates_async::<_, _, TokioWithRayon>(
             &tx,
             &params,
             &DummyPool,
             &EmptyStorage,
+            NotSupportedEcal::default(),
         )
         .await
         .map(|r| r.gas_used())
@@ -410,10 +414,15 @@ async fn execute_gas_metered_predicates(
         .into_checked_basic(Default::default(), &ConsensusParameters::standard())
         .expect("Should successfully create checked tranaction with predicate");
 
-    let seq_gas_used =
-        check_predicates(&tx, &params, MemoryInstance::new(), &EmptyStorage)
-            .map(|r| r.gas_used())
-            .map_err(|_| ())?;
+    let seq_gas_used = check_predicates(
+        &tx,
+        &params,
+        MemoryInstance::new(),
+        &EmptyStorage,
+        NotSupportedEcal::default(),
+    )
+    .map(|r| r.gas_used())
+    .map_err(|_| ())?;
 
     assert_eq!(seq_gas_used, parallel_gas_used);
 
@@ -502,14 +511,24 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
         let _ = builder
             .clone()
             .finalize_checked_basic(Default::default())
-            .check_predicates_async::<TokioWithRayon>(&params, &DummyPool, &EmptyStorage)
+            .check_predicates_async::<_, TokioWithRayon>(
+                &params,
+                &DummyPool,
+                &EmptyStorage,
+                NotSupportedEcal::default(),
+            )
             .await
             .expect("Predicate check failed even if we don't have any predicates");
     }
 
     let tx_without_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params, MemoryInstance::new(), &EmptyStorage)
+        .check_predicates(
+            &params,
+            MemoryInstance::new(),
+            &EmptyStorage,
+            NotSupportedEcal::default(),
+        )
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
@@ -554,7 +573,12 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
     {
         let tx_with_predicate = checked
             .clone()
-            .check_predicates_async::<TokioWithRayon>(&params, &DummyPool, &EmptyStorage)
+            .check_predicates_async::<_, TokioWithRayon>(
+                &params,
+                &DummyPool,
+                &EmptyStorage,
+                NotSupportedEcal::default(),
+            )
             .await
             .expect("Predicate check failed");
 
@@ -572,7 +596,12 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
     }
 
     let tx_with_predicate = checked
-        .check_predicates(&params, MemoryInstance::new(), &EmptyStorage)
+        .check_predicates(
+            &params,
+            MemoryInstance::new(),
+            &EmptyStorage,
+            NotSupportedEcal::default(),
+        )
         .expect("Predicate check failed");
 
     client.transact(tx_with_predicate);
@@ -625,14 +654,24 @@ async fn gas_used_by_predicates_more_than_limit() {
         let _ = builder
             .clone()
             .finalize_checked_basic(Default::default())
-            .check_predicates_async::<TokioWithRayon>(&params, &DummyPool, &EmptyStorage)
+            .check_predicates_async::<_, TokioWithRayon>(
+                &params,
+                &DummyPool,
+                &EmptyStorage,
+                NotSupportedEcal::default(),
+            )
             .await
             .expect("Predicate check failed even if we don't have any predicates");
     }
 
     let tx_without_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params, MemoryInstance::new(), &EmptyStorage)
+        .check_predicates(
+            &params,
+            MemoryInstance::new(),
+            &EmptyStorage,
+            NotSupportedEcal::default(),
+        )
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
@@ -675,7 +714,12 @@ async fn gas_used_by_predicates_more_than_limit() {
         let tx_with_predicate = builder
             .clone()
             .finalize_checked_basic(Default::default())
-            .check_predicates_async::<TokioWithRayon>(&params, &DummyPool, &EmptyStorage)
+            .check_predicates_async::<_, TokioWithRayon>(
+                &params,
+                &DummyPool,
+                &EmptyStorage,
+                NotSupportedEcal::default(),
+            )
             .await;
 
         assert!(matches!(
@@ -686,7 +730,12 @@ async fn gas_used_by_predicates_more_than_limit() {
 
     let tx_with_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params, MemoryInstance::new(), &EmptyStorage);
+        .check_predicates(
+            &params,
+            MemoryInstance::new(),
+            &EmptyStorage,
+            NotSupportedEcal::default(),
+        );
 
     assert!(matches!(
         tx_with_predicate.unwrap_err(),

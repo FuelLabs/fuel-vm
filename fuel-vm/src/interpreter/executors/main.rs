@@ -373,6 +373,7 @@ pub mod predicates {
         finalize_check_predicate(kind, checks, params)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn check_predicate<Tx, Ecal>(
         tx: Tx,
         index: usize,

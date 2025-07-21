@@ -300,7 +300,7 @@ mod tests {
                     &CheckPredicateParams::default(),
                     MemoryInstance::new(),
                     &storage,
-                    NotSupportedEcal::default(),
+                    NotSupportedEcal,
                 );
 
                 assert_eq!(result.map(|_| ()), expected, "failed at input {}", i);

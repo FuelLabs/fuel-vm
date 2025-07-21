@@ -340,7 +340,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
             consensus_params,
             memory,
             storage,
-            NotSupportedEcal::default(),
+            NotSupportedEcal,
         )
     }
 
@@ -482,13 +482,7 @@ pub trait EstimatePredicates: Sized {
         memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
     ) -> Result<(), CheckError> {
-        Self::estimate_predicates_ecal(
-            self,
-            params,
-            memory,
-            storage,
-            NotSupportedEcal::default(),
-        )
+        Self::estimate_predicates_ecal(self, params, memory, storage, NotSupportedEcal)
     }
 
     /// Estimates predicates of the transaction in parallel.
@@ -503,7 +497,7 @@ pub trait EstimatePredicates: Sized {
             params,
             pool,
             storage,
-            NotSupportedEcal::default(),
+            NotSupportedEcal,
         )
         .await
     }
@@ -2139,7 +2133,7 @@ mod tests {
             )
             .unwrap()
             // Sets Checks::Predicates
-            .check_predicates(&check_predicate_params, MemoryInstance::new(), &EmptyStorage, NotSupportedEcal::default())
+            .check_predicates(&check_predicate_params, MemoryInstance::new(), &EmptyStorage, NotSupportedEcal)
             .unwrap();
         assert!(
             checked

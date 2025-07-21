@@ -719,7 +719,7 @@ impl Opcode {
             | MULI | MLDV | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LQW | LHW
             | LW | SB | SQW | SHW | SW | MCPI | MCLI | GM | MOVI | JNZI | JI | JMP
             | JNE | JMPF | JMPB | JNZF | JNZB | JNEF | JNEB | JAL | CFEI | CFSI | CFE
-            | CFS | GTF | LDC | BSIZ | BLDD | ECOP | EPAR => true,
+            | CFS | GTF | LDC | BSIZ | BLDD | ECAL | ECOP | EPAR => true,
             _ => false,
         }
     }

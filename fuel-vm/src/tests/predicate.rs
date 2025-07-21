@@ -138,7 +138,7 @@ where
             &check_params,
             &DummyPool,
             &EmptyStorage,
-            NotSupportedEcal::default(),
+            NotSupportedEcal,
         )
         .await
         .map(|checked| checked.gas_used())
@@ -149,7 +149,7 @@ where
         &check_params,
         MemoryInstance::new(),
         &EmptyStorage,
-        NotSupportedEcal::default(),
+        NotSupportedEcal,
     )
     .map(|checked| checked.gas_used());
 
@@ -398,7 +398,7 @@ async fn execute_gas_metered_predicates(
             &params,
             &DummyPool,
             &EmptyStorage,
-            NotSupportedEcal::default(),
+            NotSupportedEcal,
         )
         .await
         .map(|r| r.gas_used())
@@ -419,7 +419,7 @@ async fn execute_gas_metered_predicates(
         &params,
         MemoryInstance::new(),
         &EmptyStorage,
-        NotSupportedEcal::default(),
+        NotSupportedEcal,
     )
     .map(|r| r.gas_used())
     .map_err(|_| ())?;
@@ -515,7 +515,7 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
                 &params,
                 &DummyPool,
                 &EmptyStorage,
-                NotSupportedEcal::default(),
+                NotSupportedEcal,
             )
             .await
             .expect("Predicate check failed even if we don't have any predicates");
@@ -527,7 +527,7 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
             &params,
             MemoryInstance::new(),
             &EmptyStorage,
-            NotSupportedEcal::default(),
+            NotSupportedEcal,
         )
         .expect("Predicate check failed even if we don't have any predicates");
 
@@ -577,7 +577,7 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
                 &params,
                 &DummyPool,
                 &EmptyStorage,
-                NotSupportedEcal::default(),
+                NotSupportedEcal,
             )
             .await
             .expect("Predicate check failed");
@@ -600,7 +600,7 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
             &params,
             MemoryInstance::new(),
             &EmptyStorage,
-            NotSupportedEcal::default(),
+            NotSupportedEcal,
         )
         .expect("Predicate check failed");
 
@@ -658,7 +658,7 @@ async fn gas_used_by_predicates_more_than_limit() {
                 &params,
                 &DummyPool,
                 &EmptyStorage,
-                NotSupportedEcal::default(),
+                NotSupportedEcal,
             )
             .await
             .expect("Predicate check failed even if we don't have any predicates");
@@ -670,7 +670,7 @@ async fn gas_used_by_predicates_more_than_limit() {
             &params,
             MemoryInstance::new(),
             &EmptyStorage,
-            NotSupportedEcal::default(),
+            NotSupportedEcal,
         )
         .expect("Predicate check failed even if we don't have any predicates");
 
@@ -718,7 +718,7 @@ async fn gas_used_by_predicates_more_than_limit() {
                 &params,
                 &DummyPool,
                 &EmptyStorage,
-                NotSupportedEcal::default(),
+                NotSupportedEcal,
             )
             .await;
 
@@ -734,7 +734,7 @@ async fn gas_used_by_predicates_more_than_limit() {
             &params,
             MemoryInstance::new(),
             &EmptyStorage,
-            NotSupportedEcal::default(),
+            NotSupportedEcal,
         );
 
     assert!(matches!(

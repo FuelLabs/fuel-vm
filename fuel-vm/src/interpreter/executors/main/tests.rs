@@ -69,7 +69,7 @@ fn estimate_gas_gives_proper_gas_used() {
             &params.into(),
             MemoryInstance::new(),
             &EmptyStorage,
-            NotSupportedEcal::default(),
+            NotSupportedEcal,
         )
         .expect("Predicate check failed even if we don't have any predicates");
 
@@ -117,7 +117,7 @@ fn estimate_gas_gives_proper_gas_used() {
         &params.into(),
         MemoryInstance::new(),
         &EmptyStorage,
-        NotSupportedEcal::default(),
+        NotSupportedEcal,
     )
     .expect("Should successfully estimate predicates");
 

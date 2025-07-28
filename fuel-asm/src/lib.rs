@@ -1011,7 +1011,7 @@ fn check_predicate_allowed() {
             let should_allow = match repr {
                 BAL | BHEI | BHSH | BURN | CALL | CB | CCP | CROO | CSIZ | LOG | LOGD
                 | MINT | RETD | RVRT | SMO | SCWQ | SRW | SRWQ | SWW | SWWQ | TIME
-                | TR | TRO | ECAL => false,
+                | TR | TRO => false,
                 _ => true,
             };
             assert_eq!(should_allow, repr.is_predicate_allowed());

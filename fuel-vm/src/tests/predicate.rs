@@ -18,9 +18,13 @@ use tokio_rayon::AsyncRayonHandle;
 
 use crate::{
     error::PredicateVerificationFailed,
-    interpreter::NotSupportedEcal,
+    interpreter::{
+        EcalHandler,
+        NotSupportedEcal,
+    },
     pool::DummyPool,
     prelude::*,
+    tests::external::NoopEcal,
 };
 
 use crate::{
@@ -66,13 +70,15 @@ impl ParallelExecutor for TokioWithRayon {
     }
 }
 
-async fn execute_predicate<P>(
+async fn execute_predicate<P, Ecal>(
     predicate: P,
     predicate_data: Vec<u8>,
     dummy_inputs: usize,
+    ecal_state: Ecal,
 ) -> bool
 where
     P: IntoIterator<Item = Instruction>,
+    Ecal: EcalHandler + Send + 'static,
 {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
@@ -125,7 +131,12 @@ where
 
     let mut transaction = builder.finalize();
     transaction
-        .estimate_predicates(&check_params, MemoryInstance::new(), &EmptyStorage)
+        .estimate_predicates_ecal(
+            &check_params,
+            MemoryInstance::new(),
+            &EmptyStorage,
+            ecal_state.clone(),
+        )
         .expect("Should estimate predicate");
 
     let checked = transaction
@@ -133,12 +144,12 @@ where
         .expect("Should successfully convert into Checked");
 
     let parallel_execution = {
-        check_predicates_async::<_, _, TokioWithRayon>(
+        check_predicates_async::<_, Ecal, TokioWithRayon>(
             &checked,
             &check_params,
             &DummyPool,
             &EmptyStorage,
-            NotSupportedEcal,
+            ecal_state.clone(),
         )
         .await
         .map(|checked| checked.gas_used())
@@ -149,7 +160,7 @@ where
         &check_params,
         MemoryInstance::new(),
         &EmptyStorage,
-        NotSupportedEcal,
+        ecal_state.clone(),
     )
     .map(|checked| checked.gas_used());
 
@@ -270,7 +281,7 @@ async fn predicate_minimal() {
     let predicate = iter::once(op::ret(0x01));
     let data = vec![];
 
-    assert!(execute_predicate(predicate, data, 7).await);
+    assert!(execute_predicate(predicate, data, 7, NotSupportedEcal).await);
 }
 
 #[tokio::test]
@@ -295,8 +306,40 @@ async fn predicate() {
         op::ret(0x10),
     ];
 
-    assert!(execute_predicate(predicate.iter().copied(), expected_data, 0).await);
-    assert!(!execute_predicate(predicate.iter().copied(), wrong_data, 0).await);
+    assert!(
+        execute_predicate(
+            predicate.iter().copied(),
+            expected_data,
+            0,
+            NotSupportedEcal
+        )
+        .await
+    );
+    assert!(
+        !execute_predicate(predicate.iter().copied(), wrong_data, 0, NotSupportedEcal)
+            .await
+    );
+}
+
+#[tokio::test]
+async fn predicate_allows_ecal() {
+    let accept_data = 1 as Word;
+    let accept_data = accept_data.to_be_bytes().to_vec();
+
+    let decline_data = 0 as Word;
+    let decline_data = decline_data.to_be_bytes().to_vec();
+
+    let predicate = [
+        op::ecal(RegId::ZERO, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::gtf_args(0x11, RegId::ZERO, GTFArgs::InputCoinPredicateData),
+        op::lw(0x10, 0x11, 0),
+        op::ret(0x10),
+    ];
+
+    assert!(execute_predicate(predicate.iter().copied(), accept_data, 0, NoopEcal).await);
+    assert!(
+        !execute_predicate(predicate.iter().copied(), decline_data, 0, NoopEcal).await
+    );
 }
 
 #[tokio::test]
@@ -312,7 +355,9 @@ async fn get_verifying_predicate() {
             op::ret(0x10),
         ];
 
-        assert!(execute_predicate(predicate, vec![], idx as usize).await);
+        assert!(
+            execute_predicate(predicate, vec![], idx as usize, NotSupportedEcal).await
+        );
     }
 }
 

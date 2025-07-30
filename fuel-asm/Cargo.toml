@@ -11,6 +11,21 @@ license = "Apache-2.0"
 repository = { workspace = true }
 description = "Atomic types of the FuelVM."
 
+# docs.rs-specific configuration
+# preview with `RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --all-features --open`
+[package.metadata.docs.rs]
+# document all features
+all-features = true
+# defines the configuration attribute `docsrs`
+rustdoc-args = ["--cfg", "docsrs"]
+
+[features]
+default = ["std"]
+typescript = ["wasm-bindgen"]
+std = ["alloc", "serde?/default", "fuel-types/std"]
+alloc = []
+serde = ["dep:serde"]
+
 [dependencies]
 bitflags = { workspace = true }
 fuel-types = { workspace = true, default-features = false }
@@ -22,18 +37,3 @@ wasm-bindgen = { version = "0.2.97", optional = true }
 bincode = { workspace = true }
 fuel-asm = { path = ".", features = ["serde"] }
 rstest = "0.16"
-
-[features]
-default = ["std"]
-typescript = ["wasm-bindgen"]
-std = ["alloc", "serde?/default", "fuel-types/std"]
-alloc = []
-serde = ["dep:serde"]
-
-# docs.rs-specific configuration
-# preview with `RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --all-features --open`
-[package.metadata.docs.rs]
-# document all features
-all-features = true
-# defines the configuration attribute `docsrs`
-rustdoc-args = ["--cfg", "docsrs"]

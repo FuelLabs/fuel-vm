@@ -5,7 +5,10 @@ use crate::{
         CheckPredicates,
         Checked,
     },
-    interpreter::MemoryInstance,
+    interpreter::{
+        MemoryInstance,
+        NotSupportedEcal,
+    },
     prelude::{
         predicates::estimate_predicates,
         *,
@@ -62,7 +65,12 @@ fn estimate_gas_gives_proper_gas_used() {
 
     let transaction_without_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params.into(), MemoryInstance::new(), &EmptyStorage)
+        .check_predicates(
+            &params.into(),
+            MemoryInstance::new(),
+            &EmptyStorage,
+            NotSupportedEcal,
+        )
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
@@ -109,6 +117,7 @@ fn estimate_gas_gives_proper_gas_used() {
         &params.into(),
         MemoryInstance::new(),
         &EmptyStorage,
+        NotSupportedEcal,
     )
     .expect("Should successfully estimate predicates");
 

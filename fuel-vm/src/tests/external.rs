@@ -1,3 +1,8 @@
+use crate::{
+    error::SimpleResult,
+    interpreter::EcalHandler,
+    prelude::*,
+};
 use alloc::vec;
 use fuel_asm::{
     GTFArgs,
@@ -14,7 +19,6 @@ use fuel_tx::{
     ScriptExecutionResult,
     TransactionBuilder,
 };
-use fuel_vm::prelude::*;
 use itertools::Itertools;
 use test_case::test_case;
 
@@ -39,14 +43,14 @@ fn attempt_ecal_without_handler() {
 #[derive(Debug, Default, Clone, Copy)]
 pub struct NoopEcal;
 
-impl ::fuel_vm::interpreter::EcalHandler for NoopEcal {
+impl EcalHandler for NoopEcal {
     fn ecal<M, S, Tx, V>(
-        vm: &mut ::fuel_vm::prelude::Interpreter<M, S, Tx, Self, V>,
+        vm: &mut Interpreter<M, S, Tx, Self, V>,
         _: RegId,
         _: RegId,
         _: RegId,
         _: RegId,
-    ) -> ::fuel_vm::error::SimpleResult<()> {
+    ) -> SimpleResult<()> {
         vm.gas_charge(vm.gas_costs().noop())
     }
 }
@@ -62,7 +66,7 @@ fn noop_ecal() {
 
     let mut client = MemoryClient::<_, NoopEcal>::new(
         MemoryInstance::new(),
-        fuel_vm::prelude::MemoryStorage::default(),
+        MemoryStorage::default(),
         Default::default(),
     );
     let consensus_params = ConsensusParameters::standard();
@@ -85,16 +89,16 @@ fn noop_ecal() {
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SumProdEcal;
 
-impl ::fuel_vm::interpreter::EcalHandler for SumProdEcal {
+impl EcalHandler for SumProdEcal {
     /// This ecal fn computes saturating sum and product of inputs (a,b,c,d),
     /// and stores them in a and b respectively. It charges only a single gas.
     fn ecal<M, S, Tx, V>(
-        vm: &mut ::fuel_vm::prelude::Interpreter<M, S, Tx, Self, V>,
+        vm: &mut Interpreter<M, S, Tx, Self, V>,
         a: RegId,
         b: RegId,
         c: RegId,
         d: RegId,
-    ) -> ::fuel_vm::error::SimpleResult<()> {
+    ) -> SimpleResult<()> {
         vm.gas_charge(1)?;
 
         let args = [
@@ -165,17 +169,17 @@ pub struct ComplexEcal {
     state: u64,
 }
 
-impl ::fuel_vm::interpreter::EcalHandler for ComplexEcal {
+impl EcalHandler for ComplexEcal {
     const INC_PC: bool = false;
 
     /// Ecal meant for testing cornercase behavior of the handler.
     fn ecal<M, S, Tx, V>(
-        vm: &mut ::fuel_vm::prelude::Interpreter<M, S, Tx, Self, V>,
+        vm: &mut Interpreter<M, S, Tx, Self, V>,
         a: RegId,
         _b: RegId,
         _c: RegId,
         _d: RegId,
-    ) -> ::fuel_vm::error::SimpleResult<()> {
+    ) -> SimpleResult<()> {
         vm.gas_charge(1)?;
 
         if vm.ecal_state().state > 10 {

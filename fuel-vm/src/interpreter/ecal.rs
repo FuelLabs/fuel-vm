@@ -20,7 +20,11 @@ use super::{
     internal::inc_pc,
 };
 
-/// ECAL opcode handler
+/// ECAL opcode handler.
+///
+/// This can be cloned...
+/// * when the whole VM instance is cloned, for any reason
+/// * for each predicate when running predicates for a tx
 pub trait EcalHandler: Clone
 where
     Self: Sized,
@@ -51,23 +55,6 @@ impl EcalHandler for NotSupportedEcal {
         _: RegId,
     ) -> SimpleResult<()> {
         Err(PanicReason::EcalError)?
-    }
-}
-
-/// ECAL is not allowed in predicates
-#[derive(Debug, Clone, Copy, Default)]
-pub struct PredicateErrorEcal;
-
-/// ECAL is not allowed in predicates
-impl EcalHandler for PredicateErrorEcal {
-    fn ecal<M, S, Tx, V>(
-        _vm: &mut Interpreter<M, S, Tx, Self, V>,
-        _: RegId,
-        _: RegId,
-        _: RegId,
-        _: RegId,
-    ) -> SimpleResult<()> {
-        Err(PanicReason::ContractInstructionNotAllowed)?
     }
 }
 

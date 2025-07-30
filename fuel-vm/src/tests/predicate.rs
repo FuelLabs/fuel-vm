@@ -24,7 +24,7 @@ use crate::{
     },
     pool::DummyPool,
     prelude::*,
-    tests::external::NoopEcal,
+    tests::external::SumProdEcal,
 };
 
 use crate::{
@@ -322,6 +322,17 @@ async fn predicate() {
 }
 
 #[tokio::test]
+async fn predicate_with_ecal_disallowed_fails() {
+    let predicate = [
+        op::ecal(RegId::ZERO, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::ret(0x10),
+    ];
+    assert!(
+        !execute_predicate(predicate.iter().copied(), vec![], 0, NotSupportedEcal).await
+    );
+}
+
+#[tokio::test]
 async fn predicate_allows_ecal() {
     let accept_data = 1 as Word;
     let accept_data = accept_data.to_be_bytes().to_vec();
@@ -330,15 +341,24 @@ async fn predicate_allows_ecal() {
     let decline_data = decline_data.to_be_bytes().to_vec();
 
     let predicate = [
-        op::ecal(RegId::ZERO, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        // Load data
         op::gtf_args(0x11, RegId::ZERO, GTFArgs::InputCoinPredicateData),
         op::lw(0x10, 0x11, 0),
+        // Incremnet by one
+        op::movi(0x11, 1),
+        op::ecal(0x10, 0x11, RegId::ZERO, RegId::ZERO), /* Sets reg[0x10] +=
+                                                         * reg[0x11], reg[0x11] = 0 */
+        // Ensure the result is 2
+        op::movi(0x11, 2),
+        op::eq(0x10, 0x10, 0x11),
         op::ret(0x10),
     ];
 
-    assert!(execute_predicate(predicate.iter().copied(), accept_data, 0, NoopEcal).await);
     assert!(
-        !execute_predicate(predicate.iter().copied(), decline_data, 0, NoopEcal).await
+        execute_predicate(predicate.iter().copied(), accept_data, 0, SumProdEcal).await
+    );
+    assert!(
+        !execute_predicate(predicate.iter().copied(), decline_data, 0, SumProdEcal).await
     );
 }
 

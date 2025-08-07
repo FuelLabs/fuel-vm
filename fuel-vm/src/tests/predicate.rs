@@ -334,6 +334,7 @@ async fn predicate_with_ecal_disallowed_fails() {
 
 #[tokio::test]
 async fn predicate_allows_ecal() {
+    // given
     let accept_data = 1 as Word;
     let accept_data = accept_data.to_be_bytes().to_vec();
 

@@ -353,13 +353,17 @@ async fn predicate_allows_ecal() {
         op::eq(0x10, 0x10, 0x11),
         op::ret(0x10),
     ];
-
-    assert!(
-        execute_predicate(predicate.iter().copied(), accept_data, 0, SumProdEcal).await
-    );
-    assert!(
-        !execute_predicate(predicate.iter().copied(), decline_data, 0, SumProdEcal).await
-    );
+    // given
+    let should_pass = execute_predicate(predicate.iter().copied(), accept_data, 0, SumProdEcal).await;
+    
+    // then
+    assert!(should_pass);
+    
+    // given
+    let should_fail = execute_predicate(predicate.iter().copied(), decline_data, 0, SumProdEcal).await;
+    
+    // then
+    assert!(!should_fail);
 }
 
 #[tokio::test]

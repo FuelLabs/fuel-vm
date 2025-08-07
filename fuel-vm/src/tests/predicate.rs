@@ -322,14 +322,18 @@ async fn predicate() {
 }
 
 #[tokio::test]
-async fn predicate_with_ecal_disallowed_fails() {
+async fn execute_predicate__if_ecal_disabled_predicate_fails() {
+    // given
     let predicate = [
         op::ecal(RegId::ZERO, RegId::ZERO, RegId::ZERO, RegId::ZERO),
         op::ret(0x10),
     ];
-    assert!(
-        !execute_predicate(predicate.iter().copied(), vec![], 0, NotSupportedEcal).await
-    );
+    
+    // when
+    let predicate_passed = execute_predicate(predicate.iter().copied(), vec![], 0, NotSupportedEcal).await
+    
+    // then
+    assert!(!predicate_passed);
 }
 
 #[tokio::test]

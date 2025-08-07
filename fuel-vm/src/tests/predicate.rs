@@ -344,7 +344,7 @@ async fn predicate_allows_ecal() {
         // Load data
         op::gtf_args(0x11, RegId::ZERO, GTFArgs::InputCoinPredicateData),
         op::lw(0x10, 0x11, 0),
-        // Incremnet by one
+        // Increment by one
         op::movi(0x11, 1),
         op::ecal(0x10, 0x11, RegId::ZERO, RegId::ZERO), /* Sets reg[0x10] +=
                                                          * reg[0x11], reg[0x11] = 0 */

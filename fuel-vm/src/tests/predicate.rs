@@ -330,7 +330,7 @@ async fn execute_predicate__if_ecal_disabled_predicate_fails() {
     ];
     
     // when
-    let predicate_passed = execute_predicate(predicate.iter().copied(), vec![], 0, NotSupportedEcal).await
+    let predicate_passed = execute_predicate(predicate.iter().copied(), vec![], 0, NotSupportedEcal).await;
     
     // then
     assert!(!predicate_passed);

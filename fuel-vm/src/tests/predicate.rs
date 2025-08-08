@@ -328,10 +328,11 @@ async fn execute_predicate__if_ecal_disabled_predicate_fails() {
         op::ecal(RegId::ZERO, RegId::ZERO, RegId::ZERO, RegId::ZERO),
         op::ret(0x10),
     ];
-    
+
     // when
-    let predicate_passed = execute_predicate(predicate.iter().copied(), vec![], 0, NotSupportedEcal).await;
-    
+    let predicate_passed =
+        execute_predicate(predicate.iter().copied(), vec![], 0, NotSupportedEcal).await;
+
     // then
     assert!(!predicate_passed);
 }
@@ -359,14 +360,16 @@ async fn execute_predicate__ecal_uses_custom_handler() {
         op::ret(0x10),
     ];
     // given
-    let should_pass = execute_predicate(predicate.iter().copied(), accept_data, 0, SumProdEcal).await;
-    
+    let should_pass =
+        execute_predicate(predicate.iter().copied(), accept_data, 0, SumProdEcal).await;
+
     // then
     assert!(should_pass);
-    
+
     // given
-    let should_fail = execute_predicate(predicate.iter().copied(), decline_data, 0, SumProdEcal).await;
-    
+    let should_fail =
+        execute_predicate(predicate.iter().copied(), decline_data, 0, SumProdEcal).await;
+
     // then
     assert!(!should_fail);
 }

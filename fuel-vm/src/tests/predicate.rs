@@ -74,7 +74,7 @@ async fn execute_predicate<P, Ecal>(
     predicate: P,
     predicate_data: Vec<u8>,
     dummy_inputs: usize,
-    ecal_state: Ecal,
+    ecal_handler: Ecal,
 ) -> bool
 where
     P: IntoIterator<Item = Instruction>,
@@ -135,7 +135,7 @@ where
             &check_params,
             MemoryInstance::new(),
             &EmptyStorage,
-            ecal_state.clone(),
+            ecal_handler.clone(),
         )
         .expect("Should estimate predicate");
 
@@ -149,7 +149,7 @@ where
             &check_params,
             &DummyPool,
             &EmptyStorage,
-            ecal_state.clone(),
+            ecal_handler.clone(),
         )
         .await
         .map(|checked| checked.gas_used())
@@ -160,7 +160,7 @@ where
         &check_params,
         MemoryInstance::new(),
         &EmptyStorage,
-        ecal_state.clone(),
+        ecal_handler.clone(),
     )
     .map(|checked| checked.gas_used());
 

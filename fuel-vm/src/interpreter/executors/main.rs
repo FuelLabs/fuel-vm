@@ -158,7 +158,7 @@ pub mod predicates {
         params: &CheckPredicateParams,
         mut memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
-        ecal_state: Ecal,
+        ecal_handler: Ecal,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
@@ -171,7 +171,7 @@ pub mod predicates {
             params,
             memory.as_mut(),
             storage,
-            ecal_state,
+            ecal_handler,
         )
     }
 
@@ -185,7 +185,7 @@ pub mod predicates {
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
         storage: &impl PredicateStorageProvider,
-        ecal_state: Ecal,
+        ecal_handler: Ecal,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + Send + 'static,
@@ -200,7 +200,7 @@ pub mod predicates {
             params,
             pool,
             storage,
-            ecal_state,
+            ecal_handler,
         )
         .await?;
 
@@ -218,7 +218,7 @@ pub mod predicates {
         params: &CheckPredicateParams,
         mut memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
-        ecal_state: Ecal,
+        ecal_handler: Ecal,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
@@ -229,7 +229,7 @@ pub mod predicates {
             params,
             memory.as_mut(),
             storage,
-            ecal_state,
+            ecal_handler,
         )?;
         Ok(predicates_checked)
     }
@@ -245,7 +245,7 @@ pub mod predicates {
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
         storage: &impl PredicateStorageProvider,
-        ecal_state: Ecal,
+        ecal_handler: Ecal,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + Send + 'static,
@@ -257,7 +257,7 @@ pub mod predicates {
             params,
             pool,
             storage,
-            ecal_state,
+            ecal_handler,
         )
         .await?;
 
@@ -269,7 +269,7 @@ pub mod predicates {
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
         storage: &impl PredicateStorageProvider,
-        ecal_state: Ecal,
+        ecal_handler: Ecal,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + Send + 'static,
@@ -298,7 +298,7 @@ pub mod predicates {
                 let my_params = params.clone();
                 let mut memory = pool.get_new().await;
                 let storage_instance = storage.storage();
-                let ecal_state = ecal_state.clone();
+                let ecal_handler = ecal_handler.clone();
 
                 let verify_task = E::create_task(move || {
                     let (used_gas, result) = check_predicate(
@@ -309,7 +309,7 @@ pub mod predicates {
                         my_params,
                         memory.as_mut(),
                         &storage_instance,
-                        ecal_state,
+                        ecal_handler,
                     );
 
                     (index, result.map(|()| used_gas))
@@ -329,7 +329,7 @@ pub mod predicates {
         params: &CheckPredicateParams,
         mut memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
-        ecal_state: Ecal,
+        ecal_handler: Ecal,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
@@ -363,7 +363,7 @@ pub mod predicates {
                     params.clone(),
                     memory.as_mut(),
                     storage,
-                    ecal_state.clone(),
+                    ecal_handler.clone(),
                 );
                 global_available_gas = global_available_gas.saturating_sub(gas_used);
                 checks.push((index, result.map(|()| gas_used)));
@@ -382,7 +382,7 @@ pub mod predicates {
         params: CheckPredicateParams,
         memory: &mut MemoryInstance,
         storage: &impl PredicateStorageRequirements,
-        ecal_state: Ecal,
+        ecal_handler: Ecal,
     ) -> (Word, Result<(), PredicateVerificationFailed>)
     where
         Tx: ExecutableTransaction,
@@ -423,7 +423,7 @@ pub mod predicates {
             memory,
             PredicateStorage::new(storage),
             interpreter_params,
-            ecal_state,
+            ecal_handler,
         );
 
         let (context, available_gas) = match predicate_action {

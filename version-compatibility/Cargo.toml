@@ -5,6 +5,10 @@ edition = "2024"
 license = "BUSL-1.1"
 publish = false
 
+[features]
+default = ["da-compression"]
+da-compression = ["fuel-tx-0-58-2/da-compression", "latest-fuel-tx/da-compression"]
+
 [dev-dependencies]
 fuel-compression-0-58-2 = { package = "fuel-compression", version = "0.58.2" }
 fuel-tx-0-58-2 = { package = "fuel-tx", version = "0.58.2", features = ["random", "test-helpers"] }
@@ -13,7 +17,3 @@ latest-fuel-compression = { package = "fuel-compression", path = "../fuel-compre
 latest-fuel-tx = { package = "fuel-tx", path = "../fuel-tx", features = ["random", "test-helpers"] }
 postcard = { version = "1.0", features = ["use-std"] }
 tokio = { version = "1.27", features = ["full"] }
-
-[features]
-default = ["da-compression"]
-da-compression = ["fuel-tx-0-58-2/da-compression", "latest-fuel-tx/da-compression"]

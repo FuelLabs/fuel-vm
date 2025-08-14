@@ -81,7 +81,10 @@ mod tests {
             ZERO,
         },
         error::PredicateVerificationFailed,
-        interpreter::InterpreterParams,
+        interpreter::{
+            InterpreterParams,
+            NotSupportedEcal,
+        },
         prelude::{
             predicates::check_predicates,
             *,
@@ -297,6 +300,7 @@ mod tests {
                     &CheckPredicateParams::default(),
                     MemoryInstance::new(),
                     &storage,
+                    NotSupportedEcal,
                 );
 
                 assert_eq!(result.map(|_| ()), expected, "failed at input {}", i);

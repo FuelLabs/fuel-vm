@@ -153,15 +153,17 @@ pub mod predicates {
     ///
     /// The storage provider is not used since contract opcodes are not allowed for
     /// predicates.
-    pub fn check_predicates<Tx>(
+    pub fn check_predicates<Tx, Ecal>(
         checked: &Checked<Tx>,
         params: &CheckPredicateParams,
         mut memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
+        ecal_handler: Ecal,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
+        Ecal: EcalHandler,
     {
         let tx = checked.transaction();
         run_predicates(
@@ -169,6 +171,7 @@ pub mod predicates {
             params,
             memory.as_mut(),
             storage,
+            ecal_handler,
         )
     }
 
@@ -177,24 +180,27 @@ pub mod predicates {
     ///
     /// The storage provider is not used since contract opcodes are not allowed for
     /// predicates.
-    pub async fn check_predicates_async<Tx, E>(
+    pub async fn check_predicates_async<Tx, Ecal, E>(
         checked: &Checked<Tx>,
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
         storage: &impl PredicateStorageProvider,
+        ecal_handler: Ecal,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + Send + 'static,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
         E: ParallelExecutor,
+        Ecal: EcalHandler + Send + 'static,
     {
         let tx = checked.transaction();
 
-        let predicates_checked = run_predicate_async::<Tx, E>(
+        let predicates_checked = run_predicate_async::<Tx, Ecal, E>(
             PredicateRunKind::Verifying(tx),
             params,
             pool,
             storage,
+            ecal_handler,
         )
         .await?;
 
@@ -207,20 +213,23 @@ pub mod predicates {
     ///
     /// The storage provider is not used since contract opcodes are not allowed for
     /// predicates.
-    pub fn estimate_predicates<Tx>(
+    pub fn estimate_predicates<Tx, Ecal>(
         transaction: &mut Tx,
         params: &CheckPredicateParams,
         mut memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
+        ecal_handler: Ecal,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
+        Ecal: EcalHandler,
     {
         let predicates_checked = run_predicates(
             PredicateRunKind::Estimating(transaction),
             params,
             memory.as_mut(),
             storage,
+            ecal_handler,
         )?;
         Ok(predicates_checked)
     }
@@ -231,36 +240,41 @@ pub mod predicates {
     ///
     /// The storage provider is not used since contract opcodes are not allowed for
     /// predicates.
-    pub async fn estimate_predicates_async<Tx, E>(
+    pub async fn estimate_predicates_async<Tx, Ecal, E>(
         transaction: &mut Tx,
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
         storage: &impl PredicateStorageProvider,
+        ecal_handler: Ecal,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + Send + 'static,
         E: ParallelExecutor,
+        Ecal: EcalHandler + Send + 'static,
     {
-        let predicates_checked = run_predicate_async::<Tx, E>(
+        let predicates_checked = run_predicate_async::<Tx, Ecal, E>(
             PredicateRunKind::Estimating(transaction),
             params,
             pool,
             storage,
+            ecal_handler,
         )
         .await?;
 
         Ok(predicates_checked)
     }
 
-    async fn run_predicate_async<Tx, E>(
+    async fn run_predicate_async<Tx, Ecal, E>(
         kind: PredicateRunKind<'_, Tx>,
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
         storage: &impl PredicateStorageProvider,
+        ecal_handler: Ecal,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + Send + 'static,
         E: ParallelExecutor,
+        Ecal: EcalHandler + Send + 'static,
     {
         let mut checks = vec![];
         let tx_offset = params.tx_offset;
@@ -284,6 +298,7 @@ pub mod predicates {
                 let my_params = params.clone();
                 let mut memory = pool.get_new().await;
                 let storage_instance = storage.storage();
+                let ecal_handler = ecal_handler.clone();
 
                 let verify_task = E::create_task(move || {
                     let (used_gas, result) = check_predicate(
@@ -294,6 +309,7 @@ pub mod predicates {
                         my_params,
                         memory.as_mut(),
                         &storage_instance,
+                        ecal_handler,
                     );
 
                     (index, result.map(|()| used_gas))
@@ -308,14 +324,16 @@ pub mod predicates {
         finalize_check_predicate(kind, checks, params)
     }
 
-    fn run_predicates<Tx>(
+    fn run_predicates<Tx, Ecal>(
         kind: PredicateRunKind<'_, Tx>,
         params: &CheckPredicateParams,
         mut memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
+        ecal_handler: Ecal,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
+        Ecal: EcalHandler,
     {
         let mut checks = vec![];
 
@@ -345,6 +363,7 @@ pub mod predicates {
                     params.clone(),
                     memory.as_mut(),
                     storage,
+                    ecal_handler.clone(),
                 );
                 global_available_gas = global_available_gas.saturating_sub(gas_used);
                 checks.push((index, result.map(|()| gas_used)));
@@ -354,7 +373,8 @@ pub mod predicates {
         finalize_check_predicate(kind, checks, params)
     }
 
-    fn check_predicate<Tx>(
+    #[allow(clippy::too_many_arguments)]
+    fn check_predicate<Tx, Ecal>(
         tx: Tx,
         index: usize,
         predicate_action: PredicateAction,
@@ -362,9 +382,11 @@ pub mod predicates {
         params: CheckPredicateParams,
         memory: &mut MemoryInstance,
         storage: &impl PredicateStorageRequirements,
+        ecal_handler: Ecal,
     ) -> (Word, Result<(), PredicateVerificationFailed>)
     where
         Tx: ExecutableTransaction,
+        Ecal: EcalHandler,
     {
         if predicate_action == PredicateAction::Verifying {
             match &tx.inputs()[index] {
@@ -397,10 +419,11 @@ pub mod predicates {
         let zero_gas_price = 0;
         let interpreter_params = InterpreterParams::new(zero_gas_price, params);
 
-        let mut vm = Interpreter::<_, _, _>::with_storage(
+        let mut vm = Interpreter::<_, _, _, Ecal>::with_storage_and_ecal(
             memory,
             PredicateStorage::new(storage),
             interpreter_params,
+            ecal_handler,
         );
 
         let (context, available_gas) = match predicate_action {

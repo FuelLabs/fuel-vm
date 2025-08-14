@@ -44,8 +44,10 @@ pub use types::*;
 use crate::{
     error::PredicateVerificationFailed,
     interpreter::{
+        EcalHandler,
         Memory,
         MemoryInstance,
+        NotSupportedEcal,
     },
     pool::VmMemoryPool,
     prelude::*,
@@ -333,10 +335,53 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
     where
         Checked<Self>: CheckPredicates,
     {
+        self.into_checked_reusable_memory_ecal(
+            block_height,
+            consensus_params,
+            memory,
+            storage,
+            NotSupportedEcal,
+        )
+    }
+
+    /// Returns transaction that passed all `Checks`.
+    fn into_checked_ecal<Ecal>(
+        self,
+        block_height: BlockHeight,
+        consensus_params: &ConsensusParameters,
+        ecal_handler: Ecal,
+    ) -> Result<Checked<Self>, CheckError>
+    where
+        Checked<Self>: CheckPredicates,
+        Ecal: EcalHandler + Send + 'static,
+    {
+        self.into_checked_reusable_memory_ecal(
+            block_height,
+            consensus_params,
+            MemoryInstance::new(),
+            &EmptyStorage,
+            ecal_handler,
+        )
+    }
+
+    /// Returns transaction that passed all `Checks` accepting reusable memory
+    /// to run predicates.
+    fn into_checked_reusable_memory_ecal<Ecal>(
+        self,
+        block_height: BlockHeight,
+        consensus_params: &ConsensusParameters,
+        memory: impl Memory,
+        storage: &impl PredicateStorageRequirements,
+        ecal_handler: Ecal,
+    ) -> Result<Checked<Self>, CheckError>
+    where
+        Checked<Self>: CheckPredicates,
+        Ecal: EcalHandler + Send + 'static,
+    {
         let check_predicate_params = consensus_params.into();
         self.into_checked_basic(block_height, consensus_params)?
             .check_signatures(&consensus_params.chain_id())?
-            .check_predicates(&check_predicate_params, memory, storage)
+            .check_predicates(&check_predicate_params, memory, storage, ecal_handler)
     }
 
     /// Returns transaction that passed only `Checks::Basic`.
@@ -406,19 +451,24 @@ impl From<&ConsensusParameters> for CheckPredicateParams {
 #[async_trait::async_trait]
 pub trait CheckPredicates: Sized {
     /// Performs predicates verification of the transaction.
-    fn check_predicates(
+    fn check_predicates<Ecal: EcalHandler + Send + 'static>(
         self,
         params: &CheckPredicateParams,
         memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
+        ecal_handler: Ecal,
     ) -> Result<Self, CheckError>;
 
     /// Performs predicates verification of the transaction in parallel.
-    async fn check_predicates_async<E: ParallelExecutor>(
+    async fn check_predicates_async<
+        Ecal: EcalHandler + Send + 'static,
+        E: ParallelExecutor,
+    >(
         self,
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
         storage: &impl PredicateStorageProvider,
+        ecal_handler: Ecal,
     ) -> Result<Self, CheckError>;
 }
 
@@ -431,7 +481,9 @@ pub trait EstimatePredicates: Sized {
         params: &CheckPredicateParams,
         memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
-    ) -> Result<(), CheckError>;
+    ) -> Result<(), CheckError> {
+        Self::estimate_predicates_ecal(self, params, memory, storage, NotSupportedEcal)
+    }
 
     /// Estimates predicates of the transaction in parallel.
     async fn estimate_predicates_async<E: ParallelExecutor>(
@@ -439,6 +491,36 @@ pub trait EstimatePredicates: Sized {
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
         storage: &impl PredicateStorageProvider,
+    ) -> Result<(), CheckError> {
+        Self::estimate_predicates_async_ecal::<NotSupportedEcal, E>(
+            self,
+            params,
+            pool,
+            storage,
+            NotSupportedEcal,
+        )
+        .await
+    }
+
+    /// Estimates predicates of the transaction.
+    fn estimate_predicates_ecal<Ecal: EcalHandler + Send + 'static>(
+        &mut self,
+        params: &CheckPredicateParams,
+        memory: impl Memory,
+        storage: &impl PredicateStorageRequirements,
+        ecal_handler: Ecal,
+    ) -> Result<(), CheckError>;
+
+    /// Estimates predicates of the transaction in parallel.
+    async fn estimate_predicates_async_ecal<
+        Ecal: EcalHandler + Send + 'static,
+        E: ParallelExecutor,
+    >(
+        &mut self,
+        params: &CheckPredicateParams,
+        pool: &impl VmMemoryPool,
+        storage: &impl PredicateStorageProvider,
+        ecal_handler: Ecal,
     ) -> Result<(), CheckError>;
 }
 
@@ -467,31 +549,43 @@ where
     Tx: ExecutableTransaction + Send + Sync + 'static,
     <Tx as IntoChecked>::Metadata: crate::interpreter::CheckedMetadata + Send + Sync,
 {
-    fn check_predicates(
+    fn check_predicates<Ecal>(
         mut self,
         params: &CheckPredicateParams,
         memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
-    ) -> Result<Self, CheckError> {
+        ecal_handler: Ecal,
+    ) -> Result<Self, CheckError>
+    where
+        Ecal: EcalHandler + Send + 'static,
+    {
         if !self.checks_bitmask.contains(Checks::Predicates) {
-            predicates::check_predicates(&self, params, memory, storage)?;
+            predicates::check_predicates(&self, params, memory, storage, ecal_handler)?;
             self.checks_bitmask.insert(Checks::Predicates);
         }
         Ok(self)
     }
 
-    async fn check_predicates_async<E>(
+    async fn check_predicates_async<Ecal, E>(
         mut self,
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
         storage: &impl PredicateStorageProvider,
+        ecal_handler: Ecal,
     ) -> Result<Self, CheckError>
     where
+        Ecal: EcalHandler + Send + 'static,
         E: ParallelExecutor,
     {
         if !self.checks_bitmask.contains(Checks::Predicates) {
-            predicates::check_predicates_async::<Tx, E>(&self, params, pool, storage)
-                .await?;
+            predicates::check_predicates_async::<Tx, Ecal, E>(
+                &self,
+                params,
+                pool,
+                storage,
+                ecal_handler,
+            )
+            .await?;
 
             self.checks_bitmask.insert(Checks::Predicates);
 
@@ -504,27 +598,42 @@ where
 
 #[async_trait::async_trait]
 impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for Tx {
-    fn estimate_predicates(
+    fn estimate_predicates_ecal<Ecal: EcalHandler>(
         &mut self,
         params: &CheckPredicateParams,
         memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
+        ecal_handler: Ecal,
     ) -> Result<(), CheckError> {
-        predicates::estimate_predicates(self, params, memory, storage)?;
+        predicates::estimate_predicates::<Self, Ecal>(
+            self,
+            params,
+            memory,
+            storage,
+            ecal_handler,
+        )?;
         Ok(())
     }
 
-    async fn estimate_predicates_async<E>(
+    async fn estimate_predicates_async_ecal<Ecal, E>(
         &mut self,
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
         storage: &impl PredicateStorageProvider,
+        ecal_handler: Ecal,
     ) -> Result<(), CheckError>
     where
         E: ParallelExecutor,
+        Ecal: EcalHandler + Send + 'static,
     {
-        predicates::estimate_predicates_async::<Self, E>(self, params, pool, storage)
-            .await?;
+        predicates::estimate_predicates_async::<Self, Ecal, E>(
+            self,
+            params,
+            pool,
+            storage,
+            ecal_handler,
+        )
+        .await?;
 
         Ok(())
     }
@@ -532,49 +641,89 @@ impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for T
 
 #[async_trait::async_trait]
 impl EstimatePredicates for Transaction {
-    fn estimate_predicates(
+    fn estimate_predicates_ecal<Ecal: EcalHandler + Send + 'static>(
         &mut self,
         params: &CheckPredicateParams,
         memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
+        ecal_handler: Ecal,
     ) -> Result<(), CheckError> {
         match self {
-            Self::Script(tx) => tx.estimate_predicates(params, memory, storage),
-            Self::Create(tx) => tx.estimate_predicates(params, memory, storage),
+            Self::Script(tx) => {
+                tx.estimate_predicates_ecal(params, memory, storage, ecal_handler)
+            }
+            Self::Create(tx) => {
+                tx.estimate_predicates_ecal(params, memory, storage, ecal_handler)
+            }
             Self::Mint(_) => Ok(()),
-            Self::Upgrade(tx) => tx.estimate_predicates(params, memory, storage),
-            Self::Upload(tx) => tx.estimate_predicates(params, memory, storage),
-            Self::Blob(tx) => tx.estimate_predicates(params, memory, storage),
+            Self::Upgrade(tx) => {
+                tx.estimate_predicates_ecal(params, memory, storage, ecal_handler)
+            }
+            Self::Upload(tx) => {
+                tx.estimate_predicates_ecal(params, memory, storage, ecal_handler)
+            }
+            Self::Blob(tx) => {
+                tx.estimate_predicates_ecal(params, memory, storage, ecal_handler)
+            }
         }
     }
 
-    async fn estimate_predicates_async<E: ParallelExecutor>(
+    async fn estimate_predicates_async_ecal<
+        Ecal: EcalHandler + Send + 'static,
+        E: ParallelExecutor,
+    >(
         &mut self,
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
         storage: &impl PredicateStorageProvider,
+        ecal_handler: Ecal,
     ) -> Result<(), CheckError> {
         match self {
             Self::Script(tx) => {
-                tx.estimate_predicates_async::<E>(params, pool, storage)
-                    .await
+                tx.estimate_predicates_async_ecal::<Ecal, E>(
+                    params,
+                    pool,
+                    storage,
+                    ecal_handler,
+                )
+                .await
             }
             Self::Create(tx) => {
-                tx.estimate_predicates_async::<E>(params, pool, storage)
-                    .await
+                tx.estimate_predicates_async_ecal::<Ecal, E>(
+                    params,
+                    pool,
+                    storage,
+                    ecal_handler,
+                )
+                .await
             }
             Self::Mint(_) => Ok(()),
             Self::Upgrade(tx) => {
-                tx.estimate_predicates_async::<E>(params, pool, storage)
-                    .await
+                tx.estimate_predicates_async_ecal::<Ecal, E>(
+                    params,
+                    pool,
+                    storage,
+                    ecal_handler,
+                )
+                .await
             }
             Self::Upload(tx) => {
-                tx.estimate_predicates_async::<E>(params, pool, storage)
-                    .await
+                tx.estimate_predicates_async_ecal::<Ecal, E>(
+                    params,
+                    pool,
+                    storage,
+                    ecal_handler,
+                )
+                .await
             }
             Self::Blob(tx) => {
-                tx.estimate_predicates_async::<E>(params, pool, storage)
-                    .await
+                tx.estimate_predicates_async_ecal::<Ecal, E>(
+                    params,
+                    pool,
+                    storage,
+                    ecal_handler,
+                )
+                .await
             }
         }
     }
@@ -582,21 +731,26 @@ impl EstimatePredicates for Transaction {
 
 #[async_trait::async_trait]
 impl CheckPredicates for Checked<Mint> {
-    fn check_predicates(
+    fn check_predicates<Ecal: EcalHandler + Send + 'static>(
         mut self,
         _params: &CheckPredicateParams,
         _memory: impl Memory,
         _storage: &impl PredicateStorageRequirements,
+        _ecal_handler: Ecal,
     ) -> Result<Self, CheckError> {
         self.checks_bitmask.insert(Checks::Predicates);
         Ok(self)
     }
 
-    async fn check_predicates_async<E: ParallelExecutor>(
+    async fn check_predicates_async<
+        Ecal: EcalHandler + Send + 'static,
+        E: ParallelExecutor,
+    >(
         mut self,
         _params: &CheckPredicateParams,
         _pool: &impl VmMemoryPool,
         _storage: &impl PredicateStorageProvider,
+        _ecal_handler: Ecal,
     ) -> Result<Self, CheckError> {
         self.checks_bitmask.insert(Checks::Predicates);
         Ok(self)
@@ -605,41 +759,73 @@ impl CheckPredicates for Checked<Mint> {
 
 #[async_trait::async_trait]
 impl CheckPredicates for Checked<Transaction> {
-    fn check_predicates(
+    fn check_predicates<Ecal: EcalHandler + Send + 'static>(
         self,
         params: &CheckPredicateParams,
         memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
+        ecal_handler: Ecal,
     ) -> Result<Self, CheckError> {
         let checked_transaction: CheckedTransaction = self.into();
         let checked_transaction: CheckedTransaction = match checked_transaction {
-            CheckedTransaction::Script(tx) => {
-                CheckPredicates::check_predicates(tx, params, memory, storage)?.into()
-            }
-            CheckedTransaction::Create(tx) => {
-                CheckPredicates::check_predicates(tx, params, memory, storage)?.into()
-            }
-            CheckedTransaction::Mint(tx) => {
-                CheckPredicates::check_predicates(tx, params, memory, storage)?.into()
-            }
-            CheckedTransaction::Upgrade(tx) => {
-                CheckPredicates::check_predicates(tx, params, memory, storage)?.into()
-            }
-            CheckedTransaction::Upload(tx) => {
-                CheckPredicates::check_predicates(tx, params, memory, storage)?.into()
-            }
-            CheckedTransaction::Blob(tx) => {
-                CheckPredicates::check_predicates(tx, params, memory, storage)?.into()
-            }
+            CheckedTransaction::Script(tx) => CheckPredicates::check_predicates(
+                tx,
+                params,
+                memory,
+                storage,
+                ecal_handler,
+            )?
+            .into(),
+            CheckedTransaction::Create(tx) => CheckPredicates::check_predicates(
+                tx,
+                params,
+                memory,
+                storage,
+                ecal_handler,
+            )?
+            .into(),
+            CheckedTransaction::Mint(tx) => CheckPredicates::check_predicates(
+                tx,
+                params,
+                memory,
+                storage,
+                ecal_handler,
+            )?
+            .into(),
+            CheckedTransaction::Upgrade(tx) => CheckPredicates::check_predicates(
+                tx,
+                params,
+                memory,
+                storage,
+                ecal_handler,
+            )?
+            .into(),
+            CheckedTransaction::Upload(tx) => CheckPredicates::check_predicates(
+                tx,
+                params,
+                memory,
+                storage,
+                ecal_handler,
+            )?
+            .into(),
+            CheckedTransaction::Blob(tx) => CheckPredicates::check_predicates(
+                tx,
+                params,
+                memory,
+                storage,
+                ecal_handler,
+            )?
+            .into(),
         };
         Ok(checked_transaction.into())
     }
 
-    async fn check_predicates_async<E>(
+    async fn check_predicates_async<Ecal: EcalHandler + Send + 'static, E>(
         mut self,
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
         storage: &impl PredicateStorageProvider,
+        ecal_handler: Ecal,
     ) -> Result<Self, CheckError>
     where
         E: ParallelExecutor,
@@ -647,36 +833,54 @@ impl CheckPredicates for Checked<Transaction> {
         let checked_transaction: CheckedTransaction = self.into();
 
         let checked_transaction: CheckedTransaction = match checked_transaction {
-            CheckedTransaction::Script(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params, pool, storage)
-                    .await?
-                    .into()
-            }
-            CheckedTransaction::Create(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params, pool, storage)
-                    .await?
-                    .into()
-            }
-            CheckedTransaction::Mint(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params, pool, storage)
-                    .await?
-                    .into()
-            }
-            CheckedTransaction::Upgrade(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params, pool, storage)
-                    .await?
-                    .into()
-            }
-            CheckedTransaction::Upload(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params, pool, storage)
-                    .await?
-                    .into()
-            }
-            CheckedTransaction::Blob(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params, pool, storage)
-                    .await?
-                    .into()
-            }
+            CheckedTransaction::Script(tx) => CheckPredicates::check_predicates_async::<
+                Ecal,
+                E,
+            >(
+                tx, params, pool, storage, ecal_handler
+            )
+            .await?
+            .into(),
+            CheckedTransaction::Create(tx) => CheckPredicates::check_predicates_async::<
+                Ecal,
+                E,
+            >(
+                tx, params, pool, storage, ecal_handler
+            )
+            .await?
+            .into(),
+            CheckedTransaction::Mint(tx) => CheckPredicates::check_predicates_async::<
+                Ecal,
+                E,
+            >(
+                tx, params, pool, storage, ecal_handler
+            )
+            .await?
+            .into(),
+            CheckedTransaction::Upgrade(tx) => CheckPredicates::check_predicates_async::<
+                Ecal,
+                E,
+            >(
+                tx, params, pool, storage, ecal_handler
+            )
+            .await?
+            .into(),
+            CheckedTransaction::Upload(tx) => CheckPredicates::check_predicates_async::<
+                Ecal,
+                E,
+            >(
+                tx, params, pool, storage, ecal_handler
+            )
+            .await?
+            .into(),
+            CheckedTransaction::Blob(tx) => CheckPredicates::check_predicates_async::<
+                Ecal,
+                E,
+            >(
+                tx, params, pool, storage, ecal_handler
+            )
+            .await?
+            .into(),
         };
 
         Ok(checked_transaction.into())
@@ -1986,7 +2190,7 @@ mod tests {
             )
             .unwrap()
             // Sets Checks::Predicates
-            .check_predicates(&check_predicate_params, MemoryInstance::new(), &EmptyStorage)
+            .check_predicates(&check_predicate_params, MemoryInstance::new(), &EmptyStorage, NotSupportedEcal)
             .unwrap();
         assert!(
             checked

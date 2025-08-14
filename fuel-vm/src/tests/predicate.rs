@@ -18,8 +18,13 @@ use tokio_rayon::AsyncRayonHandle;
 
 use crate::{
     error::PredicateVerificationFailed,
+    interpreter::{
+        EcalHandler,
+        NotSupportedEcal,
+    },
     pool::DummyPool,
     prelude::*,
+    tests::external::SumProdEcal,
 };
 
 use crate::{
@@ -65,13 +70,15 @@ impl ParallelExecutor for TokioWithRayon {
     }
 }
 
-async fn execute_predicate<P>(
+async fn execute_predicate<P, Ecal>(
     predicate: P,
     predicate_data: Vec<u8>,
     dummy_inputs: usize,
+    ecal_handler: Ecal,
 ) -> bool
 where
     P: IntoIterator<Item = Instruction>,
+    Ecal: EcalHandler + Send + 'static,
 {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
@@ -124,7 +131,12 @@ where
 
     let mut transaction = builder.finalize();
     transaction
-        .estimate_predicates(&check_params, MemoryInstance::new(), &EmptyStorage)
+        .estimate_predicates_ecal(
+            &check_params,
+            MemoryInstance::new(),
+            &EmptyStorage,
+            ecal_handler.clone(),
+        )
         .expect("Should estimate predicate");
 
     let checked = transaction
@@ -132,11 +144,12 @@ where
         .expect("Should successfully convert into Checked");
 
     let parallel_execution = {
-        check_predicates_async::<_, TokioWithRayon>(
+        check_predicates_async::<_, Ecal, TokioWithRayon>(
             &checked,
             &check_params,
             &DummyPool,
             &EmptyStorage,
+            ecal_handler.clone(),
         )
         .await
         .map(|checked| checked.gas_used())
@@ -147,6 +160,7 @@ where
         &check_params,
         MemoryInstance::new(),
         &EmptyStorage,
+        ecal_handler.clone(),
     )
     .map(|checked| checked.gas_used());
 
@@ -267,7 +281,7 @@ async fn predicate_minimal() {
     let predicate = iter::once(op::ret(0x01));
     let data = vec![];
 
-    assert!(execute_predicate(predicate, data, 7).await);
+    assert!(execute_predicate(predicate, data, 7, NotSupportedEcal).await);
 }
 
 #[tokio::test]
@@ -292,8 +306,72 @@ async fn predicate() {
         op::ret(0x10),
     ];
 
-    assert!(execute_predicate(predicate.iter().copied(), expected_data, 0).await);
-    assert!(!execute_predicate(predicate.iter().copied(), wrong_data, 0).await);
+    assert!(
+        execute_predicate(
+            predicate.iter().copied(),
+            expected_data,
+            0,
+            NotSupportedEcal
+        )
+        .await
+    );
+    assert!(
+        !execute_predicate(predicate.iter().copied(), wrong_data, 0, NotSupportedEcal)
+            .await
+    );
+}
+
+#[tokio::test]
+async fn execute_predicate__if_ecal_disabled_predicate_fails() {
+    // given
+    let predicate = [
+        op::ecal(RegId::ZERO, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::ret(0x10),
+    ];
+
+    // when
+    let predicate_passed =
+        execute_predicate(predicate.iter().copied(), vec![], 0, NotSupportedEcal).await;
+
+    // then
+    assert!(!predicate_passed);
+}
+
+#[tokio::test]
+async fn execute_predicate__ecal_uses_custom_handler() {
+    // given
+    let accept_data = 1 as Word;
+    let accept_data = accept_data.to_be_bytes().to_vec();
+
+    let decline_data = 0 as Word;
+    let decline_data = decline_data.to_be_bytes().to_vec();
+
+    let predicate = [
+        // Load data
+        op::gtf_args(0x11, RegId::ZERO, GTFArgs::InputCoinPredicateData),
+        op::lw(0x10, 0x11, 0),
+        // Increment by one
+        op::movi(0x11, 1),
+        op::ecal(0x10, 0x11, RegId::ZERO, RegId::ZERO), /* Sets reg[0x10] +=
+                                                         * reg[0x11], reg[0x11] = 0 */
+        // Ensure the result is 2
+        op::movi(0x11, 2),
+        op::eq(0x10, 0x10, 0x11),
+        op::ret(0x10),
+    ];
+    // given
+    let should_pass =
+        execute_predicate(predicate.iter().copied(), accept_data, 0, SumProdEcal).await;
+
+    // then
+    assert!(should_pass);
+
+    // given
+    let should_fail =
+        execute_predicate(predicate.iter().copied(), decline_data, 0, SumProdEcal).await;
+
+    // then
+    assert!(!should_fail);
 }
 
 #[tokio::test]
@@ -309,7 +387,9 @@ async fn get_verifying_predicate() {
             op::ret(0x10),
         ];
 
-        assert!(execute_predicate(predicate, vec![], idx as usize).await);
+        assert!(
+            execute_predicate(predicate, vec![], idx as usize, NotSupportedEcal).await
+        );
     }
 }
 
@@ -390,11 +470,12 @@ async fn execute_gas_metered_predicates(
             .into_checked_basic(Default::default(), &ConsensusParameters::standard())
             .expect("Should successfully create checked tranaction with predicate");
 
-        check_predicates_async::<_, TokioWithRayon>(
+        check_predicates_async::<_, _, TokioWithRayon>(
             &tx,
             &params,
             &DummyPool,
             &EmptyStorage,
+            NotSupportedEcal,
         )
         .await
         .map(|r| r.gas_used())
@@ -410,10 +491,15 @@ async fn execute_gas_metered_predicates(
         .into_checked_basic(Default::default(), &ConsensusParameters::standard())
         .expect("Should successfully create checked tranaction with predicate");
 
-    let seq_gas_used =
-        check_predicates(&tx, &params, MemoryInstance::new(), &EmptyStorage)
-            .map(|r| r.gas_used())
-            .map_err(|_| ())?;
+    let seq_gas_used = check_predicates(
+        &tx,
+        &params,
+        MemoryInstance::new(),
+        &EmptyStorage,
+        NotSupportedEcal,
+    )
+    .map(|r| r.gas_used())
+    .map_err(|_| ())?;
 
     assert_eq!(seq_gas_used, parallel_gas_used);
 
@@ -502,14 +588,24 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
         let _ = builder
             .clone()
             .finalize_checked_basic(Default::default())
-            .check_predicates_async::<TokioWithRayon>(&params, &DummyPool, &EmptyStorage)
+            .check_predicates_async::<_, TokioWithRayon>(
+                &params,
+                &DummyPool,
+                &EmptyStorage,
+                NotSupportedEcal,
+            )
             .await
             .expect("Predicate check failed even if we don't have any predicates");
     }
 
     let tx_without_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params, MemoryInstance::new(), &EmptyStorage)
+        .check_predicates(
+            &params,
+            MemoryInstance::new(),
+            &EmptyStorage,
+            NotSupportedEcal,
+        )
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
@@ -554,7 +650,12 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
     {
         let tx_with_predicate = checked
             .clone()
-            .check_predicates_async::<TokioWithRayon>(&params, &DummyPool, &EmptyStorage)
+            .check_predicates_async::<_, TokioWithRayon>(
+                &params,
+                &DummyPool,
+                &EmptyStorage,
+                NotSupportedEcal,
+            )
             .await
             .expect("Predicate check failed");
 
@@ -572,7 +673,12 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
     }
 
     let tx_with_predicate = checked
-        .check_predicates(&params, MemoryInstance::new(), &EmptyStorage)
+        .check_predicates(
+            &params,
+            MemoryInstance::new(),
+            &EmptyStorage,
+            NotSupportedEcal,
+        )
         .expect("Predicate check failed");
 
     client.transact(tx_with_predicate);
@@ -625,14 +731,24 @@ async fn gas_used_by_predicates_more_than_limit() {
         let _ = builder
             .clone()
             .finalize_checked_basic(Default::default())
-            .check_predicates_async::<TokioWithRayon>(&params, &DummyPool, &EmptyStorage)
+            .check_predicates_async::<_, TokioWithRayon>(
+                &params,
+                &DummyPool,
+                &EmptyStorage,
+                NotSupportedEcal,
+            )
             .await
             .expect("Predicate check failed even if we don't have any predicates");
     }
 
     let tx_without_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params, MemoryInstance::new(), &EmptyStorage)
+        .check_predicates(
+            &params,
+            MemoryInstance::new(),
+            &EmptyStorage,
+            NotSupportedEcal,
+        )
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
@@ -675,7 +791,12 @@ async fn gas_used_by_predicates_more_than_limit() {
         let tx_with_predicate = builder
             .clone()
             .finalize_checked_basic(Default::default())
-            .check_predicates_async::<TokioWithRayon>(&params, &DummyPool, &EmptyStorage)
+            .check_predicates_async::<_, TokioWithRayon>(
+                &params,
+                &DummyPool,
+                &EmptyStorage,
+                NotSupportedEcal,
+            )
             .await;
 
         assert!(matches!(
@@ -686,7 +807,12 @@ async fn gas_used_by_predicates_more_than_limit() {
 
     let tx_with_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params, MemoryInstance::new(), &EmptyStorage);
+        .check_predicates(
+            &params,
+            MemoryInstance::new(),
+            &EmptyStorage,
+            NotSupportedEcal,
+        );
 
     assert!(matches!(
         tx_with_predicate.unwrap_err(),

@@ -433,7 +433,7 @@ pub struct Bug {
 
 impl Bug {
     /// Construct a new bug with the specified variant, using caller location for
-    /// idenitfying the bug.
+    /// identifying the bug.
     #[track_caller]
     pub fn new(variant: BugVariant) -> Self {
         let caller = core::panic::Location::caller();

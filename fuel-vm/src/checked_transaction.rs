@@ -820,7 +820,7 @@ impl CheckPredicates for Checked<Transaction> {
         Ok(checked_transaction.into())
     }
 
-    async fn check_predicates_async<Ecal: EcalHandler + Send + 'static, E>(
+    async fn check_predicates_async<Ecal, E>(
         mut self,
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
@@ -828,6 +828,7 @@ impl CheckPredicates for Checked<Transaction> {
         ecal_handler: Ecal,
     ) -> Result<Self, CheckError>
     where
+        Ecal: EcalHandler + Send + 'static,
         E: ParallelExecutor,
     {
         let checked_transaction: CheckedTransaction = self.into();

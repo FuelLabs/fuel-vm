@@ -184,3 +184,39 @@ where
         Ok(result)
     }
 }
+
+impl<T0, T1> Compressible for (T0, T1)
+where
+    T0: Compressible,
+    T1: Compressible,
+{
+    type Compressed = (T0::Compressed, T1::Compressed);
+}
+
+impl<T0, T1, Ctx> CompressibleBy<Ctx> for (T0, T1)
+where
+    T0: CompressibleBy<Ctx>,
+    T1: CompressibleBy<Ctx>,
+    Ctx: ContextError,
+{
+    async fn compress_with(&self, ctx: &mut Ctx) -> Result<Self::Compressed, Ctx::Error> {
+        Ok((
+            self.0.compress_with(ctx).await?,
+            self.1.compress_with(ctx).await?,
+        ))
+    }
+}
+
+impl<T0, T1, Ctx> DecompressibleBy<Ctx> for (T0, T1)
+where
+    T0: DecompressibleBy<Ctx>,
+    T1: DecompressibleBy<Ctx>,
+    Ctx: ContextError,
+{
+    async fn decompress_with(c: Self::Compressed, ctx: &Ctx) -> Result<Self, Ctx::Error> {
+        Ok((
+            T0::decompress_with(c.0, ctx).await?,
+            T1::decompress_with(c.1, ctx).await?,
+        ))
+    }
+}

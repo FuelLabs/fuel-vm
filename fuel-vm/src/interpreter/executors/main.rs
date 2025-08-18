@@ -941,8 +941,9 @@ where
                 Transaction::Script(_) => {
                     // Handled in the `else` branch.
                 }
-                Transaction::Mint(_) => {
-                    // The `Mint` transaction doesn't implement `ExecutableTransaction`.
+                Transaction::Mint(_) | Transaction::MintV2(_) => {
+                    // The `Mint` and `MintV2` transactions don't implement
+                    // `ExecutableTransaction`.
                 }
             };
         }

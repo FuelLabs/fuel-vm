@@ -48,6 +48,8 @@ pub type Create = ChargeableTransaction<CreateBody, CreateMetadata>;
 pub struct CreateMetadata {
     pub contract_id: ContractId,
     pub contract_root: Bytes32,
+    /// Deprecated, as we're not using contract state merkle trees.
+    /// This field is kept for backward compatibility.
     pub state_root: Bytes32,
 }
 

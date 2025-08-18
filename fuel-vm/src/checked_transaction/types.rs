@@ -166,6 +166,38 @@ pub mod mint {
     }
 }
 
+/// For [`fuel_tx::MintV2`]
+pub mod mint_v2 {
+    use super::super::{
+        Checked,
+        IntoChecked,
+    };
+    use crate::checked_transaction::CheckError;
+    use fuel_tx::{
+        Cacheable,
+        ConsensusParameters,
+        FormatValidityChecks,
+        MintV2,
+    };
+    use fuel_types::BlockHeight;
+
+    impl IntoChecked for MintV2 {
+        type Metadata = ();
+
+        fn into_checked_basic(
+            mut self,
+            block_height: BlockHeight,
+            consensus_params: &ConsensusParameters,
+        ) -> Result<Checked<Self>, CheckError> {
+            let chain_id = consensus_params.chain_id();
+            self.precompute(&chain_id)?;
+            self.check_without_signatures(block_height, consensus_params)?;
+
+            Ok(Checked::basic(self, ()))
+        }
+    }
+}
+
 /// For [`fuel_tx::Script`]
 pub mod script {
     use super::super::{

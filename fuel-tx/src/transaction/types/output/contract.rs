@@ -21,6 +21,8 @@ pub struct Contract {
     #[cfg_attr(feature = "da-compression", compress(skip))]
     pub balance_root: Bytes32,
     /// State root of contract after transaction execution.
+    /// This field is deprecated, as we're not using contract state merkle trees.
+    /// This field is kept for backward compatibility.
     #[cfg_attr(feature = "da-compression", compress(skip))]
     pub state_root: Bytes32,
 }

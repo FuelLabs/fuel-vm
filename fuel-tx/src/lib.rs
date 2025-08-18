@@ -95,6 +95,7 @@ pub use transaction::{
     GasCosts,
     GasCostsValues,
     Mint,
+    MintV2,
     PredicateParameters,
     Script,
     ScriptCode,

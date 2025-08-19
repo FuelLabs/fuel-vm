@@ -451,12 +451,12 @@ impl From<&ConsensusParameters> for CheckPredicateParams {
 #[async_trait::async_trait]
 pub trait CheckPredicates: Sized {
     /// Performs predicates verification of the transaction.
-    fn check_predicates<Ecal: EcalHandler + Send + 'static>(
+    fn check_predicates(
         self,
         params: &CheckPredicateParams,
         memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
-        ecal_handler: Ecal,
+        ecal_handler: impl EcalHandler,
     ) -> Result<Self, CheckError>;
 
     /// Performs predicates verification of the transaction in parallel.
@@ -503,12 +503,12 @@ pub trait EstimatePredicates: Sized {
     }
 
     /// Estimates predicates of the transaction.
-    fn estimate_predicates_ecal<Ecal: EcalHandler + Send + 'static>(
+    fn estimate_predicates_ecal(
         &mut self,
         params: &CheckPredicateParams,
         memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
-        ecal_handler: Ecal,
+        ecal_handler: impl EcalHandler,
     ) -> Result<(), CheckError>;
 
     /// Estimates predicates of the transaction in parallel.
@@ -549,16 +549,13 @@ where
     Tx: ExecutableTransaction + Send + Sync + 'static,
     <Tx as IntoChecked>::Metadata: crate::interpreter::CheckedMetadata + Send + Sync,
 {
-    fn check_predicates<Ecal>(
+    fn check_predicates(
         mut self,
         params: &CheckPredicateParams,
         memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
-        ecal_handler: Ecal,
-    ) -> Result<Self, CheckError>
-    where
-        Ecal: EcalHandler + Send + 'static,
-    {
+        ecal_handler: impl EcalHandler,
+    ) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Predicates) {
             predicates::check_predicates(&self, params, memory, storage, ecal_handler)?;
             self.checks_bitmask.insert(Checks::Predicates);
@@ -598,14 +595,14 @@ where
 
 #[async_trait::async_trait]
 impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for Tx {
-    fn estimate_predicates_ecal<Ecal: EcalHandler>(
+    fn estimate_predicates_ecal(
         &mut self,
         params: &CheckPredicateParams,
         memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
-        ecal_handler: Ecal,
+        ecal_handler: impl EcalHandler,
     ) -> Result<(), CheckError> {
-        predicates::estimate_predicates::<Self, Ecal>(
+        predicates::estimate_predicates::<Self>(
             self,
             params,
             memory,
@@ -641,12 +638,12 @@ impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for T
 
 #[async_trait::async_trait]
 impl EstimatePredicates for Transaction {
-    fn estimate_predicates_ecal<Ecal: EcalHandler + Send + 'static>(
+    fn estimate_predicates_ecal(
         &mut self,
         params: &CheckPredicateParams,
         memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
-        ecal_handler: Ecal,
+        ecal_handler: impl EcalHandler,
     ) -> Result<(), CheckError> {
         match self {
             Self::Script(tx) => {
@@ -731,12 +728,12 @@ impl EstimatePredicates for Transaction {
 
 #[async_trait::async_trait]
 impl CheckPredicates for Checked<Mint> {
-    fn check_predicates<Ecal: EcalHandler + Send + 'static>(
+    fn check_predicates(
         mut self,
         _params: &CheckPredicateParams,
         _memory: impl Memory,
         _storage: &impl PredicateStorageRequirements,
-        _ecal_handler: Ecal,
+        _ecal_handler: impl EcalHandler,
     ) -> Result<Self, CheckError> {
         self.checks_bitmask.insert(Checks::Predicates);
         Ok(self)
@@ -759,12 +756,12 @@ impl CheckPredicates for Checked<Mint> {
 
 #[async_trait::async_trait]
 impl CheckPredicates for Checked<Transaction> {
-    fn check_predicates<Ecal: EcalHandler + Send + 'static>(
+    fn check_predicates(
         self,
         params: &CheckPredicateParams,
         memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
-        ecal_handler: Ecal,
+        ecal_handler: impl EcalHandler,
     ) -> Result<Self, CheckError> {
         let checked_transaction: CheckedTransaction = self.into();
         let checked_transaction: CheckedTransaction = match checked_transaction {

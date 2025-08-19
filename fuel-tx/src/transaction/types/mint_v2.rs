@@ -46,13 +46,20 @@ impl MintV2Metadata {
 /// Utxo inputs and outputs (reads/writes) of the contract state by a single transaction.
 /// Note that the data is stored as `Vec<u8>` so it's forward-compatible with
 /// making storage slots variable length.
-#[derive(Default, Debug, Clone, Educe, serde::Serialize, serde::Deserialize)]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
+#[derive(
+    Default, Debug, Clone, Eq, PartialEq, Hash, serde::Serialize, serde::Deserialize,
+)]
+#[cfg_attr(
+    feature = "da-compression",
+    derive(fuel_compression::Compress, fuel_compression::Decompress)
+)]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
-#[educe(Eq, PartialEq, Hash)]
 pub struct ContractStateUtxos {
-    pub inputs: Vec<(UtxoId, Vec<u8>)>,
-    pub outputs: Vec<(UtxoId, Vec<u8>)>,
+    pub inputs: Vec<(UtxoId, Bytes32, Vec<u8>)>,
+    /// Note that these are conceptually outputs of the tx the produced them, even though
+    /// they're not outputs in the transaction itself. They can only be spent byt the
+    /// inputs field above, so the logic for doing this is fairly isolated.
+    pub outputs: Vec<(Bytes32, Vec<u8>)>,
 }
 
 /// The definition of the `MintV2` transaction from the specification:

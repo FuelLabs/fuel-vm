@@ -185,38 +185,47 @@ where
     }
 }
 
-impl<T0, T1> Compressible for (T0, T1)
-where
-    T0: Compressible,
-    T1: Compressible,
-{
-    type Compressed = (T0::Compressed, T1::Compressed);
+macro_rules! impl_tuple {
+    ($($t:ident),*) => { paste::paste! {
+        impl<$($t),*> Compressible for ($($t),*)
+        where
+            $($t: Compressible),*
+        {
+            type Compressed = ($($t::Compressed),*);
+        }
+
+        impl<$($t),*, Ctx> CompressibleBy<Ctx> for ($($t),*)
+        where
+            Ctx: ContextError,
+            $($t: CompressibleBy<Ctx>),*
+        {
+            async fn compress_with(&self, ctx: &mut Ctx) -> Result<Self::Compressed, Ctx::Error> {
+                let ($([< $t:lower >]),*) = self;
+                Ok((
+                    $([< $t:lower >].compress_with(ctx).await?),*
+                ))
+            }
+        }
+
+        impl<$($t),*, Ctx> DecompressibleBy<Ctx> for ($($t),*)
+        where
+            Ctx: ContextError,
+            $($t: DecompressibleBy<Ctx>),*
+        {
+            async fn decompress_with(c: Self::Compressed, ctx: &Ctx) -> Result<Self, Ctx::Error> {
+                let ($([< $t:lower >]),*) = c;
+                Ok((
+                    $($t::decompress_with([< $t:lower >], ctx).await?),*
+                ))
+            }
+        }
+    }};
 }
 
-impl<T0, T1, Ctx> CompressibleBy<Ctx> for (T0, T1)
-where
-    T0: CompressibleBy<Ctx>,
-    T1: CompressibleBy<Ctx>,
-    Ctx: ContextError,
-{
-    async fn compress_with(&self, ctx: &mut Ctx) -> Result<Self::Compressed, Ctx::Error> {
-        Ok((
-            self.0.compress_with(ctx).await?,
-            self.1.compress_with(ctx).await?,
-        ))
-    }
-}
-
-impl<T0, T1, Ctx> DecompressibleBy<Ctx> for (T0, T1)
-where
-    T0: DecompressibleBy<Ctx>,
-    T1: DecompressibleBy<Ctx>,
-    Ctx: ContextError,
-{
-    async fn decompress_with(c: Self::Compressed, ctx: &Ctx) -> Result<Self, Ctx::Error> {
-        Ok((
-            T0::decompress_with(c.0, ctx).await?,
-            T1::decompress_with(c.1, ctx).await?,
-        ))
-    }
-}
+impl_tuple!(T0, T1);
+impl_tuple!(T0, T1, T2);
+impl_tuple!(T0, T1, T2, T3);
+impl_tuple!(T0, T1, T2, T3, T4);
+impl_tuple!(T0, T1, T2, T3, T4, T5);
+impl_tuple!(T0, T1, T2, T3, T4, T5, T6);
+impl_tuple!(T0, T1, T2, T3, T4, T5, T6, T7);

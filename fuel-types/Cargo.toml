@@ -23,6 +23,7 @@ unsafe = []
 [dependencies]
 fuel-derive = { workspace = true }
 hex = { version = "0.4", default-features = false }
+paste = "1"
 rand = { version = "0.8", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"], optional = true }
 wasm-bindgen = { version = "0.2.97", optional = true }

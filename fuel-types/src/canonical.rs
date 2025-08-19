@@ -269,38 +269,67 @@ impl Deserialize for () {
     }
 }
 
-impl<T0: Serialize, T1: Serialize> Serialize for (T0, T1) {
-    fn size_static(&self) -> usize {
-        self.0.size_static().saturating_add(self.1.size_static())
-    }
+macro_rules! impl_tuple {
+    ($($t:ident),*) => { paste::paste! {
+        impl<$($t: Serialize),*> Serialize for ($($t),*) {
+            fn size_static(&self) -> usize {
+                let ($([< $t:lower >]),*) = self;
+                let mut total: usize = 0;
+                $(
+                    total = total.saturating_add([< $t:lower >].size_static());
+                )*
+                total
+            }
 
-    #[inline(always)]
-    fn size_dynamic(&self) -> usize {
-        self.0.size_dynamic().saturating_add(self.1.size_dynamic())
-    }
+            #[inline(always)]
+            fn size_dynamic(&self) -> usize {
+                let ($([< $t:lower >]),*) = self;
+                let mut total: usize = 0;
+                $(
+                    total = total.saturating_add([< $t:lower >].size_dynamic());
+                )*
+                total
+            }
 
-    #[inline(always)]
-    fn encode_static<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
-        self.0.encode_static(buffer)?;
-        self.1.encode_static(buffer)
-    }
+            #[inline(always)]
+            fn encode_static<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
+                let ($([< $t:lower >]),*) = self;
+                $(
+                    [< $t:lower >].encode_static(buffer)?;
+                )*
+                Ok(())
+            }
 
-    fn encode_dynamic<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
-        self.0.encode_dynamic(buffer)?;
-        self.1.encode_dynamic(buffer)
-    }
+            fn encode_dynamic<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
+                let ($([< $t:lower >]),*) = self;
+                $(
+                    [< $t:lower >].encode_dynamic(buffer)?;
+                )*
+                Ok(())
+            }
+        }
+
+        impl<$($t: Deserialize),*> Deserialize for ($($t),*) {
+            fn decode_static<I: Input + ?Sized>(buffer: &mut I) -> Result<Self, Error> {
+                Ok(($($t::decode_static(buffer)?),*))
+            }
+
+            fn decode_dynamic<I: Input + ?Sized>(&mut self, buffer: &mut I) -> Result<(), Error> {
+                let ($([< $t:lower >]),*) = self;
+                $([< $t:lower >].decode_dynamic(buffer)?;)*
+                Ok(())
+            }
+        }
+    }};
 }
 
-impl<T0: Deserialize, T1: Deserialize> Deserialize for (T0, T1) {
-    fn decode_static<I: Input + ?Sized>(buffer: &mut I) -> Result<Self, Error> {
-        Ok((T0::decode_static(buffer)?, T1::decode_static(buffer)?))
-    }
-
-    fn decode_dynamic<I: Input + ?Sized>(&mut self, buffer: &mut I) -> Result<(), Error> {
-        self.0.decode_dynamic(buffer)?;
-        self.1.decode_dynamic(buffer)
-    }
-}
+impl_tuple!(T0, T1);
+impl_tuple!(T0, T1, T2);
+impl_tuple!(T0, T1, T2, T3);
+impl_tuple!(T0, T1, T2, T3, T4);
+impl_tuple!(T0, T1, T2, T3, T4, T5);
+impl_tuple!(T0, T1, T2, T3, T4, T5, T6);
+impl_tuple!(T0, T1, T2, T3, T4, T5, T6, T7);
 
 /// To protect against malicious large inputs, vector size is limited when decoding.
 pub const VEC_DECODE_LIMIT: usize = 100 * (1 << 20); // 100 MiB

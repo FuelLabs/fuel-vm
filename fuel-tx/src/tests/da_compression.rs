@@ -3,6 +3,7 @@ use crate::{
     CompressedUtxoId,
     Create,
     Mint,
+    MintV2,
     PrepareSign,
     Script,
     ScriptCode,
@@ -295,6 +296,23 @@ impl DecompressibleBy<TestCompressionCtx> for Mint {
             c.mint_amount.decompress(ctx).await?,
             c.mint_asset_id.decompress(ctx).await?,
             c.gas_price.decompress(ctx).await?,
+        ))
+    }
+}
+
+impl DecompressibleBy<TestCompressionCtx> for MintV2 {
+    async fn decompress_with(
+        c: Self::Compressed,
+        ctx: &TestCompressionCtx,
+    ) -> Result<Self, Infallible> {
+        Ok(Transaction::mint_v2(
+            ctx.latest_tx_pointer.expect("no latest tx pointer"),
+            c.input_contract.decompress(ctx).await?,
+            c.output_contract.decompress(ctx).await?,
+            c.mint_amount.decompress(ctx).await?,
+            c.mint_asset_id.decompress(ctx).await?,
+            c.gas_price.decompress(ctx).await?,
+            c.contract_state_utxos.decompress(ctx).await?,
         ))
     }
 }

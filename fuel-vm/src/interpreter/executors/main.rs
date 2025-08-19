@@ -153,17 +153,16 @@ pub mod predicates {
     ///
     /// The storage provider is not used since contract opcodes are not allowed for
     /// predicates.
-    pub fn check_predicates<Tx, Ecal>(
+    pub fn check_predicates<Tx>(
         checked: &Checked<Tx>,
         params: &CheckPredicateParams,
         mut memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
-        ecal_handler: Ecal,
+        ecal_handler: impl EcalHandler,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
-        Ecal: EcalHandler,
     {
         let tx = checked.transaction();
         run_predicates(
@@ -180,22 +179,21 @@ pub mod predicates {
     ///
     /// The storage provider is not used since contract opcodes are not allowed for
     /// predicates.
-    pub async fn check_predicates_async<Tx, Ecal, E>(
+    pub async fn check_predicates_async<Tx, E>(
         checked: &Checked<Tx>,
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
         storage: &impl PredicateStorageProvider,
-        ecal_handler: Ecal,
+        ecal_handler: impl EcalHandler,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + Send + 'static,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
         E: ParallelExecutor,
-        Ecal: EcalHandler + Send + 'static,
     {
         let tx = checked.transaction();
 
-        let predicates_checked = run_predicate_async::<Tx, Ecal, E>(
+        let predicates_checked = run_predicate_async::<Tx, E>(
             PredicateRunKind::Verifying(tx),
             params,
             pool,
@@ -213,16 +211,15 @@ pub mod predicates {
     ///
     /// The storage provider is not used since contract opcodes are not allowed for
     /// predicates.
-    pub fn estimate_predicates<Tx, Ecal>(
+    pub fn estimate_predicates<Tx>(
         transaction: &mut Tx,
         params: &CheckPredicateParams,
         mut memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
-        ecal_handler: Ecal,
+        ecal_handler: impl EcalHandler,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
-        Ecal: EcalHandler,
     {
         let predicates_checked = run_predicates(
             PredicateRunKind::Estimating(transaction),
@@ -240,19 +237,18 @@ pub mod predicates {
     ///
     /// The storage provider is not used since contract opcodes are not allowed for
     /// predicates.
-    pub async fn estimate_predicates_async<Tx, Ecal, E>(
+    pub async fn estimate_predicates_async<Tx, E>(
         transaction: &mut Tx,
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
         storage: &impl PredicateStorageProvider,
-        ecal_handler: Ecal,
+        ecal_handler: impl EcalHandler,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + Send + 'static,
         E: ParallelExecutor,
-        Ecal: EcalHandler + Send + 'static,
     {
-        let predicates_checked = run_predicate_async::<Tx, Ecal, E>(
+        let predicates_checked = run_predicate_async::<Tx, E>(
             PredicateRunKind::Estimating(transaction),
             params,
             pool,
@@ -264,17 +260,16 @@ pub mod predicates {
         Ok(predicates_checked)
     }
 
-    async fn run_predicate_async<Tx, Ecal, E>(
+    async fn run_predicate_async<Tx, E>(
         kind: PredicateRunKind<'_, Tx>,
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
         storage: &impl PredicateStorageProvider,
-        ecal_handler: Ecal,
+        ecal_handler: impl EcalHandler,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + Send + 'static,
         E: ParallelExecutor,
-        Ecal: EcalHandler + Send + 'static,
     {
         let mut checks = vec![];
         let tx_offset = params.tx_offset;
@@ -324,16 +319,15 @@ pub mod predicates {
         finalize_check_predicate(kind, checks, params)
     }
 
-    fn run_predicates<Tx, Ecal>(
+    fn run_predicates<Tx>(
         kind: PredicateRunKind<'_, Tx>,
         params: &CheckPredicateParams,
         mut memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
-        ecal_handler: Ecal,
+        ecal_handler: impl EcalHandler,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
-        Ecal: EcalHandler,
     {
         let mut checks = vec![];
 

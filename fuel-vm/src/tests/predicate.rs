@@ -70,15 +70,14 @@ impl ParallelExecutor for TokioWithRayon {
     }
 }
 
-async fn execute_predicate<P, Ecal>(
+async fn execute_predicate<P>(
     predicate: P,
     predicate_data: Vec<u8>,
     dummy_inputs: usize,
-    ecal_handler: Ecal,
+    ecal_handler: impl EcalHandler,
 ) -> bool
 where
     P: IntoIterator<Item = Instruction>,
-    Ecal: EcalHandler + Send + 'static,
 {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 

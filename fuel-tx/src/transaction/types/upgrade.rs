@@ -189,6 +189,31 @@ impl UniqueFormatValidityChecks for Upgrade {
         &self,
         consensus_params: &ConsensusParameters,
     ) -> Result<(), ValidityError> {
+        // We verify validity of the `UpgradePurpose` in the
+        // `UpgradeMetadata::compute`.
+        let calculated_metadata = UpgradeMetadata::compute(self)?;
+
+        if let Some(metadata) = self.metadata.as_ref() {
+            if metadata.body != calculated_metadata {
+                return Err(ValidityError::TransactionMetadataMismatch);
+            }
+        }
+
+        self.verify_blob_id()?;
+        self.verify_inputs(consensus_params)?;
+        self.verify_outputs(consensus_params)?;
+
+        Ok(())
+    }
+
+    fn verify_blob_id(&self) -> Result<(), ValidityError> {
+        !todo!()
+    }
+
+    fn verify_inputs(
+        &self,
+        consensus_params: &ConsensusParameters,
+    ) -> Result<(), ValidityError> {
         // At least one of inputs must be owned by the privileged address.
         self.inputs
             .iter()
@@ -200,16 +225,6 @@ impl UniqueFormatValidityChecks for Upgrade {
                 }
             })
             .ok_or(ValidityError::TransactionUpgradeNoPrivilegedAddress)?;
-
-        // We verify validity of the `UpgradePurpose` in the
-        // `UpgradeMetadata::compute`.
-        let calculated_metadata = UpgradeMetadata::compute(self)?;
-
-        if let Some(metadata) = self.metadata.as_ref() {
-            if metadata.body != calculated_metadata {
-                return Err(ValidityError::TransactionMetadataMismatch);
-            }
-        }
 
         // The upgrade transaction cant touch the contract.
         self.inputs
@@ -237,6 +252,13 @@ impl UniqueFormatValidityChecks for Upgrade {
                 }
             })?;
 
+        Ok(())
+    }
+
+    fn verify_outputs(
+        &self,
+        consensus_params: &ConsensusParameters,
+    ) -> Result<(), ValidityError> {
         // The upgrade transaction can't create a contract.
         self.outputs
             .iter()

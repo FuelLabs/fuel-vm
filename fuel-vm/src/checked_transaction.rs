@@ -10,6 +10,7 @@
 use fuel_tx::{
     Create,
     Mint,
+    MintV2,
     Script,
     Transaction,
     ValidityError,
@@ -652,7 +653,7 @@ impl EstimatePredicates for Transaction {
             Self::Create(tx) => {
                 tx.estimate_predicates_ecal(params, memory, storage, ecal_handler)
             }
-            Self::Mint(_) => Ok(()),
+            Self::Mint(_) | Self::MintV2(_) => Ok(()),
             Self::Upgrade(tx) => {
                 tx.estimate_predicates_ecal(params, memory, storage, ecal_handler)
             }
@@ -694,7 +695,7 @@ impl EstimatePredicates for Transaction {
                 )
                 .await
             }
-            Self::Mint(_) => Ok(()),
+            Self::Mint(_) | Self::MintV2(_) => Ok(()),
             Self::Upgrade(tx) => {
                 tx.estimate_predicates_async_ecal::<Ecal, E>(
                     params,
@@ -734,6 +735,34 @@ impl CheckPredicates for Checked<Mint> {
         _memory: impl Memory,
         _storage: &impl PredicateStorageRequirements,
         _ecal_handler: impl EcalHandler,
+    ) -> Result<Self, CheckError> {
+        self.checks_bitmask.insert(Checks::Predicates);
+        Ok(self)
+    }
+
+    async fn check_predicates_async<
+        Ecal: EcalHandler + Send + 'static,
+        E: ParallelExecutor,
+    >(
+        mut self,
+        _params: &CheckPredicateParams,
+        _pool: &impl VmMemoryPool,
+        _storage: &impl PredicateStorageProvider,
+        _ecal_handler: Ecal,
+    ) -> Result<Self, CheckError> {
+        self.checks_bitmask.insert(Checks::Predicates);
+        Ok(self)
+    }
+}
+
+#[async_trait::async_trait]
+impl CheckPredicates for Checked<MintV2> {
+    fn check_predicates<Ecal: EcalHandler + Send + 'static>(
+        mut self,
+        _params: &CheckPredicateParams,
+        _memory: impl Memory,
+        _storage: &impl PredicateStorageRequirements,
+        _ecal_handler: Ecal,
     ) -> Result<Self, CheckError> {
         self.checks_bitmask.insert(Checks::Predicates);
         Ok(self)
@@ -813,6 +842,14 @@ impl CheckPredicates for Checked<Transaction> {
                 ecal_handler,
             )?
             .into(),
+            CheckedTransaction::MintV2(tx) => CheckPredicates::check_predicates(
+                tx,
+                params,
+                memory,
+                storage,
+                ecal_handler,
+            )?
+            .into(),
         };
         Ok(checked_transaction.into())
     }
@@ -879,6 +916,14 @@ impl CheckPredicates for Checked<Transaction> {
             )
             .await?
             .into(),
+            CheckedTransaction::MintV2(tx) => CheckPredicates::check_predicates_async::<
+                Ecal,
+                E,
+            >(
+                tx, params, pool, storage, ecal_handler
+            )
+            .await?
+            .into(),
         };
 
         Ok(checked_transaction.into())
@@ -899,6 +944,7 @@ pub enum CheckedTransaction {
     Upgrade(Checked<Upgrade>),
     Upload(Checked<Upload>),
     Blob(Checked<Blob>),
+    MintV2(Checked<MintV2>),
 }
 
 impl From<Checked<Transaction>> for CheckedTransaction {
@@ -929,6 +975,9 @@ impl From<Checked<Transaction>> for CheckedTransaction {
             (Transaction::Blob(transaction), CheckedMetadata::Blob(metadata)) => {
                 Self::Blob(Checked::new(transaction, metadata, checks_bitmask))
             }
+            (Transaction::MintV2(transaction), CheckedMetadata::MintV2(metadata)) => {
+                Self::MintV2(Checked::new(transaction, metadata, checks_bitmask))
+            }
             // The code should produce the `CheckedMetadata` for the corresponding
             // transaction variant. It is done in the implementation of the
             // `IntoChecked` trait for `Transaction`. With the current
@@ -939,6 +988,7 @@ impl From<Checked<Transaction>> for CheckedTransaction {
             (Transaction::Upgrade(_), _) => unreachable!(),
             (Transaction::Upload(_), _) => unreachable!(),
             (Transaction::Blob(_), _) => unreachable!(),
+            (Transaction::MintV2(_), _) => unreachable!(),
         }
     }
 }
@@ -979,6 +1029,12 @@ impl From<Checked<Blob>> for CheckedTransaction {
     }
 }
 
+impl From<Checked<MintV2>> for CheckedTransaction {
+    fn from(checked: Checked<MintV2>) -> Self {
+        Self::MintV2(checked)
+    }
+}
+
 impl From<CheckedTransaction> for Checked<Transaction> {
     fn from(checked: CheckedTransaction) -> Self {
         match checked {
@@ -1012,6 +1068,11 @@ impl From<CheckedTransaction> for Checked<Transaction> {
                 metadata,
                 checks_bitmask,
             }) => Checked::new(transaction.into(), metadata.into(), checks_bitmask),
+            CheckedTransaction::MintV2(Checked {
+                transaction,
+                metadata,
+                checks_bitmask,
+            }) => Checked::new(transaction.into(), metadata.into(), checks_bitmask),
         }
     }
 }
@@ -1026,6 +1087,7 @@ pub enum CheckedMetadata {
     Upgrade(<Upgrade as IntoChecked>::Metadata),
     Upload(<Upload as IntoChecked>::Metadata),
     Blob(<Blob as IntoChecked>::Metadata),
+    MintV2(<MintV2 as IntoChecked>::Metadata),
 }
 
 impl From<<Script as IntoChecked>::Metadata> for CheckedMetadata {
@@ -1103,6 +1165,12 @@ impl IntoChecked for Transaction {
                 Ok((transaction.into(), metadata.into()))
             }
             Self::Blob(tx) => {
+                let (transaction, metadata) = tx
+                    .into_checked_basic(block_height, consensus_params)?
+                    .into();
+                Ok((transaction.into(), metadata.into()))
+            }
+            Self::MintV2(tx) => {
                 let (transaction, metadata) = tx
                     .into_checked_basic(block_height, consensus_params)?
                     .into();

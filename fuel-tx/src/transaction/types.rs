@@ -3,6 +3,7 @@ mod chargeable_transaction;
 mod create;
 pub mod input;
 mod mint;
+mod mint_v2;
 pub mod output;
 mod script;
 mod storage;
@@ -27,6 +28,10 @@ pub use create::{
     CreateMetadata,
 };
 pub use mint::Mint;
+pub use mint_v2::{
+    ContractStateUtxos,
+    MintV2,
+};
 pub use script::{
     Script,
     ScriptBody,

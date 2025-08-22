@@ -184,3 +184,48 @@ where
         Ok(result)
     }
 }
+
+macro_rules! impl_tuple {
+    ($($t:ident),*) => { paste::paste! {
+        impl<$($t),*> Compressible for ($($t),*)
+        where
+            $($t: Compressible),*
+        {
+            type Compressed = ($($t::Compressed),*);
+        }
+
+        impl<$($t),*, Ctx> CompressibleBy<Ctx> for ($($t),*)
+        where
+            Ctx: ContextError,
+            $($t: CompressibleBy<Ctx>),*
+        {
+            async fn compress_with(&self, ctx: &mut Ctx) -> Result<Self::Compressed, Ctx::Error> {
+                let ($([< $t:lower >]),*) = self;
+                Ok((
+                    $([< $t:lower >].compress_with(ctx).await?),*
+                ))
+            }
+        }
+
+        impl<$($t),*, Ctx> DecompressibleBy<Ctx> for ($($t),*)
+        where
+            Ctx: ContextError,
+            $($t: DecompressibleBy<Ctx>),*
+        {
+            async fn decompress_with(c: Self::Compressed, ctx: &Ctx) -> Result<Self, Ctx::Error> {
+                let ($([< $t:lower >]),*) = c;
+                Ok((
+                    $($t::decompress_with([< $t:lower >], ctx).await?),*
+                ))
+            }
+        }
+    }};
+}
+
+impl_tuple!(T0, T1);
+impl_tuple!(T0, T1, T2);
+impl_tuple!(T0, T1, T2, T3);
+impl_tuple!(T0, T1, T2, T3, T4);
+impl_tuple!(T0, T1, T2, T3, T4, T5);
+impl_tuple!(T0, T1, T2, T3, T4, T5, T6);
+impl_tuple!(T0, T1, T2, T3, T4, T5, T6, T7);

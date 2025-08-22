@@ -15,3 +15,4 @@ description = "Compression and decompression of Fuel blocks for DA storage."
 fuel-derive = { workspace = true }
 fuel-types = { workspace = true }
 serde = { version = "1.0", features = ["derive"] }
+paste = "1"

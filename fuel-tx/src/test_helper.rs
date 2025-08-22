@@ -141,6 +141,7 @@ mod use_std {
                         Transaction::Upgrade(_) => (),
                         Transaction::Upload(_) => (),
                         Transaction::Blob(_) => (),
+                        Transaction::MintV2(_) => (),
                     })
                     .unwrap_or(());
 

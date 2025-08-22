@@ -114,6 +114,7 @@ pub enum Transaction {
     Upgrade(Upgrade),
     Upload(Upload),
     Blob(Blob),
+    MintV2(MintV2),
 }
 
 #[cfg(feature = "test-helpers")]
@@ -203,6 +204,27 @@ impl Transaction {
             mint_amount,
             mint_asset_id,
             gas_price,
+            metadata: None,
+        }
+    }
+
+    pub fn mint_v2(
+        tx_pointer: TxPointer,
+        input_contract: input::contract::Contract,
+        output_contract: output::contract::Contract,
+        mint_amount: Word,
+        mint_asset_id: AssetId,
+        gas_price: Word,
+        contract_state_utxos: Vec<ContractStateUtxos>,
+    ) -> MintV2 {
+        MintV2 {
+            tx_pointer,
+            input_contract,
+            output_contract,
+            mint_amount,
+            mint_asset_id,
+            gas_price,
+            contract_state_utxos,
             metadata: None,
         }
     }
@@ -640,6 +662,12 @@ impl From<Blob> for Transaction {
     }
 }
 
+impl From<MintV2> for Transaction {
+    fn from(tx: MintV2) -> Self {
+        Self::MintV2(tx)
+    }
+}
+
 impl Serialize for Transaction {
     fn size_static(&self) -> usize {
         match self {
@@ -649,6 +677,7 @@ impl Serialize for Transaction {
             Self::Upgrade(tx) => tx.size_static(),
             Self::Upload(tx) => tx.size_static(),
             Self::Blob(tx) => tx.size_static(),
+            Self::MintV2(tx) => tx.size_static(),
         }
     }
 
@@ -660,6 +689,7 @@ impl Serialize for Transaction {
             Self::Upgrade(tx) => tx.size_dynamic(),
             Self::Upload(tx) => tx.size_dynamic(),
             Self::Blob(tx) => tx.size_dynamic(),
+            Self::MintV2(tx) => tx.size_dynamic(),
         }
     }
 
@@ -674,6 +704,7 @@ impl Serialize for Transaction {
             Self::Upgrade(tx) => tx.encode_static(buffer),
             Self::Upload(tx) => tx.encode_static(buffer),
             Self::Blob(tx) => tx.encode_static(buffer),
+            Self::MintV2(tx) => tx.encode_static(buffer),
         }
     }
 
@@ -688,6 +719,7 @@ impl Serialize for Transaction {
             Self::Upgrade(tx) => tx.encode_dynamic(buffer),
             Self::Upload(tx) => tx.encode_dynamic(buffer),
             Self::Blob(tx) => tx.encode_dynamic(buffer),
+            Self::MintV2(tx) => tx.encode_dynamic(buffer),
         }
     }
 }
@@ -721,6 +753,9 @@ impl Deserialize for Transaction {
             TransactionRepr::Blob => {
                 Ok(<Blob as Deserialize>::decode_static(buffer)?.into())
             }
+            TransactionRepr::MintV2 => {
+                Ok(<MintV2 as Deserialize>::decode_static(buffer)?.into())
+            }
         }
     }
 
@@ -735,6 +770,7 @@ impl Deserialize for Transaction {
             Self::Upgrade(tx) => tx.decode_dynamic(buffer),
             Self::Upload(tx) => tx.decode_dynamic(buffer),
             Self::Blob(tx) => tx.decode_dynamic(buffer),
+            Self::MintV2(tx) => tx.decode_dynamic(buffer),
         }
     }
 }

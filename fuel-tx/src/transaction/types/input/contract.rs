@@ -26,6 +26,8 @@ pub struct Contract {
     pub utxo_id: UtxoId,
     #[cfg_attr(feature = "da-compression", compress(skip))]
     pub balance_root: Bytes32,
+    /// Deprecated, as we're not using contract state merkle trees.
+    /// This field is kept for backward compatibility.
     #[cfg_attr(feature = "da-compression", compress(skip))]
     pub state_root: Bytes32,
     /// Pointer to transction that last modified the contract state.

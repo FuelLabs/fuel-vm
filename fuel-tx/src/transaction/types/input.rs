@@ -1,9 +1,10 @@
-use crate::{Output as OutputType, PredicateParameters, TxPointer, UtxoId, ValidityError};
+use crate::{
+    Output as OutputType, PredicateParameters, TxPointer, UtxoId, ValidityError,
+};
 use alloc::{string::ToString, vec::Vec};
 use coin::*;
 use consts::*;
 use contract::*;
-use hashbrown::HashMap;
 use core::fmt::{self, Formatter};
 use fuel_crypto::{Hasher, PublicKey};
 use fuel_types::{
@@ -11,6 +12,7 @@ use fuel_types::{
     canonical::{Deserialize, Error, Output, Serialize},
     fmt_truncated_hex,
 };
+use hashbrown::HashMap;
 use message::*;
 
 pub mod coin;
@@ -23,7 +25,7 @@ mod repr;
 pub use predicate::PredicateCode;
 pub use repr::InputRepr;
 
-use super::{output, Witness};
+use super::{Witness, output};
 
 #[cfg(all(test, feature = "std"))]
 mod ser_de_tests;
@@ -720,7 +722,8 @@ impl InputV1 {
             // TODO: If h is the block height the UTXO being spent was created,
             // transaction is  invalid if `blockheight() < h + maturity`.
             _ => Ok(()),
-        }    }
+        }
+    }
 }
 
 impl Deserialize for InputV1 {

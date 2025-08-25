@@ -83,7 +83,7 @@ mod use_std {
         R: Rng + CryptoRng,
     {
         fn from(rng: R) -> Self {
-            let input_sampler = Uniform::from(0..Input::COUNT);
+            let input_sampler = Uniform::from(0..InputV1::COUNT);
             let output_sampler = Uniform::from(0..Output::COUNT);
 
             // Trick to enforce coverage of all variants in compile-time

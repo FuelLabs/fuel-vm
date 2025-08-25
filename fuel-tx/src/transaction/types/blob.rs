@@ -115,7 +115,7 @@ impl UniqueFormatValidityChecks for Blob {
                     Input::V1(InputV1::Contract(_)) => {
                         Err(ValidityError::TransactionInputContainsContract { index })
                     }
-                    Input::V1(InputV1::MessageCoinSigned(_))
+                    Input::V1(InputV1::MessageDataSigned(_))
                     | Input::V1(InputV1::MessageDataPredicate(_)) => {
                         Err(ValidityError::TransactionInputContainsMessageData { index })
                     }

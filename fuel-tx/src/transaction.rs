@@ -1,49 +1,24 @@
 use crate::{
     TxPointer,
     input::{
-        coin::{
-            CoinPredicate,
-            CoinSigned,
-        },
-        message::{
-            MessageCoinPredicate,
-            MessageDataPredicate,
-        },
+        coin::{CoinPredicate, CoinSigned},
+        message::{MessageCoinPredicate, MessageDataPredicate},
     },
     policies::Policies,
 };
-use fuel_crypto::{
-    Hasher,
-    PublicKey,
-};
+use fuel_crypto::{Hasher, PublicKey};
 use fuel_types::{
-    Address,
-    AssetId,
-    BlobId,
-    Bytes32,
-    Nonce,
-    Salt,
-    Word,
-    canonical::{
-        Deserialize,
-        Error,
-        Serialize,
-    },
+    Address, AssetId, BlobId, Bytes32, Nonce, Salt, Word,
+    canonical::{Deserialize, Error, Serialize},
 };
 
 use input::*;
 use output::*;
 
 #[cfg(feature = "typescript")]
-use self::{
-    input::typescript as input_ts,
-    output::typescript as output_ts,
-};
+use self::{input::typescript as input_ts, output::typescript as output_ts};
 
-use alloc::vec::{
-    IntoIter,
-    Vec,
-};
+use alloc::vec::{IntoIter, Vec};
 use itertools::Itertools;
 
 mod fee;
@@ -58,35 +33,19 @@ pub mod consensus_parameters;
 pub mod policies;
 
 pub use consensus_parameters::{
-    ConsensusParameters,
-    ContractParameters,
-    DependentCost,
-    FeeParameters,
-    GasCosts,
-    GasCostsValues,
-    PredicateParameters,
-    ScriptParameters,
-    TxParameters,
+    ConsensusParameters, ContractParameters, DependentCost, FeeParameters, GasCosts,
+    GasCostsValues, PredicateParameters, ScriptParameters, TxParameters,
 };
-pub use fee::{
-    Chargeable,
-    TransactionFee,
-};
+pub use fee::{Chargeable, TransactionFee};
 pub use metadata::Cacheable;
 pub use repr::TransactionRepr;
 pub use types::*;
-pub use validity::{
-    FormatValidityChecks,
-    ValidityError,
-};
+pub use validity::{FormatValidityChecks, ValidityError};
 
 #[cfg(feature = "alloc")]
 pub use id::Signable;
 
-pub use id::{
-    PrepareSign,
-    UniqueIdentifier,
-};
+pub use id::{PrepareSign, UniqueIdentifier};
 
 /// Identification of transaction (also called transaction hash)
 pub type TxId = Bytes32;
@@ -485,13 +444,15 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         self.inputs()
             .iter()
             .filter_map(|input| match input {
-                Input::CoinPredicate(CoinPredicate { asset_id, .. })
-                | Input::CoinSigned(CoinSigned { asset_id, .. }) => Some(asset_id),
-                Input::MessageCoinSigned(_)
-                | Input::MessageCoinPredicate(_)
-                | Input::MessageDataPredicate(_)
-                | Input::MessageDataSigned(_) => Some(base_asset_id),
-                _ => None,
+                Input::V1(input_v1) => match input_v1 {
+                    InputV1::CoinPredicate(CoinPredicate { asset_id, .. })
+                    | InputV1::CoinSigned(CoinSigned { asset_id, .. }) => Some(asset_id),
+                    InputV1::MessageCoinSigned(_)
+                    | InputV1::MessageCoinPredicate(_)
+                    | InputV1::MessageDataPredicate(_)
+                    | InputV1::MessageDataSigned(_) => Some(base_asset_id),
+                    _ => None,
+                },
             })
             .collect_vec()
             .into_iter()
@@ -518,20 +479,22 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         self.inputs()
             .iter()
             .filter_map(|i| match i {
-                Input::CoinPredicate(CoinPredicate {
-                    owner, predicate, ..
-                }) => Some((owner, predicate)),
-                Input::MessageDataPredicate(MessageDataPredicate {
-                    recipient,
-                    predicate,
-                    ..
-                }) => Some((recipient, predicate)),
-                Input::MessageCoinPredicate(MessageCoinPredicate {
-                    recipient,
-                    predicate,
-                    ..
-                }) => Some((recipient, predicate)),
-                _ => None,
+                Input::V1(input_v1) => match input_v1 {
+                    InputV1::CoinPredicate(CoinPredicate {
+                        owner, predicate, ..
+                    }) => Some((owner, predicate)),
+                    InputV1::MessageDataPredicate(MessageDataPredicate {
+                        recipient,
+                        predicate,
+                        ..
+                    }) => Some((recipient, predicate)),
+                    InputV1::MessageCoinPredicate(MessageCoinPredicate {
+                        recipient,
+                        predicate,
+                        ..
+                    }) => Some((recipient, predicate)),
+                    _ => None,
+                },
             })
             .fold(true, |result, (owner, predicate)| {
                 result && Input::is_predicate_owner_valid(owner, &**predicate)
@@ -743,28 +706,14 @@ impl Deserialize for Transaction {
 /// can be used to write generic code based on the different combinations of the fields.
 pub mod field {
     use crate::{
-        Input,
-        Output,
-        StorageSlot,
-        UpgradePurpose as UpgradePurposeType,
-        Witness,
-        input,
-        output,
-        policies,
+        Input, Output, StorageSlot, UpgradePurpose as UpgradePurposeType, Witness, input,
+        output, policies,
     };
-    use fuel_types::{
-        AssetId,
-        BlockHeight,
-        Bytes32,
-        Word,
-    };
+    use fuel_types::{AssetId, BlockHeight, Bytes32, Word};
 
     use crate::policies::PolicyType;
     use alloc::vec::Vec;
-    use core::ops::{
-        Deref,
-        DerefMut,
-    };
+    use core::ops::{Deref, DerefMut};
 
     pub trait Tip {
         fn tip(&self) -> Word;
@@ -1110,21 +1059,10 @@ pub mod typescript {
     use wasm_bindgen::prelude::*;
 
     use crate::{
-        AssetId,
-        Witness,
-        Word,
-        transaction::{
-            Policies,
-            input_ts::Input,
-            output_ts::Output,
-        },
+        AssetId, Witness, Word,
+        transaction::{Policies, input_ts::Input, output_ts::Output},
     };
-    use alloc::{
-        boxed::Box,
-        format,
-        string::String,
-        vec::Vec,
-    };
+    use alloc::{boxed::Box, format, string::String, vec::Vec};
     use fuel_types::Bytes32;
 
     #[derive(Debug, Clone, Eq, Hash, PartialEq, serde::Serialize, serde::Deserialize)]

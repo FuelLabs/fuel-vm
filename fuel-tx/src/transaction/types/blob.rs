@@ -1,10 +1,5 @@
 use crate::{
-    ConsensusParameters,
-    FeeParameters,
-    GasCosts,
-    Input,
-    Output,
-    TransactionRepr,
+    ConsensusParameters, FeeParameters, GasCosts, Input, Output, TransactionRepr,
     ValidityError,
     transaction::{
         Chargeable,
@@ -12,20 +7,14 @@ use crate::{
         id::PrepareSign,
         metadata::CommonMetadata,
         types::chargeable_transaction::{
-            ChargeableMetadata,
-            ChargeableTransaction,
-            UniqueFormatValidityChecks,
+            ChargeableMetadata, ChargeableTransaction, UniqueFormatValidityChecks,
         },
     },
 };
 use educe::Educe;
-use fuel_types::{
-    BlobId,
-    ChainId,
-    Word,
-    bytes::WORD_SIZE,
-    canonical::Serialize,
-};
+use fuel_types::{BlobId, ChainId, Word, bytes::WORD_SIZE, canonical::Serialize};
+
+use super::input::InputV1;
 
 /// Adds method to `BlobId` to compute the it from blob data.
 pub trait BlobIdExt {
@@ -123,10 +112,11 @@ impl UniqueFormatValidityChecks for Blob {
                 }
 
                 match input {
-                    Input::Contract(_) => {
+                    Input::V1(InputV1::Contract(_)) => {
                         Err(ValidityError::TransactionInputContainsContract { index })
                     }
-                    Input::MessageDataSigned(_) | Input::MessageDataPredicate(_) => {
+                    Input::V1(InputV1::MessageCoinSigned(_))
+                    | Input::V1(InputV1::MessageDataPredicate(_)) => {
                         Err(ValidityError::TransactionInputContainsMessageData { index })
                     }
                     _ => Ok(()),
@@ -183,11 +173,7 @@ impl crate::Cacheable for Blob {
 
 mod field {
     use super::*;
-    use crate::field::{
-        self,
-        BlobId as BlobIdField,
-        BytecodeWitnessIndex,
-    };
+    use crate::field::{self, BlobId as BlobIdField, BytecodeWitnessIndex};
 
     impl field::BlobId for Blob {
         #[inline(always)]

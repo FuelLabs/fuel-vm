@@ -18,12 +18,10 @@ use crate::{
 };
 use fuel_asm::RegId;
 use fuel_tx::{
-    Input,
-    Output,
     field::{
         Script,
         ScriptGasLimit,
-    },
+    }, Input, InputV1, Output
 };
 use fuel_types::Word;
 
@@ -50,7 +48,7 @@ where
             .inputs()
             .iter()
             .filter_map(|i| match i {
-                Input::Contract(contract) => Some(contract.contract_id),
+                Input::V1(InputV1::Contract(contract)) => Some(contract.contract_id),
                 _ => None,
             })
             .collect();

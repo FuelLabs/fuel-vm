@@ -1,7 +1,4 @@
-use super::{
-    Input,
-    consts::*,
-};
+use super::{consts::*, Input, InputV1};
 
 #[derive(
     Debug,
@@ -108,12 +105,18 @@ impl InputRepr {
 
     pub const fn from_input(input: &Input) -> Self {
         match input {
-            Input::CoinSigned(_) | Input::CoinPredicate(_) => InputRepr::Coin,
-            Input::Contract(_) => InputRepr::Contract,
-            Input::MessageCoinSigned(_)
-            | Input::MessageCoinPredicate(_)
-            | Input::MessageDataSigned(_)
-            | Input::MessageDataPredicate(_) => InputRepr::Message,
+            Input::V1(input) => Self::from_input_v1(input),
+        }
+    }
+
+    pub const fn from_input_v1(input: &InputV1) -> Self {
+        match input {
+            InputV1::CoinSigned(_) | InputV1::CoinPredicate(_) => InputRepr::Coin,
+            InputV1::Contract(_) => InputRepr::Contract,
+            InputV1::MessageCoinSigned(_)
+            | InputV1::MessageCoinPredicate(_)
+            | InputV1::MessageDataSigned(_)
+            | InputV1::MessageDataPredicate(_) => InputRepr::Message,
         }
     }
 }

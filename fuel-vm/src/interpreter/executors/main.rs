@@ -66,22 +66,6 @@ use fuel_storage::{
     StorageAsRef,
 };
 use fuel_tx::{
-    Blob,
-    BlobIdExt,
-    ConsensusParameters,
-    Contract,
-    Create,
-    FeeParameters,
-    GasCosts,
-    Input,
-    Receipt,
-    ScriptExecutionResult,
-    Transaction,
-    Upgrade,
-    UpgradeMetadata,
-    UpgradePurpose,
-    Upload,
-    ValidityError,
     field::{
         BlobId as _,
         BytecodeRoot,
@@ -95,14 +79,13 @@ use fuel_tx::{
         SubsectionsNumber,
         UpgradePurpose as UpgradePurposeField,
         Witnesses,
-    },
-    input::{
+    }, input::{
         coin::CoinPredicate,
         message::{
             MessageCoinPredicate,
             MessageDataPredicate,
         },
-    },
+    }, Blob, BlobIdExt, ConsensusParameters, Contract, Create, FeeParameters, GasCosts, Input, InputV1, Receipt, ScriptExecutionResult, Transaction, Upgrade, UpgradeMetadata, UpgradePurpose, Upload, ValidityError
 };
 use fuel_types::{
     AssetId,
@@ -145,6 +128,8 @@ enum PredicateAction {
 /// The module contains functions to check predicates defined in the inputs of a
 /// transaction.
 pub mod predicates {
+    use fuel_tx::InputV1;
+
     use super::*;
     use crate::storage::predicate::PredicateStorageProvider;
 
@@ -388,21 +373,21 @@ pub mod predicates {
     {
         if predicate_action == PredicateAction::Verifying {
             match &tx.inputs()[index] {
-                Input::CoinPredicate(CoinPredicate {
+                Input::V1(InputV1::CoinPredicate(CoinPredicate {
                     owner: address,
                     predicate,
                     ..
-                })
-                | Input::MessageDataPredicate(MessageDataPredicate {
+                }))
+                | Input::V1(InputV1::MessageDataPredicate(MessageDataPredicate {
                     recipient: address,
                     predicate,
                     ..
-                })
-                | Input::MessageCoinPredicate(MessageCoinPredicate {
+                }))
+                | Input::V1(InputV1::MessageCoinPredicate(MessageCoinPredicate {
                     predicate,
                     recipient: address,
                     ..
-                }) => {
+                })) => {
                     if !Input::is_predicate_owner_valid(address, &**predicate) {
                         return (
                             0,
@@ -489,18 +474,18 @@ pub mod predicates {
             checks.iter().for_each(|(input_index, result)| {
                 if let Ok(gas_used) = result {
                     match &mut tx.inputs_mut()[*input_index] {
-                        Input::CoinPredicate(CoinPredicate {
+                        Input::V1(InputV1::CoinPredicate(CoinPredicate {
                             predicate_gas_used,
                             ..
-                        })
-                        | Input::MessageCoinPredicate(MessageCoinPredicate {
+                        }))
+                        | Input::V1(InputV1::MessageCoinPredicate(MessageCoinPredicate {
                             predicate_gas_used,
                             ..
-                        })
-                        | Input::MessageDataPredicate(MessageDataPredicate {
+                        }))
+                        | Input::V1(InputV1::MessageDataPredicate(MessageDataPredicate {
                             predicate_gas_used,
                             ..
-                        }) => {
+                        })) => {
                             *predicate_gas_used = *gas_used;
                         }
                         _ => {
@@ -893,7 +878,7 @@ where
 
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError<S::DataError>> {
         for input in self.transaction().inputs() {
-            if let Input::Contract(contract) = input {
+            if let Input::V1(InputV1::Contract(contract)) = input {
                 if !self.check_contract_exists(&contract.contract_id)? {
                     return Err(InterpreterError::Panic(
                         PanicReason::InputContractDoesNotExist,

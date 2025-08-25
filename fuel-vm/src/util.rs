@@ -135,30 +135,10 @@ pub mod test_helpers {
         op,
     };
     use fuel_tx::{
-        BlobBody,
-        BlobIdExt,
-        ConsensusParameters,
-        Contract,
-        ContractParameters,
-        Create,
-        FeeParameters,
-        Finalizable,
-        GasCosts,
-        Input,
-        Output,
-        PredicateParameters,
-        Receipt,
-        Script,
-        ScriptParameters,
-        StorageSlot,
-        Transaction,
-        TransactionBuilder,
-        TxParameters,
-        Witness,
         field::{
             Outputs,
             ReceiptsRoot,
-        },
+        }, BlobBody, BlobIdExt, ConsensusParameters, Contract, ContractParameters, Create, FeeParameters, Finalizable, GasCosts, Input, InputV1, Output, PredicateParameters, Receipt, Script, ScriptParameters, StorageSlot, Transaction, TransactionBuilder, TxParameters, Witness
     };
     use fuel_types::{
         Address,
@@ -288,7 +268,7 @@ pub mod test_helpers {
                 .builder
                 .inputs()
                 .iter()
-                .find_position(|input| matches!(input, Input::Contract(contract) if &contract.contract_id == id))
+                .find_position(|input| matches!(input, Input::V1(InputV1::Contract(contract)) if &contract.contract_id == id))
                 .expect("expected contract input with matching contract id");
 
             self.builder.add_output(Output::contract(

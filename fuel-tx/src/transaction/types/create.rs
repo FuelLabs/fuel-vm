@@ -1,14 +1,4 @@
 use crate::{
-    Chargeable,
-    ConsensusParameters,
-    Contract,
-    GasCosts,
-    Input,
-    Output,
-    PrepareSign,
-    StorageSlot,
-    TransactionRepr,
-    ValidityError,
     transaction::{
         field::{
             BytecodeWitnessIndex,
@@ -21,7 +11,7 @@ use crate::{
             ChargeableTransaction,
             UniqueFormatValidityChecks,
         },
-    },
+    }, Chargeable, ConsensusParameters, Contract, GasCosts, Input, InputV1, Output, PrepareSign, StorageSlot, TransactionRepr, ValidityError
 };
 use educe::Educe;
 use fuel_types::{
@@ -179,10 +169,10 @@ impl UniqueFormatValidityChecks for Create {
                 }
 
                 match input {
-                    Input::Contract(_) => {
+                    Input::V1(InputV1::Contract(_)) => {
                         Err(ValidityError::TransactionInputContainsContract { index })
                     }
-                    Input::MessageDataSigned(_) | Input::MessageDataPredicate(_) => {
+                    Input::V1(InputV1::MessageDataSigned(_)) | Input::V1(InputV1::MessageDataPredicate(_)) => {
                         Err(ValidityError::TransactionInputContainsMessageData { index })
                     }
                     _ => Ok(()),

@@ -45,26 +45,7 @@ mod use_std {
         generate_nonempty_padded_bytes,
     };
     use crate::{
-        Blob,
-        BlobBody,
-        BlobIdExt,
-        Buildable,
-        ConsensusParameters,
-        Contract,
-        Create,
-        Finalizable,
-        Input,
-        Mint,
-        Output,
-        Script,
-        Transaction,
-        TransactionBuilder,
-        Upgrade,
-        UpgradePurpose,
-        Upload,
-        UploadBody,
-        UploadSubsection,
-        field,
+        field, Blob, BlobBody, BlobIdExt, Buildable, ConsensusParameters, Contract, Create, Finalizable, Input, InputV1, Mint, Output, Script, Transaction, TransactionBuilder, Upgrade, UpgradePurpose, Upload, UploadBody, UploadSubsection
     };
     use core::marker::PhantomData;
     use fuel_crypto::{
@@ -113,13 +94,13 @@ mod use_std {
             debug_assert!({
                 Input::decode(&mut &empty[..])
                     .map(|i| match i {
-                        Input::CoinSigned(_) => (),
-                        Input::CoinPredicate(_) => (),
-                        Input::Contract(_) => (),
-                        Input::MessageCoinSigned(_) => (),
-                        Input::MessageCoinPredicate(_) => (),
-                        Input::MessageDataSigned(_) => (),
-                        Input::MessageDataPredicate(_) => (),
+                        Input::V1(InputV1::CoinSigned(_)) => (),
+                        Input::V1(InputV1::CoinPredicate(_)) => (),
+                        Input::V1(InputV1::Contract(_)) => (),
+                        Input::V1(InputV1::MessageCoinSigned(_)) => (),
+                        Input::V1(InputV1::MessageCoinPredicate(_)) => (),
+                        Input::V1(InputV1::MessageDataSigned(_)) => (),
+                        Input::V1(InputV1::MessageDataPredicate(_)) => (),
                     })
                     .unwrap_or(());
 

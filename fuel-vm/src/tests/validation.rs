@@ -215,9 +215,9 @@ fn malleable_fields_do_not_affect_validity_of_create() {
         let mut tx = tx.clone();
 
         match tx.inputs_mut()[0] {
-            Input::CoinPredicate(CoinPredicate {
+            Input::V1(InputV1::CoinPredicate(CoinPredicate {
                 ref mut tx_pointer, ..
-            }) => {
+            })) => {
                 #[cfg(not(feature = "u32-tx-pointer"))]
                 {
                     *tx_pointer = TxPointer::from_str("123456780001").unwrap()
@@ -326,9 +326,9 @@ fn malleable_fields_do_not_affect_validity_of_script() {
         *tx.receipts_root_mut() = [1u8; 32].into();
 
         match tx.inputs_mut()[0] {
-            Input::CoinPredicate(CoinPredicate {
+            Input::V1(InputV1::CoinPredicate(CoinPredicate {
                 ref mut tx_pointer, ..
-            }) => {
+            })) => {
                 #[cfg(not(feature = "u32-tx-pointer"))]
                 {
                     *tx_pointer = TxPointer::from_str("123456780001").unwrap()
@@ -342,13 +342,13 @@ fn malleable_fields_do_not_affect_validity_of_script() {
         };
 
         match tx.inputs_mut()[1] {
-            Input::Contract(input::contract::Contract {
+            Input::V1(InputV1::Contract(input::contract::Contract {
                 ref mut utxo_id,
                 ref mut balance_root,
                 ref mut state_root,
                 ref mut tx_pointer,
                 ..
-            }) => {
+            })) => {
                 *utxo_id = UtxoId::new([1; 32].into(), 0);
                 *balance_root = [2; 32].into();
                 *state_root = [3; 32].into();

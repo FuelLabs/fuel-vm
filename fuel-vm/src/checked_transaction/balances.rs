@@ -1,26 +1,14 @@
 use fuel_tx::{
-    Chargeable,
-    Input,
-    Output,
-    ValidityError,
-    field,
+    Chargeable, Input, InputV1, Output, ValidityError, field,
     input::{
-        coin::{
-            CoinPredicate,
-            CoinSigned,
-        },
+        coin::{CoinPredicate, CoinSigned},
         message::{
-            MessageCoinPredicate,
-            MessageCoinSigned,
-            MessageDataPredicate,
+            MessageCoinPredicate, MessageCoinSigned, MessageDataPredicate,
             MessageDataSigned,
         },
     },
 };
-use fuel_types::{
-    AssetId,
-    Word,
-};
+use fuel_types::{AssetId, Word};
 
 use alloc::collections::BTreeMap;
 use fuel_tx::policies::PolicyType;
@@ -62,27 +50,37 @@ fn add_up_input_balances<T: field::Inputs>(
     for input in transaction.inputs().iter() {
         match input {
             // Sum coin inputs
-            Input::CoinPredicate(CoinPredicate {
+            Input::V1(InputV1::CoinPredicate(CoinPredicate {
                 asset_id, amount, ..
-            })
-            | Input::CoinSigned(CoinSigned {
+            }))
+            | Input::V1(InputV1::CoinSigned(CoinSigned {
                 asset_id, amount, ..
-            }) => {
+            })) => {
                 let balance = non_retryable_balances.entry(*asset_id).or_default();
                 *balance = (*balance).checked_add(*amount)?;
             }
             // Sum message coin inputs
-            Input::MessageCoinSigned(MessageCoinSigned { amount, .. })
-            | Input::MessageCoinPredicate(MessageCoinPredicate { amount, .. }) => {
+            Input::V1(InputV1::MessageCoinSigned(MessageCoinSigned {
+                amount, ..
+            }))
+            | Input::V1(InputV1::MessageCoinPredicate(MessageCoinPredicate {
+                amount,
+                ..
+            })) => {
                 let balance = non_retryable_balances.entry(*base_asset_id).or_default();
                 *balance = (*balance).checked_add(*amount)?;
             }
             // Sum data messages
-            Input::MessageDataSigned(MessageDataSigned { amount, .. })
-            | Input::MessageDataPredicate(MessageDataPredicate { amount, .. }) => {
+            Input::V1(InputV1::MessageDataSigned(MessageDataSigned {
+                amount, ..
+            }))
+            | Input::V1(InputV1::MessageDataPredicate(MessageDataPredicate {
+                amount,
+                ..
+            })) => {
                 retryable_balance = retryable_balance.checked_add(*amount)?;
             }
-            Input::Contract(_) => {}
+            Input::V1(InputV1::Contract(_)) => {}
         }
     }
 

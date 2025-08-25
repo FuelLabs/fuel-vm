@@ -1,22 +1,10 @@
 use crate::{
-    FeeParameters,
-    GasCosts,
-    Input,
-    field,
-    field::{
-        MaxFeeLimit,
-        Tip,
-        WitnessLimit,
-    },
+    FeeParameters, GasCosts, Input, InputV1,
+    field::{self, MaxFeeLimit, Tip, WitnessLimit},
     input::{
-        coin::{
-            CoinPredicate,
-            CoinSigned,
-        },
+        coin::{CoinPredicate, CoinSigned},
         message::{
-            MessageCoinPredicate,
-            MessageCoinSigned,
-            MessageDataPredicate,
+            MessageCoinPredicate, MessageCoinSigned, MessageDataPredicate,
             MessageDataSigned,
         },
     },
@@ -238,42 +226,46 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
             .iter()
             .filter(|input| match input {
                 // Include signed inputs of unique witness indices
-                Input::CoinSigned(CoinSigned { witness_index, .. })
-                | Input::MessageCoinSigned(MessageCoinSigned { witness_index, .. })
-                | Input::MessageDataSigned(MessageDataSigned { witness_index, .. })
-                    if !witness_cache.contains(witness_index) =>
-                {
+                Input::V1(InputV1::CoinSigned(CoinSigned { witness_index, .. }))
+                | Input::V1(InputV1::MessageCoinSigned(MessageCoinSigned {
+                    witness_index,
+                    ..
+                }))
+                | Input::V1(InputV1::MessageDataSigned(MessageDataSigned {
+                    witness_index,
+                    ..
+                })) if !witness_cache.contains(witness_index) => {
                     witness_cache.insert(*witness_index);
                     true
                 }
                 // Include all predicates
-                Input::CoinPredicate(_)
-                | Input::MessageCoinPredicate(_)
-                | Input::MessageDataPredicate(_) => true,
+                Input::V1(InputV1::CoinPredicate(_))
+                | Input::V1(InputV1::MessageCoinPredicate(_))
+                | Input::V1(InputV1::MessageDataPredicate(_)) => true,
                 // Ignore all other inputs
                 _ => false,
             })
             .map(|input| match input {
                 // Charge EC recovery cost for signed inputs
-                Input::CoinSigned(_)
-                | Input::MessageCoinSigned(_)
-                | Input::MessageDataSigned(_) => gas_costs.eck1(),
+                Input::V1(InputV1::CoinSigned(_))
+                | Input::V1(InputV1::MessageCoinSigned(_))
+                | Input::V1(InputV1::MessageDataSigned(_)) => gas_costs.eck1(),
                 // Charge the cost of the contract root for predicate inputs
-                Input::CoinPredicate(CoinPredicate {
+                Input::V1(InputV1::CoinPredicate(CoinPredicate {
                     predicate,
                     predicate_gas_used,
                     ..
-                })
-                | Input::MessageCoinPredicate(MessageCoinPredicate {
+                }))
+                | Input::V1(InputV1::MessageCoinPredicate(MessageCoinPredicate {
                     predicate,
                     predicate_gas_used,
                     ..
-                })
-                | Input::MessageDataPredicate(MessageDataPredicate {
+                }))
+                | Input::V1(InputV1::MessageDataPredicate(MessageDataPredicate {
                     predicate,
                     predicate_gas_used,
                     ..
-                }) => {
+                })) => {
                     let bytes_size = self.metered_bytes_size();
                     let vm_initialization_gas =
                         gas_costs.vm_initialization().resolve(bytes_size as Word);

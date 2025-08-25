@@ -40,9 +40,9 @@ fn input_coin_message_signature() {
                 .iter()
                 .enumerate()
                 .try_for_each(|(index, input)| match input {
-                    Input::CoinSigned(_)
-                    | Input::MessageCoinSigned(_)
-                    | Input::MessageDataSigned(_) => input.check(
+                    Input::V1(InputV1::CoinSigned(_))
+                    | Input::V1(InputV1::MessageCoinSigned(_))
+                    | Input::V1(InputV1::MessageDataSigned(_)) => input.check(
                         index,
                         &txhash,
                         outputs,

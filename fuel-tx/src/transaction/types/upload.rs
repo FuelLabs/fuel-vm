@@ -1,32 +1,19 @@
 use crate::{
-    ConsensusParameters,
-    FeeParameters,
-    GasCosts,
-    Input,
-    Output,
-    TransactionRepr,
-    ValidityError,
+    ConsensusParameters, FeeParameters, GasCosts, Input, InputV1, Output,
+    TransactionRepr, ValidityError,
     transaction::{
         Chargeable,
         fee::min_gas,
         id::PrepareSign,
         metadata::CommonMetadata,
         types::chargeable_transaction::{
-            ChargeableMetadata,
-            ChargeableTransaction,
-            UniqueFormatValidityChecks,
+            ChargeableMetadata, ChargeableTransaction, UniqueFormatValidityChecks,
         },
     },
 };
 use core::ops::Deref;
 use educe::Educe;
-use fuel_types::{
-    Bytes32,
-    ChainId,
-    Word,
-    bytes::WORD_SIZE,
-    canonical::Serialize,
-};
+use fuel_types::{Bytes32, ChainId, Word, bytes::WORD_SIZE, canonical::Serialize};
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
@@ -235,10 +222,11 @@ impl UniqueFormatValidityChecks for Upload {
                 }
 
                 match input {
-                    Input::Contract(_) => {
+                    Input::V1(InputV1::Contract(_)) => {
                         Err(ValidityError::TransactionInputContainsContract { index })
                     }
-                    Input::MessageDataSigned(_) | Input::MessageDataPredicate(_) => {
+                    Input::V1(InputV1::MessageDataSigned(_))
+                    | Input::V1(InputV1::MessageDataPredicate(_)) => {
                         Err(ValidityError::TransactionInputContainsMessageData { index })
                     }
                     _ => Ok(()),
@@ -291,11 +279,7 @@ impl crate::Cacheable for Upload {
 mod field {
     use super::*;
     use crate::field::{
-        BytecodeRoot,
-        BytecodeWitnessIndex,
-        ChargeableBody,
-        ProofSet,
-        SubsectionIndex,
+        BytecodeRoot, BytecodeWitnessIndex, ChargeableBody, ProofSet, SubsectionIndex,
         SubsectionsNumber,
     };
 

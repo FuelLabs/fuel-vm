@@ -3,11 +3,12 @@
 # The script runs almost all CI checks locally.
 #
 # Requires installed:
-# - Rust `1.79.0`
+# - Rust `1.85.0`
 # - Nightly rust formatter
 # - `rustup target add thumbv6m-none-eabi`
 # - `rustup target add wasm32-unknown-unknown`
 # - `cargo install cargo-sort`
+# - `cargo install cargo-make`
 
 cargo +nightly fmt --all -- --check &&
 cargo sort -w --check &&

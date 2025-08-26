@@ -126,3 +126,9 @@ impl From<&Input> for InputRepr {
         Self::from_input(input)
     }
 }
+
+impl From<&InputV1> for InputRepr {
+    fn from(input: &InputV1) -> Self {
+        Self::from_input_v1(input)
+    }
+}

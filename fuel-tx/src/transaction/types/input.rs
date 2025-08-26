@@ -532,48 +532,6 @@ impl InputV1 {
             InputV1::MessageDataPredicate(message) => message.prepare_sign(),
         }
     }
-}
-
-impl InputV1 {
-    fn decode_static_with_discriminant<I: canonical::Input + ?Sized>(
-        buffer: &mut I,
-        discr: InputRepr,
-    ) -> Result<Self, Error> {
-        Ok(match discr {
-            InputRepr::Coin => {
-                let coin = CoinFull::decode_static(buffer)?;
-                if coin.predicate.capacity() == 0 {
-                    InputV1::CoinSigned(coin.into_signed())
-                } else {
-                    InputV1::CoinPredicate(coin.into_predicate())
-                }
-            }
-            InputRepr::Contract => {
-                let contract = Contract::decode_static(buffer)?;
-                InputV1::Contract(contract)
-            }
-            InputRepr::Message => {
-                let message = FullMessage::decode_static(buffer)?;
-                match (
-                    message.data.capacity() == 0,
-                    message.predicate.capacity() == 0,
-                ) {
-                    (true, true) => {
-                        InputV1::MessageCoinSigned(message.into_coin_signed())
-                    }
-                    (true, false) => {
-                        InputV1::MessageCoinPredicate(message.into_coin_predicate())
-                    }
-                    (false, true) => {
-                        InputV1::MessageDataSigned(message.into_message_data_signed())
-                    }
-                    (false, false) => InputV1::MessageDataPredicate(
-                        message.into_message_data_predicate(),
-                    ),
-                }
-            }
-        })
-    }
 
     pub fn check_signature_v1(
         &self,
@@ -726,13 +684,103 @@ impl InputV1 {
     }
 }
 
+impl Serialize for InputV1 {
+    fn size_static(&self) -> usize {
+        (match self {
+            InputV1::CoinSigned(coin) => coin.size_static(),
+            InputV1::CoinPredicate(coin) => coin.size_static(),
+            InputV1::Contract(contract) => contract.size_static(),
+            InputV1::MessageCoinSigned(message) => message.size_static(),
+            InputV1::MessageCoinPredicate(message) => message.size_static(),
+            InputV1::MessageDataSigned(message) => message.size_static(),
+            InputV1::MessageDataPredicate(message) => message.size_static(),
+        })
+        .saturating_add(8)
+    }
+
+    fn size_dynamic(&self) -> usize {
+        match self {
+            InputV1::CoinSigned(coin) => coin.size_dynamic(),
+            InputV1::CoinPredicate(coin) => coin.size_dynamic(),
+            InputV1::Contract(contract) => contract.size_dynamic(),
+            InputV1::MessageCoinSigned(message) => message.size_dynamic(),
+            InputV1::MessageCoinPredicate(message) => message.size_dynamic(),
+            InputV1::MessageDataSigned(message) => message.size_dynamic(),
+            InputV1::MessageDataPredicate(message) => message.size_dynamic(),
+        }
+    }
+
+    fn encode_static<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
+        let discr = InputRepr::from_input_v1(self);
+        discr.encode_static(buffer)?;
+        match self {
+            InputV1::CoinSigned(coin) => coin.encode_static(buffer),
+            InputV1::CoinPredicate(coin) => coin.encode_static(buffer),
+            InputV1::Contract(contract) => contract.encode_static(buffer),
+            InputV1::MessageCoinSigned(message) => message.encode_static(buffer),
+            InputV1::MessageCoinPredicate(message) => message.encode_static(buffer),
+            InputV1::MessageDataSigned(message) => message.encode_static(buffer),
+            InputV1::MessageDataPredicate(message) => message.encode_static(buffer),
+        }
+    }
+
+    fn encode_dynamic<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
+        let discr = InputRepr::from_input_v1(self);
+        discr.encode_dynamic(buffer)?;
+        match self {
+            InputV1::CoinSigned(coin) => coin.encode_dynamic(buffer),
+            InputV1::CoinPredicate(coin) => coin.encode_dynamic(buffer),
+            InputV1::Contract(contract) => contract.encode_dynamic(buffer),
+            InputV1::MessageCoinSigned(message) => message.encode_dynamic(buffer),
+            InputV1::MessageCoinPredicate(message) => message.encode_dynamic(buffer),
+            InputV1::MessageDataSigned(message) => message.encode_dynamic(buffer),
+            InputV1::MessageDataPredicate(message) => message.encode_dynamic(buffer),
+        }
+    }
+}
+
 impl Deserialize for InputV1 {
     fn decode_static<I: canonical::Input + ?Sized>(
         buffer: &mut I,
     ) -> Result<Self, Error> {
-        let discr = <InputRepr as Deserialize>::decode(buffer)
-            .map_err(|_| Error::UnknownDiscriminant)?;
-        Self::decode_static_with_discriminant(buffer, discr)
+        Ok(
+            match <InputRepr as Deserialize>::decode(buffer)
+                .map_err(|_| Error::UnknownDiscriminant)?
+            {
+                InputRepr::Coin => {
+                    let coin = CoinFull::decode_static(buffer)?;
+                    if coin.predicate.capacity() == 0 {
+                        InputV1::CoinSigned(coin.into_signed())
+                    } else {
+                        InputV1::CoinPredicate(coin.into_predicate())
+                    }
+                }
+                InputRepr::Contract => {
+                    let contract = Contract::decode_static(buffer)?;
+                    InputV1::Contract(contract)
+                }
+                InputRepr::Message => {
+                    let message = FullMessage::decode_static(buffer)?;
+                    match (
+                        message.data.capacity() == 0,
+                        message.predicate.capacity() == 0,
+                    ) {
+                        (true, true) => {
+                            InputV1::MessageCoinSigned(message.into_coin_signed())
+                        }
+                        (true, false) => {
+                            InputV1::MessageCoinPredicate(message.into_coin_predicate())
+                        }
+                        (false, true) => {
+                            InputV1::MessageDataSigned(message.into_message_data_signed())
+                        }
+                        (false, false) => InputV1::MessageDataPredicate(
+                            message.into_message_data_predicate(),
+                        ),
+                    }
+                }
+            },
+        )
     }
 
     fn decode_dynamic<I: canonical::Input + ?Sized>(
@@ -751,21 +799,11 @@ impl Deserialize for InputV1 {
     }
 }
 
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-    strum_macros::EnumCount,
-    serde::Serialize,
-    serde::Deserialize,
-)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(
     feature = "da-compression",
     derive(fuel_compression::Compress, fuel_compression::Decompress)
 )]
-#[serde(untagged)]
 pub enum Input {
     V1(InputV1),
 }
@@ -1234,90 +1272,36 @@ impl Input {
 
 impl Serialize for Input {
     fn size_static(&self) -> usize {
-        (match self {
-            Input::V1(InputV1::CoinSigned(coin)) => coin.size_static(),
-            Input::V1(InputV1::CoinPredicate(coin)) => coin.size_static(),
-            Input::V1(InputV1::Contract(contract)) => contract.size_static(),
-            Input::V1(InputV1::MessageCoinSigned(message)) => message.size_static(),
-            Input::V1(InputV1::MessageCoinPredicate(message)) => message.size_static(),
-            Input::V1(InputV1::MessageDataSigned(message)) => message.size_static(),
-            Input::V1(InputV1::MessageDataPredicate(message)) => message.size_static(),
-        })
-        .saturating_add(8) // Discriminant
+        match self {
+            Self::V1(input) => input.size_static(),
+        }
     }
 
     fn size_dynamic(&self) -> usize {
         match self {
-            Input::V1(InputV1::CoinSigned(coin)) => coin.size_dynamic(),
-            Input::V1(InputV1::CoinPredicate(coin)) => coin.size_dynamic(),
-            Input::V1(InputV1::MessageCoinSigned(message)) => message.size_dynamic(),
-            Input::V1(InputV1::MessageCoinPredicate(message)) => message.size_dynamic(),
-            Input::V1(InputV1::MessageDataSigned(message)) => message.size_dynamic(),
-            Input::V1(InputV1::MessageDataPredicate(message)) => message.size_dynamic(),
-            Input::V1(InputV1::Contract(contract)) => contract.size_dynamic(),
+            Self::V1(input) => input.size_dynamic(),
         }
     }
 
     fn encode_static<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
-        let discr = InputRepr::from(self);
-        discr.encode_static(buffer)?;
         match self {
-            Input::V1(InputV1::CoinSigned(coin)) => coin.encode_static(buffer),
-            Input::V1(InputV1::CoinPredicate(coin)) => coin.encode_static(buffer),
-            Input::V1(InputV1::Contract(contract)) => contract.encode_static(buffer),
-            Input::V1(InputV1::MessageCoinSigned(message)) => {
-                message.encode_static(buffer)
-            }
-            Input::V1(InputV1::MessageCoinPredicate(message)) => {
-                message.encode_static(buffer)
-            }
-            Input::V1(InputV1::MessageDataSigned(message)) => {
-                message.encode_static(buffer)
-            }
-            Input::V1(InputV1::MessageDataPredicate(message)) => {
-                message.encode_static(buffer)
-            }
+            Self::V1(input) => input.encode_static(buffer),
         }
     }
 
     fn encode_dynamic<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
-        let discr = InputRepr::from(self);
-        discr.encode_dynamic(buffer)?;
         match self {
-            Input::V1(InputV1::CoinSigned(coin)) => coin.encode_dynamic(buffer),
-            Input::V1(InputV1::CoinPredicate(coin)) => coin.encode_dynamic(buffer),
-            Input::V1(InputV1::Contract(contract)) => contract.encode_dynamic(buffer),
-            Input::V1(InputV1::MessageCoinSigned(message)) => {
-                message.encode_dynamic(buffer)
-            }
-            Input::V1(InputV1::MessageCoinPredicate(message)) => {
-                message.encode_dynamic(buffer)
-            }
-            Input::V1(InputV1::MessageDataSigned(message)) => {
-                message.encode_dynamic(buffer)
-            }
-            Input::V1(InputV1::MessageDataPredicate(message)) => {
-                message.encode_dynamic(buffer)
-            }
+            Self::V1(input) => input.encode_dynamic(buffer),
         }
     }
 }
+
 impl Deserialize for Input {
     fn decode_static<I: canonical::Input + ?Sized>(
         buffer: &mut I,
     ) -> Result<Self, Error> {
-        // Peek at the discriminant to determine if it's V1 or V2
-        let discr = <InputRepr as Deserialize>::decode(buffer)
-            .map_err(|_| Error::UnknownDiscriminant)?;
-
-        match discr {
-            _ => {
-                // For V1 discriminants, we need to "rewind" and let InputV1 handle it
-                // This is a bit tricky - you might need to restructure this based on your buffer type
-                let v1 = InputV1::decode_static_with_discriminant(buffer, discr)?;
-                Ok(Input::V1(v1))
-            }
-        }
+        let input_v1 = InputV1::decode_static(buffer)?;
+        Ok(Self::V1(input_v1))
     }
 
     fn decode_dynamic<I: canonical::Input + ?Sized>(
@@ -1327,6 +1311,27 @@ impl Deserialize for Input {
         match self {
             Input::V1(v1) => v1.decode_dynamic(buffer),
         }
+    }
+}
+
+impl serde::Serialize for Input {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            Input::V1(inner) => inner.serialize(serializer),
+        }
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for Input {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let v1 = InputV1::deserialize(deserializer)?;
+        Ok(Input::V1(v1))
     }
 }
 

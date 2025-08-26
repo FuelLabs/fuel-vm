@@ -1,29 +1,17 @@
 use crate::{
-    ConsensusParameters,
-    GasCosts,
-    Input,
-    Output,
-    TransactionRepr,
+    ConsensusParameters, GasCosts, Input, InputV1, Output, TransactionRepr,
     ValidityError,
     transaction::{
         Chargeable,
         id::PrepareSign,
         metadata::CommonMetadata,
         types::chargeable_transaction::{
-            ChargeableMetadata,
-            ChargeableTransaction,
-            UniqueFormatValidityChecks,
+            ChargeableMetadata, ChargeableTransaction, UniqueFormatValidityChecks,
         },
     },
 };
 use educe::Educe;
-use fuel_types::{
-    Bytes32,
-    ChainId,
-    Word,
-    bytes::WORD_SIZE,
-    canonical::Serialize,
-};
+use fuel_types::{Bytes32, ChainId, Word, bytes::WORD_SIZE, canonical::Serialize};
 
 use fuel_crypto::Hasher;
 
@@ -227,10 +215,11 @@ impl UniqueFormatValidityChecks for Upgrade {
                 }
 
                 match input {
-                    Input::Contract(_) => {
+                    Input::V1(InputV1::Contract(_)) => {
                         Err(ValidityError::TransactionInputContainsContract { index })
                     }
-                    Input::MessageDataSigned(_) | Input::MessageDataPredicate(_) => {
+                    Input::V1(InputV1::MessageDataSigned(_))
+                    | Input::V1(InputV1::MessageDataPredicate(_)) => {
                         Err(ValidityError::TransactionInputContainsMessageData { index })
                     }
                     _ => Ok(()),
@@ -283,10 +272,7 @@ impl crate::Cacheable for Upgrade {
 
 mod field {
     use super::*;
-    use crate::field::{
-        ChargeableBody,
-        UpgradePurpose as UpgradePurposeTrait,
-    };
+    use crate::field::{ChargeableBody, UpgradePurpose as UpgradePurposeTrait};
 
     impl UpgradePurposeTrait for Upgrade {
         #[inline(always)]

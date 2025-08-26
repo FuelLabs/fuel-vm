@@ -1,45 +1,17 @@
 use crate::{
-    Chargeable,
-    ConsensusParameters,
-    Input,
-    Output,
-    Transaction,
-    Witness,
-    field::{
-        Expiration,
-        Maturity,
-    },
-    input::{
-        coin::{
-            CoinPredicate,
-            CoinSigned,
-        },
-        message::{
-            MessageCoinPredicate,
-            MessageCoinSigned,
-            MessageDataPredicate,
-            MessageDataSigned,
-        },
-    },
+    Chargeable, ConsensusParameters, Input, InputV1, Output, Transaction, Witness,
+    field::{Expiration, Maturity},
     output,
     policies::PolicyType,
     transaction::{
         Executable,
-        consensus_parameters::{
-            PredicateParameters,
-            TxParameters,
-        },
+        consensus_parameters::{PredicateParameters, TxParameters},
         field,
     },
 };
 use core::hash::Hash;
 use fuel_types::{
-    Address,
-    BlockHeight,
-    Bytes32,
-    ChainId,
-    canonical,
-    canonical::Serialize,
+    Address, BlockHeight, Bytes32, ChainId, canonical, canonical::Serialize,
 };
 use hashbrown::HashMap;
 use itertools::Itertools;
@@ -76,70 +48,9 @@ impl Input {
         recovery_cache: &mut Option<HashMap<u16, Address>>,
     ) -> Result<(), ValidityError> {
         match self {
-            Self::CoinSigned(CoinSigned {
-                witness_index,
-                owner,
-                ..
-            })
-            | Self::MessageCoinSigned(MessageCoinSigned {
-                witness_index,
-                recipient: owner,
-                ..
-            })
-            | Self::MessageDataSigned(MessageDataSigned {
-                witness_index,
-                recipient: owner,
-                ..
-            }) => {
-                // Helper function for recovering the address from a witness
-                let recover_address = || -> Result<Address, ValidityError> {
-                    let witness = witnesses
-                        .get(*witness_index as usize)
-                        .ok_or(ValidityError::InputWitnessIndexBounds { index })?;
-
-                    witness.recover_witness(txhash, index)
-                };
-
-                // recover the address associated with a witness, using the cache if
-                // available
-                let recovered_address = if let Some(cache) = recovery_cache {
-                    if let Some(recovered_address) = cache.get(witness_index) {
-                        *recovered_address
-                    } else {
-                        // if this witness hasn't been recovered before,
-                        // cache ecrecover by witness index
-                        let recovered_address = recover_address()?;
-                        cache.insert(*witness_index, recovered_address);
-                        recovered_address
-                    }
-                } else {
-                    recover_address()?
-                };
-
-                if owner != &recovered_address {
-                    return Err(ValidityError::InputInvalidSignature { index });
-                }
-
-                Ok(())
+            Input::V1(input_v1) => {
+                input_v1.check_signature_v1(index, txhash, witnesses, recovery_cache)
             }
-
-            Self::CoinPredicate(CoinPredicate {
-                owner, predicate, ..
-            })
-            | Self::MessageCoinPredicate(MessageCoinPredicate {
-                recipient: owner,
-                predicate,
-                ..
-            })
-            | Self::MessageDataPredicate(MessageDataPredicate {
-                recipient: owner,
-                predicate,
-                ..
-            }) if !Input::is_predicate_owner_valid(owner, &**predicate) => {
-                Err(ValidityError::InputPredicateOwner { index })
-            }
-
-            _ => Ok(()),
         }
     }
 
@@ -151,70 +62,12 @@ impl Input {
         predicate_params: &PredicateParameters,
     ) -> Result<(), ValidityError> {
         match self {
-            Self::CoinPredicate(CoinPredicate { predicate, .. })
-            | Self::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
-            | Self::MessageDataPredicate(MessageDataPredicate { predicate, .. })
-                if predicate.is_empty() =>
-            {
-                Err(ValidityError::InputPredicateEmpty { index })
-            }
-
-            Self::CoinPredicate(CoinPredicate { predicate, .. })
-            | Self::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
-            | Self::MessageDataPredicate(MessageDataPredicate { predicate, .. })
-                if predicate.len() as u64 > predicate_params.max_predicate_length() =>
-            {
-                Err(ValidityError::InputPredicateLength { index })
-            }
-
-            Self::CoinPredicate(CoinPredicate { predicate_data, .. })
-            | Self::MessageCoinPredicate(MessageCoinPredicate {
-                predicate_data, ..
-            })
-            | Self::MessageDataPredicate(MessageDataPredicate {
-                predicate_data, ..
-            }) if predicate_data.len() as u64
-                > predicate_params.max_predicate_data_length() =>
-            {
-                Err(ValidityError::InputPredicateDataLength { index })
-            }
-
-            Self::CoinSigned(CoinSigned { witness_index, .. })
-            | Self::MessageCoinSigned(MessageCoinSigned { witness_index, .. })
-            | Self::MessageDataSigned(MessageDataSigned { witness_index, .. })
-                if *witness_index as usize >= witnesses.len() =>
-            {
-                Err(ValidityError::InputWitnessIndexBounds { index })
-            }
-
-            // ∀ inputContract ∃! outputContract : outputContract.inputIndex =
-            // inputContract.index
-            Self::Contract { .. }
-                if 1 != outputs
-                    .iter()
-                    .filter_map(|output| match output {
-                        Output::Contract(output::contract::Contract {
-                            input_index,
-                            ..
-                        }) if *input_index as usize == index => Some(()),
-                        _ => None,
-                    })
-                    .count() =>
-            {
-                Err(ValidityError::InputContractAssociatedOutputContract { index })
-            }
-
-            Self::MessageDataSigned(MessageDataSigned { data, .. })
-            | Self::MessageDataPredicate(MessageDataPredicate { data, .. })
-                if data.is_empty()
-                    || data.len() as u64 > predicate_params.max_message_data_length() =>
-            {
-                Err(ValidityError::InputMessageDataLength { index })
-            }
-
-            // TODO: If h is the block height the UTXO being spent was created,
-            // transaction is  invalid if `blockheight() < h + maturity`.
-            _ => Ok(()),
+            Input::V1(input_v1) => input_v1.check_without_signature_v1(
+                index,
+                outputs,
+                witnesses,
+                predicate_params,
+            ),
         }
     }
 }
@@ -230,7 +83,7 @@ impl Output {
         match self {
             Self::Contract(output::contract::Contract { input_index, .. }) => {
                 match inputs.get(*input_index as usize) {
-                    Some(Input::Contract { .. }) => Ok(()),
+                    Some(Input::V1(InputV1::Contract { .. })) => Ok(()),
                     _ => Err(ValidityError::OutputContractInputIndex { index }),
                 }
             }
@@ -378,13 +231,13 @@ where
     }
 
     let any_spendable_input = tx.inputs().iter().find(|input| match input {
-        Input::CoinSigned(_)
-        | Input::CoinPredicate(_)
-        | Input::MessageCoinSigned(_)
-        | Input::MessageCoinPredicate(_) => true,
-        Input::MessageDataSigned(_)
-        | Input::MessageDataPredicate(_)
-        | Input::Contract(_) => false,
+        Input::V1(InputV1::CoinSigned(_))
+        | Input::V1(InputV1::CoinPredicate(_))
+        | Input::V1(InputV1::MessageCoinSigned(_))
+        | Input::V1(InputV1::MessageCoinPredicate(_)) => true,
+        Input::V1(InputV1::MessageDataSigned(_))
+        | Input::V1(InputV1::MessageDataPredicate(_))
+        | Input::V1(InputV1::Contract(_)) => false,
     });
 
     if any_spendable_input.is_none() {
@@ -507,21 +360,14 @@ where
 #[cfg(feature = "typescript")]
 mod typescript {
     use crate::{
-        Witness,
-        transaction::consensus_parameters::typescript::PredicateParameters,
+        Witness, transaction::consensus_parameters::typescript::PredicateParameters,
     };
     use fuel_types::Bytes32;
     use wasm_bindgen::JsValue;
 
-    use alloc::{
-        format,
-        vec::Vec,
-    };
+    use alloc::{format, vec::Vec};
 
-    use crate::transaction::{
-        input_ts::Input,
-        output_ts::Output,
-    };
+    use crate::transaction::{input_ts::Input, output_ts::Output};
 
     #[wasm_bindgen::prelude::wasm_bindgen]
     pub fn check_input(

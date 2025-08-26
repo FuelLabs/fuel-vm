@@ -120,6 +120,7 @@ pub use transaction::{
     field,
     input,
     input::Input,
+    input::InputV1,
     input::InputRepr,
     output,
     output::Output,

@@ -1,3 +1,5 @@
+use latest_fuel_tx::InputV1;
+
 #[test]
 fn latest_can_deserialize_0_58_2() {
     // Given
@@ -83,7 +85,7 @@ fn latest_can_deserialize_previous_tx_pointer_in_tx() {
         // Then
         if let latest_fuel_tx::Transaction::Script(tx) = latest_tx {
             let input = tx.inputs().first().unwrap();
-            if let latest_fuel_tx::Input::CoinPredicate(input) = input {
+            if let latest_fuel_tx::Input::V1(InputV1::CoinPredicate(input)) = input {
                 let tx_pointer = input.tx_pointer;
                 assert_eq!(tx_pointer.block_height(), 0u32.into());
                 assert_eq!(tx_pointer.tx_index() as u32, idx as u32);

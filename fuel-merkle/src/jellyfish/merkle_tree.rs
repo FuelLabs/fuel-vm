@@ -26,6 +26,12 @@ use jmt::{
     Sha256Jmt,
 };
 
+use crate::jellyfish::proof::{
+    ExclusionProof,
+    InclusionProof,
+    MerkleProof,
+};
+
 use crate::jellyfish::error::MerkleTreeError;
 
 // Obtained by creating an empty tree.
@@ -205,6 +211,33 @@ where
         } else {
             Err(MerkleTreeError::RootHashMismatch(*root, root_from_storage))
         }
+    }
+
+    pub fn generate_proof(
+        &self,
+        key: &MerkleTreeKey,
+    ) -> Result<MerkleProof, MerkleTreeError<StorageError>> {
+        let jmt = self.as_jmt();
+        let key_hash = jmt::KeyHash(**key);
+        let version = self
+            .get_latest_root_version()
+            .unwrap_or_default()
+            .unwrap_or_default();
+        let (value_vec, proof) = jmt
+            .get_with_proof(key_hash, version)
+            .map_err(MerkleTreeError::JmtError)?;
+        let proof = match value_vec {
+            Some(value) => MerkleProof::Inclusion(InclusionProof {
+                proof,
+                key: key_hash,
+                value,
+            }),
+            None => MerkleProof::Exclusion(ExclusionProof {
+                proof,
+                key: key_hash,
+            }),
+        };
+        Ok(proof)
     }
 }
 

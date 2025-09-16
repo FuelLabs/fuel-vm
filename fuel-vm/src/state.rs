@@ -1,9 +1,6 @@
 //! Runtime state representation for the VM
 
-use alloc::{
-    sync::Arc,
-    vec::Vec,
-};
+use alloc::vec::Vec;
 use fuel_tx::Receipt;
 use fuel_types::{
     Bytes32,
@@ -106,7 +103,7 @@ impl ProgramState {
 pub struct StateTransition<Tx, Verifier> {
     state: ProgramState,
     tx: Tx,
-    receipts: Arc<Vec<Receipt>>,
+    receipts: Vec<Receipt>,
     verifier: Verifier,
 }
 
@@ -121,7 +118,7 @@ impl<Tx, Verifier> StateTransition<Tx, Verifier> {
         Self {
             state,
             tx,
-            receipts: Arc::new(receipts),
+            receipts,
             verifier,
         }
     }
@@ -154,7 +151,7 @@ impl<Tx, Verifier> StateTransition<Tx, Verifier> {
     }
 
     /// Convert this instance into its internal attributes.
-    pub fn into_inner(self) -> (ProgramState, Tx, Arc<Vec<Receipt>>, Verifier) {
+    pub fn into_inner(self) -> (ProgramState, Tx, Vec<Receipt>, Verifier) {
         (self.state, self.tx, self.receipts, self.verifier)
     }
 }
@@ -244,7 +241,7 @@ where
         StateTransition {
             state: *t.state(),
             tx: t.tx().clone(),
-            receipts: Arc::new(t.receipts().to_vec()),
+            receipts: t.receipts().to_vec(),
             verifier: t.verifier.clone(),
         }
     }

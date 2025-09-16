@@ -54,6 +54,7 @@ use crate::{
     },
     interpreter::InterpreterParams,
     prelude::MemoryInstance,
+    state::StateTransition,
     storage::{
         UploadedBytecode,
         UploadedBytecodes,
@@ -1097,16 +1098,33 @@ where
         &mut self,
         tx: Ready<Tx>,
     ) -> Result<StateTransitionRef<'_, Tx>, InterpreterError<S::DataError>> {
-        self.verify_ready_tx(&tx)?;
-
-        let state_result = self.init_script(tx).and_then(|_| self.run());
-
-        let state = state_result?;
+        let state = self.transact_inner(tx)?;
         Ok(StateTransitionRef::new(
             state,
             self.transaction(),
             self.receipts(),
         ))
+    }
+
+    /// Similar to `transact`, but takes `self` and returns the `StateTransition`.
+    pub fn into_transact(
+        mut self,
+        tx: Ready<Tx>,
+    ) -> Result<StateTransition<Tx>, InterpreterError<S::DataError>> {
+        let state = self.transact_inner(tx)?;
+        Ok(StateTransition::new(state, self.tx, self.receipts.into()))
+    }
+
+    fn transact_inner(
+        &mut self,
+        tx: Ready<Tx>,
+    ) -> Result<ProgramState, InterpreterError<S::DataError>> {
+        self.verify_ready_tx(&tx)?;
+
+        let state_result = self.init_script(tx).and_then(|_| self.run());
+
+        let state = state_result?;
+        Ok(state)
     }
 }
 

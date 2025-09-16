@@ -1,7 +1,9 @@
 //! Runtime state representation for the VM
 
-use alloc::vec::Vec;
-
+use alloc::{
+    sync::Arc,
+    vec::Vec,
+};
 use fuel_tx::Receipt;
 use fuel_types::{
     Bytes32,
@@ -104,16 +106,16 @@ impl ProgramState {
 pub struct StateTransition<Tx> {
     state: ProgramState,
     tx: Tx,
-    receipts: Vec<Receipt>,
+    receipts: Arc<Vec<Receipt>>,
 }
 
 impl<Tx> StateTransition<Tx> {
     /// Create a new state transition representation.
-    pub const fn new(state: ProgramState, tx: Tx, receipts: Vec<Receipt>) -> Self {
+    pub fn new(state: ProgramState, tx: Tx, receipts: Vec<Receipt>) -> Self {
         Self {
             state,
             tx,
-            receipts,
+            receipts: Arc::new(receipts),
         }
     }
 
@@ -140,7 +142,7 @@ impl<Tx> StateTransition<Tx> {
     }
 
     /// Convert this instance into its internal attributes.
-    pub fn into_inner(self) -> (ProgramState, Tx, Vec<Receipt>) {
+    pub fn into_inner(self) -> (ProgramState, Tx, Arc<Vec<Receipt>>) {
         (self.state, self.tx, self.receipts)
     }
 }
@@ -208,7 +210,7 @@ impl<Tx: Clone> From<StateTransitionRef<'_, Tx>> for StateTransition<Tx> {
         StateTransition {
             state: *t.state(),
             tx: t.tx().clone(),
-            receipts: t.receipts().to_vec(),
+            receipts: Arc::new(t.receipts().to_vec()),
         }
     }
 }

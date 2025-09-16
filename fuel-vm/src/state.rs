@@ -154,8 +154,8 @@ impl<Tx, Verifier> StateTransition<Tx, Verifier> {
     }
 
     /// Convert this instance into its internal attributes.
-    pub fn into_inner(self) -> (ProgramState, Tx, Arc<Vec<Receipt>>) {
-        (self.state, self.tx, self.receipts)
+    pub fn into_inner(self) -> (ProgramState, Tx, Arc<Vec<Receipt>>, Verifier) {
+        (self.state, self.tx, self.receipts, self.verifier)
     }
 }
 
@@ -204,6 +204,11 @@ impl<'a, Tx, Verifier> StateTransitionRef<'a, Tx, Verifier> {
     /// Transaction receipts representing the state transition.
     pub const fn receipts(&self) -> &[Receipt] {
         self.receipts
+    }
+
+    /// Verifier used during the transaction execution.
+    pub const fn verifier(&self) -> &Verifier {
+        self.verifier
     }
 
     /// Flag whether the client should revert after execution.

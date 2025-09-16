@@ -356,7 +356,7 @@ fn transfer_to_contract_external(
         .chain(asset_id.to_bytes())
         .collect();
 
-    let (_, tx, receipts) = test_context
+    let (_, tx, receipts, _) = test_context
         .start_script(ops, script_data)
         .script_gas_limit(1_000_000)
         .contract_input(contract)
@@ -629,7 +629,7 @@ fn transfer_to_output(
             .change_output(asset_id);
     }
 
-    let (_, tx, receipts) = builder.execute().into_inner();
+    let (_, tx, receipts, _) = builder.execute().into_inner();
     let result = RunResult::extract(&receipts, first_tro);
 
     if let Some(Output::Variable {
@@ -838,7 +838,7 @@ fn call_forwarding(
     .chain(asset_id.to_bytes())
     .collect();
 
-    let (_, tx, receipts) = test_context
+    let (_, tx, receipts, _) = test_context
         .start_script(script_ops, script_data)
         .script_gas_limit(1_000_000)
         .contract_input(src_contract)

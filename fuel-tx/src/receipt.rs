@@ -18,6 +18,7 @@ use fuel_types::{
     },
     fmt_option_truncated_hex,
 };
+use serde_with::Bytes;
 
 mod receipt_repr;
 mod script_result;
@@ -25,6 +26,7 @@ mod script_result;
 use crate::input::message::compute_message_id;
 pub use script_result::ScriptExecutionResult;
 
+#[serde_with::serde_as]
 #[derive(Clone, Educe, serde::Serialize, serde::Deserialize, Deserialize, Serialize)]
 #[educe(Eq, PartialEq, Hash, Debug)]
 pub enum Receipt {
@@ -58,6 +60,7 @@ pub enum Receipt {
         #[educe(PartialEq(ignore))]
         #[educe(Hash(ignore))]
         #[canonical(skip)]
+        #[serde_as(as = "Option<Bytes>")]
         data: Option<Vec<u8>>,
     },
 
@@ -102,6 +105,7 @@ pub enum Receipt {
         #[educe(PartialEq(ignore))]
         #[educe(Hash(ignore))]
         #[canonical(skip)]
+        #[serde_as(as = "Option<Bytes>")]
         data: Option<Vec<u8>>,
     },
 
@@ -139,6 +143,7 @@ pub enum Receipt {
         #[educe(PartialEq(ignore))]
         #[educe(Hash(ignore))]
         #[canonical(skip)]
+        #[serde_as(as = "Option<Bytes>")]
         data: Option<Vec<u8>>,
     },
     Mint {

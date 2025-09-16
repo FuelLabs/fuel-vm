@@ -126,6 +126,7 @@ pub mod test_helpers {
             Backtrace,
             Call,
         },
+        verification::Normal,
     };
     use fuel_asm::{
         GTFArgs,
@@ -552,7 +553,7 @@ pub mod test_helpers {
             &mut self,
             transactor: &mut Transactor<M, MemoryStorage, Tx, Ecal, V>,
             checked: Checked<Tx>,
-        ) -> anyhow::Result<(StateTransition<Tx>, V)>
+        ) -> anyhow::Result<(StateTransition<Tx, V>, V)>
         where
             M: Memory,
             Tx: ExecutableTransaction,
@@ -603,7 +604,7 @@ pub mod test_helpers {
         pub fn deploy(
             &mut self,
             checked: Checked<Create>,
-        ) -> anyhow::Result<StateTransition<Create>> {
+        ) -> anyhow::Result<StateTransition<Create, Normal>> {
             let interpreter_params =
                 InterpreterParams::new(self.gas_price, &self.consensus_params);
             let mut transactor = Transactor::<_, _, _>::new(
@@ -618,7 +619,8 @@ pub mod test_helpers {
         pub fn attempt_execute_tx(
             &mut self,
             checked: Checked<Script>,
-        ) -> anyhow::Result<(StateTransition<Script>, AttemptContinue)> {
+        ) -> anyhow::Result<(StateTransition<Script, AttemptContinue>, AttemptContinue)>
+        {
             let interpreter_params =
                 InterpreterParams::new(self.gas_price, &self.consensus_params);
             let mut transactor =
@@ -634,7 +636,7 @@ pub mod test_helpers {
         pub fn execute_tx(
             &mut self,
             checked: Checked<Script>,
-        ) -> anyhow::Result<StateTransition<Script>> {
+        ) -> anyhow::Result<StateTransition<Script, Normal>> {
             let interpreter_params =
                 InterpreterParams::new(self.gas_price, &self.consensus_params);
             let mut transactor = Transactor::<_, _, _>::new(
@@ -650,7 +652,8 @@ pub mod test_helpers {
             &mut self,
             checked: Checked<Script>,
             gas_price: u64,
-        ) -> anyhow::Result<(StateTransition<Script>, Option<Backtrace>)> {
+        ) -> anyhow::Result<(StateTransition<Script, Normal>, Option<Backtrace>)>
+        {
             let interpreter_params =
                 InterpreterParams::new(gas_price, &self.consensus_params);
             let mut transactor = Transactor::<_, _, _>::new(
@@ -666,7 +669,9 @@ pub mod test_helpers {
         }
 
         /// Build test tx and execute it with error collection
-        pub fn attempt_execute(&mut self) -> (StateTransition<Script>, AttemptContinue) {
+        pub fn attempt_execute(
+            &mut self,
+        ) -> (StateTransition<Script, AttemptContinue>, AttemptContinue) {
             let tx = self.build();
 
             self.attempt_execute_tx(tx)
@@ -674,7 +679,7 @@ pub mod test_helpers {
         }
 
         /// Build test tx and execute it
-        pub fn execute(&mut self) -> StateTransition<Script> {
+        pub fn execute(&mut self) -> StateTransition<Script, Normal> {
             let tx = self.build();
 
             self.execute_tx(tx)

@@ -89,30 +89,47 @@ where
     ///
     /// Will be `None` if the last transaction resulted in a VM panic, or if no
     /// transaction was executed.
-    pub fn state_transition(&self) -> Option<StateTransitionRef<'_, Tx>> {
+    pub fn state_transition(&self) -> Option<StateTransitionRef<'_, Tx, V>> {
         self.program_state.map(|state| {
             StateTransitionRef::new(
                 state,
                 self.interpreter.transaction(),
                 self.interpreter.receipts(),
+                self.interpreter.verifier(),
             )
         })
     }
+}
 
+impl<M, S, Tx, Ecal, V> Transactor<M, S, Tx, Ecal, V>
+where
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Clone,
+{
     /// State transition representation after the execution of a transaction.
     ///
     /// Will be `None` if the last transaction resulted in a VM panic, or if no
     /// transaction was executed.
-    pub fn to_owned_state_transition(&self) -> Option<StateTransition<Tx>> {
+    pub fn to_owned_state_transition(&self) -> Option<StateTransition<Tx, V>> {
         self.program_state.map(|state| {
             StateTransition::new(
                 state,
                 self.interpreter.transaction().clone(),
                 self.interpreter.receipts().to_vec(),
+                self.interpreter.verifier().clone(),
             )
         })
     }
+}
 
+impl<M, S, Tx, Ecal, V> Transactor<M, S, Tx, Ecal, V>
+where
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+{
     /// Interpreter error representation after the execution of a transaction.
     ///
     /// Follows the same criteria as [`Self::state_transition`] to return
@@ -140,7 +157,7 @@ where
     /// Will return `None` if no transaction was executed.
     pub fn result(
         &self,
-    ) -> Result<StateTransitionRef<'_, Tx>, &InterpreterError<S::DataError>> {
+    ) -> Result<StateTransitionRef<'_, Tx, V>, &InterpreterError<S::DataError>> {
         let state = self.state_transition();
         let error = self.error.as_ref();
 

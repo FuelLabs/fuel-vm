@@ -40,7 +40,7 @@ where
 
 /// The default verification strategy.
 /// Performs the standard verification checks and panics on failure.
-#[derive(Debug, Copy, Clone, Default)]
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq)]
 pub struct Normal;
 
 impl Verifier for Normal

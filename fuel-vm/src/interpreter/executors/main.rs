@@ -1097,12 +1097,13 @@ where
     pub fn transact(
         &mut self,
         tx: Ready<Tx>,
-    ) -> Result<StateTransitionRef<'_, Tx>, InterpreterError<S::DataError>> {
+    ) -> Result<StateTransitionRef<'_, Tx, V>, InterpreterError<S::DataError>> {
         let state = self.transact_inner(tx)?;
         Ok(StateTransitionRef::new(
             state,
             self.transaction(),
             self.receipts(),
+            self.verifier(),
         ))
     }
 
@@ -1110,9 +1111,14 @@ where
     pub fn into_transact(
         mut self,
         tx: Ready<Tx>,
-    ) -> Result<StateTransition<Tx>, InterpreterError<S::DataError>> {
+    ) -> Result<StateTransition<Tx, V>, InterpreterError<S::DataError>> {
         let state = self.transact_inner(tx)?;
-        Ok(StateTransition::new(state, self.tx, self.receipts.into()))
+        Ok(StateTransition::new(
+            state,
+            self.tx,
+            self.receipts.into(),
+            self.verifier,
+        ))
     }
 
     fn transact_inner(

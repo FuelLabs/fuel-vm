@@ -60,14 +60,7 @@ impl<'de> serde::Deserialize<'de> for Bytes {
                 let size = value.size_hint().unwrap_or(0);
                 let mut arr = Vec::with_capacity(size);
 
-                while let Some(elem) = {
-                    let result = value.next_element();
-
-                    match result {
-                        Ok(value) => value,
-                        Err(err) => return Err(err),
-                    }
-                } {
+                while let Some(elem) = value.next_element()? {
                     arr.push(elem);
                 }
                 Ok(arr)

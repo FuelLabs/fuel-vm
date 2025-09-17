@@ -1,14 +1,12 @@
 use core::borrow::Borrow;
 
 use fuel_storage::Mappable;
-use fuel_types::{
-    BlobId,
-    fmt_truncated_hex,
-};
+use fuel_types::BlobId;
 
 use alloc::vec::Vec;
 use educe::Educe;
 
+use fuel_types::bytes::Bytes;
 #[cfg(feature = "random")]
 use rand::{
     Rng,
@@ -32,29 +30,17 @@ impl Mappable for BlobData {
 #[derive(Educe, Clone, PartialEq, Eq, Hash)]
 #[educe(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct BlobBytes(#[educe(Debug(method(fmt_truncated_hex::<16>)))] pub Vec<u8>);
+pub struct BlobBytes(pub Bytes);
 
 impl From<Vec<u8>> for BlobBytes {
     fn from(c: Vec<u8>) -> Self {
-        Self(c)
-    }
-}
-
-impl From<&[u8]> for BlobBytes {
-    fn from(c: &[u8]) -> Self {
-        Self(c.into())
-    }
-}
-
-impl From<&mut [u8]> for BlobBytes {
-    fn from(c: &mut [u8]) -> Self {
         Self(c.into())
     }
 }
 
 impl From<BlobBytes> for Vec<u8> {
     fn from(c: BlobBytes) -> Vec<u8> {
-        c.0
+        c.0.into_inner()
     }
 }
 
@@ -84,7 +70,7 @@ impl Distribution<BlobBytes> for Standard {
         for _ in 0..len {
             val.push(rng.r#gen());
         }
-        BlobBytes(val)
+        val.into()
     }
 }
 
@@ -93,6 +79,6 @@ impl IntoIterator for BlobBytes {
     type Item = u8;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
+        self.0.into_inner().into_iter()
     }
 }

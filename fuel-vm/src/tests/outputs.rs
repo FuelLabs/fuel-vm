@@ -123,10 +123,9 @@ fn correct_change_is_provided_for_coin_outputs_create() {
     let salt: Salt = rng.r#gen();
     let program: Witness = invalid_instruction_bytecode.into();
 
-    let contract = Contract::from(program.as_ref());
-    let contract_root = contract.root();
+    let contract_root = Contract::root_from_code(program.as_ref());
     let state_root = Contract::default_state_root();
-    let contract_undefined = contract.id(&salt, &contract_root, &state_root);
+    let contract_undefined = Contract::id(&salt, &contract_root, &state_root);
 
     let output = Output::contract_created(contract_undefined, state_root);
 

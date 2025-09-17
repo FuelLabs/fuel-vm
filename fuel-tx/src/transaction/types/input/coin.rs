@@ -1,15 +1,12 @@
 use core::default::Default;
 
+use super::PredicateCode;
 use crate::{
     TxPointer,
     UtxoId,
-    input::{
-        Empty,
-        fmt_as_field,
-    },
+    input::Empty,
     transaction::types::input::AsField,
 };
-use alloc::vec::Vec;
 use educe::Educe;
 #[cfg(feature = "da-compression")]
 use fuel_compression::Compressible;
@@ -17,9 +14,8 @@ use fuel_types::{
     Address,
     AssetId,
     Word,
+    bytes::Bytes,
 };
-
-use super::PredicateCode;
 
 pub type CoinFull = Coin<Full>;
 pub type CoinSigned = Coin<Signed>;
@@ -52,7 +48,7 @@ pub trait CoinSpecification: private::Seal {
                             + serde::Serialize
                             + serde::Deserialize<'a>,
         >;
-    type PredicateData: AsField<Vec<u8>>
+    type PredicateData: AsField<Bytes>
         + for<'a> Compressible<
             Compressed: core::fmt::Debug
                             + PartialEq
@@ -73,7 +69,7 @@ pub trait CoinSpecification: private::Seal {
 pub trait CoinSpecification: private::Seal {
     type Witness: AsField<u16>;
     type Predicate: AsField<PredicateCode>;
-    type PredicateData: AsField<Vec<u8>>;
+    type PredicateData: AsField<Bytes>;
     type PredicateGasUsed: AsField<Word>;
 }
 
@@ -88,7 +84,7 @@ pub struct Signed;
 
 impl CoinSpecification for Signed {
     type Predicate = Empty<PredicateCode>;
-    type PredicateData = Empty<Vec<u8>>;
+    type PredicateData = Empty<Bytes>;
     type PredicateGasUsed = Empty<Word>;
     type Witness = u16;
 }
@@ -104,7 +100,7 @@ pub struct Predicate;
 
 impl CoinSpecification for Predicate {
     type Predicate = PredicateCode;
-    type PredicateData = Vec<u8>;
+    type PredicateData = Bytes;
     type PredicateGasUsed = Word;
     type Witness = Empty<u16>;
 }
@@ -116,7 +112,7 @@ pub struct Full;
 
 impl CoinSpecification for Full {
     type Predicate = PredicateCode;
-    type PredicateData = Vec<u8>;
+    type PredicateData = Bytes;
     type PredicateGasUsed = Word;
     type Witness = u16;
 }
@@ -161,16 +157,12 @@ where
     pub asset_id: AssetId,
     #[cfg_attr(feature = "da-compression", compress(skip))]
     pub tx_pointer: TxPointer,
-    #[educe(Debug(method(fmt_as_field)))]
     pub witness_index: Specification::Witness,
     /// Exact amount of gas used by the predicate.
     /// If the predicate consumes different amount of gas,
     /// it's considered to be false.
-    #[educe(Debug(method(fmt_as_field)))]
     pub predicate_gas_used: Specification::PredicateGasUsed,
-    #[educe(Debug(method(fmt_as_field)))]
     pub predicate: Specification::Predicate,
-    #[educe(Debug(method(fmt_as_field)))]
     pub predicate_data: Specification::PredicateData,
 }
 

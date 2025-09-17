@@ -98,10 +98,9 @@ fn metadata() {
         .collect::<Vec<u8>>()
         .into();
 
-    let contract = Contract::from(program.as_ref());
-    let contract_root = contract.root();
+    let contract_root = Contract::root_from_code(program.as_ref());
     let state_root = Contract::default_state_root();
-    let contract_metadata = contract.id(&salt, &contract_root, &state_root);
+    let contract_metadata = Contract::id(&salt, &contract_root, &state_root);
 
     let tx = TransactionBuilder::create(program, salt, vec![])
         .maturity(maturity)
@@ -150,10 +149,9 @@ fn metadata() {
         .collect::<Vec<u8>>()
         .into();
 
-    let contract = Contract::from(program.as_ref());
-    let contract_root = contract.root();
+    let contract_root = Contract::root_from_code(program.as_ref());
     let state_root = Contract::default_state_root();
-    let contract_id = contract.id(&salt, &contract_root, &state_root);
+    let contract_id = Contract::id(&salt, &contract_root, &state_root);
     let tx = TransactionBuilder::create(program, salt, vec![])
         .maturity(maturity)
         .add_fee_input()
@@ -334,7 +332,7 @@ fn get_metadata_base_asset_id() {
     .to_owned();
 
     if let Receipt::LogData { data, .. } = receipts[0].clone() {
-        assert_eq!(data.unwrap(), params.base_asset_id().to_bytes());
+        assert_eq!(data.unwrap(), params.base_asset_id().to_bytes().into());
     } else {
         panic!("expected LogData receipt, instead of {:?}", receipts[0]);
     }
@@ -445,10 +443,9 @@ fn get_metadata__gas_price__contract() {
     let salt: Salt = rng.r#gen();
     let program: Witness = contract_bytecode.into_iter().collect::<Vec<u8>>().into();
 
-    let contract = Contract::from(program.as_ref());
-    let contract_root = contract.root();
+    let contract_root = Contract::root_from_code(program.as_ref());
     let state_root = Contract::default_state_root();
-    let contract_id = contract.id(&salt, &contract_root, &state_root);
+    let contract_id = Contract::id(&salt, &contract_root, &state_root);
 
     // Deploy the contract
     let tx = TransactionBuilder::create(program, salt, vec![])
@@ -570,8 +567,7 @@ fn get_transaction_fields() {
     let code_root = Contract::root_from_code(contract.as_ref());
     let storage_slots = vec![];
     let state_root = Contract::initial_state_root(storage_slots.iter());
-    let contract_id =
-        Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
+    let contract_id = Contract::id(&salt, &code_root, &state_root);
 
     let tx = TransactionBuilder::create(contract, salt, storage_slots)
         .add_unsigned_coin_input(

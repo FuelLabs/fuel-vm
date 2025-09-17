@@ -1,8 +1,5 @@
-use crate::{
-    input::fmt_as_field,
-    transaction::types::input::AsField,
-};
-use alloc::vec::Vec;
+use super::PredicateCode;
+use crate::transaction::types::input::AsField;
 use educe::Educe;
 #[cfg(feature = "da-compression")]
 use fuel_compression::Compressible;
@@ -11,9 +8,8 @@ use fuel_types::{
     MessageId,
     Nonce,
     Word,
+    bytes::Bytes,
 };
-
-use super::PredicateCode;
 
 pub type FullMessage = Message<specifications::Full>;
 pub type MessageDataSigned = Message<specifications::MessageData<specifications::Signed>>;
@@ -36,7 +32,7 @@ mod private {
 /// Specifies the message based on the usage context. See [`Message`].
 #[cfg(feature = "da-compression")]
 pub trait MessageSpecification: private::Seal {
-    type Data: AsField<Vec<u8>>
+    type Data: AsField<Bytes>
         + for<'a> Compressible<
             Compressed: core::fmt::Debug
                             + PartialEq
@@ -52,7 +48,7 @@ pub trait MessageSpecification: private::Seal {
                             + serde::Serialize
                             + serde::Deserialize<'a>,
         >;
-    type PredicateData: AsField<Vec<u8>>
+    type PredicateData: AsField<Bytes>
         + for<'a> Compressible<
             Compressed: core::fmt::Debug
                             + PartialEq
@@ -80,22 +76,23 @@ pub trait MessageSpecification: private::Seal {
 
 #[cfg(not(feature = "da-compression"))]
 pub trait MessageSpecification: private::Seal {
-    type Data: AsField<Vec<u8>>;
+    type Data: AsField<Bytes>;
     type Predicate: AsField<PredicateCode>;
-    type PredicateData: AsField<Vec<u8>>;
+    type PredicateData: AsField<Bytes>;
     type PredicateGasUsed: AsField<Word>;
     type Witness: AsField<u16>;
 }
 
 pub mod specifications {
-    use alloc::vec::Vec;
-
     use super::MessageSpecification;
     use crate::input::{
         Empty,
         PredicateCode,
     };
-    use fuel_types::Word;
+    use fuel_types::{
+        Word,
+        bytes::Bytes,
+    };
 
     /// The type means that the message should be signed by the `recipient`, and the
     /// signature(witness) should be stored under the `witness_index` index in the
@@ -131,17 +128,17 @@ pub mod specifications {
     pub struct MessageData<UsageRules>(core::marker::PhantomData<UsageRules>);
 
     impl MessageSpecification for MessageData<Signed> {
-        type Data = Vec<u8>;
+        type Data = Bytes;
         type Predicate = Empty<PredicateCode>;
-        type PredicateData = Empty<Vec<u8>>;
+        type PredicateData = Empty<Bytes>;
         type PredicateGasUsed = Empty<Word>;
         type Witness = u16;
     }
 
     impl MessageSpecification for MessageData<Predicate> {
-        type Data = Vec<u8>;
+        type Data = Bytes;
         type Predicate = PredicateCode;
-        type PredicateData = Vec<u8>;
+        type PredicateData = Bytes;
         type PredicateGasUsed = Word;
         type Witness = Empty<u16>;
     }
@@ -153,17 +150,17 @@ pub mod specifications {
     pub struct MessageCoin<UsageRules>(core::marker::PhantomData<UsageRules>);
 
     impl MessageSpecification for MessageCoin<Signed> {
-        type Data = Empty<Vec<u8>>;
+        type Data = Empty<Bytes>;
         type Predicate = Empty<PredicateCode>;
-        type PredicateData = Empty<Vec<u8>>;
+        type PredicateData = Empty<Bytes>;
         type PredicateGasUsed = Empty<Word>;
         type Witness = u16;
     }
 
     impl MessageSpecification for MessageCoin<Predicate> {
-        type Data = Empty<Vec<u8>>;
+        type Data = Empty<Bytes>;
         type Predicate = PredicateCode;
-        type PredicateData = Vec<u8>;
+        type PredicateData = Bytes;
         type PredicateGasUsed = Word;
         type Witness = Empty<u16>;
     }
@@ -180,9 +177,9 @@ pub mod specifications {
     pub struct Full;
 
     impl MessageSpecification for Full {
-        type Data = Vec<u8>;
+        type Data = Bytes;
         type Predicate = PredicateCode;
-        type PredicateData = Vec<u8>;
+        type PredicateData = Bytes;
         type PredicateGasUsed = Word;
         type Witness = u16;
     }
@@ -224,19 +221,14 @@ where
     pub amount: Word,
     // Unique identifier of the message
     pub nonce: Nonce,
-    #[educe(Debug(method(fmt_as_field)))]
     pub witness_index: Specification::Witness,
     /// Exact amount of gas used by the predicate.
     /// If the predicate consumes different amount of gas,
     /// it's considered to be false.
-    #[educe(Debug(method(fmt_as_field)))]
     pub predicate_gas_used: Specification::PredicateGasUsed,
     #[cfg_attr(feature = "da-compression", compress(skip))]
-    #[educe(Debug(method(fmt_as_field)))]
     pub data: Specification::Data,
-    #[educe(Debug(method(fmt_as_field)))]
     pub predicate: Specification::Predicate,
-    #[educe(Debug(method(fmt_as_field)))]
     pub predicate_data: Specification::PredicateData,
 }
 

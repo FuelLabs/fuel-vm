@@ -452,7 +452,7 @@ fn test_mcp_and_mcpi(
         assert_eq!(data.len(), (c + 1) * 2);
         let mut expected = vec![1u8; c * 2 + 1];
         expected.push(2);
-        assert!(data == &expected);
+        assert_eq!(data, &expected.into());
     } else {
         panic!("Expected LogData receipt");
     }

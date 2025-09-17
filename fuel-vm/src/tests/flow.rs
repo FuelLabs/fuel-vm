@@ -199,13 +199,12 @@ fn call_frame_code_offset() {
         .execute();
 
     let asset_id = AssetId::default();
-    let contract = Contract::from(program.as_ref());
 
     let frame = CallFrame::new(
         contract_id,
         asset_id,
         [0; VM_REGISTER_COUNT],
-        contract.as_ref().len(),
+        program.len(),
         0,
         0,
     )

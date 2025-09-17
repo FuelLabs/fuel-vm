@@ -541,11 +541,11 @@ where
         );
         let salt = create.salt();
         let storage_slots = create.storage_slots();
-        let contract = Contract::try_from(&*create)?;
+        let contract = create.bytecode()?;
         let root = if let Some(m) = metadata {
             m.body.contract_root
         } else {
-            contract.root()
+            Contract::root_from_code(contract)
         };
 
         let storage_root = if let Some(m) = metadata {
@@ -557,7 +557,7 @@ where
         let id = if let Some(m) = metadata {
             m.body.contract_id
         } else {
-            contract.id(salt, &root, &storage_root)
+            Contract::id(salt, &root, &storage_root)
         };
 
         // Prevent redeployment of contracts
@@ -571,7 +571,7 @@ where
         }
 
         storage
-            .deploy_contract_with_id(storage_slots, &contract, &id)
+            .deploy_contract_with_id(storage_slots, contract, &id)
             .map_err(RuntimeError::Storage)?;
         Self::finalize_outputs(
             create,

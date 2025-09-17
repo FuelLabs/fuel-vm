@@ -1291,7 +1291,7 @@ fn state_read_qword<S: InterpreterStorage>(
             Some(bytes) => bytes.into_owned(),
             None => {
                 all_set = false;
-                ContractsStateData::from(Bytes32::zeroed().as_ref())
+                ContractsStateData::default()
             }
         })
         .collect();

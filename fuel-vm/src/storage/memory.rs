@@ -244,7 +244,7 @@ impl StorageMutate<ContractsRawCode> for MemoryStorage {
         key: &ContractId,
         value: &[u8],
     ) -> Result<Option<Contract>, Self::Error> {
-        Ok(self.memory.contracts.insert(*key, value.into()))
+        Ok(self.memory.contracts.insert(*key, value.to_vec().into()))
     }
 
     fn take(&mut self, key: &ContractId) -> Result<Option<Contract>, Self::Error> {
@@ -254,7 +254,9 @@ impl StorageMutate<ContractsRawCode> for MemoryStorage {
 
 impl StorageWrite<ContractsRawCode> for MemoryStorage {
     fn write_bytes(&mut self, key: &ContractId, buf: &[u8]) -> Result<(), Self::Error> {
-        self.memory.contracts.insert(*key, Contract::from(buf));
+        self.memory
+            .contracts
+            .insert(*key, Contract::from(buf.to_vec()));
         Ok(())
     }
 
@@ -266,7 +268,7 @@ impl StorageWrite<ContractsRawCode> for MemoryStorage {
         Ok(self
             .memory
             .contracts
-            .insert(*key, Contract::from(buf))
+            .insert(*key, Contract::from(buf.to_vec()))
             .map(Into::into))
     }
 
@@ -415,7 +417,10 @@ impl StorageMutate<ContractsState> for MemoryStorage {
         key: &<ContractsState as Mappable>::Key,
         value: &<ContractsState as Mappable>::Value,
     ) -> Result<Option<<ContractsState as Mappable>::OwnedValue>, Self::Error> {
-        Ok(self.memory.contract_state.insert(*key, value.into()))
+        Ok(self
+            .memory
+            .contract_state
+            .insert(*key, value.to_vec().into()))
     }
 
     fn take(
@@ -434,7 +439,7 @@ impl StorageWrite<ContractsState> for MemoryStorage {
     ) -> Result<(), Self::Error> {
         self.memory
             .contract_state
-            .insert(*key, ContractsStateData::from(buf));
+            .insert(*key, ContractsStateData::from(buf.to_vec()));
         Ok(())
     }
 
@@ -449,7 +454,7 @@ impl StorageWrite<ContractsState> for MemoryStorage {
         Ok(self
             .memory
             .contract_state
-            .insert(*key, ContractsStateData::from(buf))
+            .insert(*key, ContractsStateData::from(buf.to_vec()))
             .map(Into::into))
     }
 
@@ -584,7 +589,7 @@ impl StorageMutate<BlobData> for MemoryStorage {
         key: &<BlobData as Mappable>::Key,
         value: &<BlobData as Mappable>::Value,
     ) -> Result<Option<<BlobData as Mappable>::OwnedValue>, Self::Error> {
-        Ok(self.memory.blobs.insert(*key, value.into()))
+        Ok(self.memory.blobs.insert(*key, value.to_vec().into()))
     }
 
     fn take(
@@ -601,7 +606,9 @@ impl StorageWrite<BlobData> for MemoryStorage {
         key: &<BlobData as Mappable>::Key,
         buf: &[u8],
     ) -> Result<(), Self::Error> {
-        self.memory.blobs.insert(*key, BlobBytes::from(buf));
+        self.memory
+            .blobs
+            .insert(*key, BlobBytes::from(buf.to_vec()));
         Ok(())
     }
 
@@ -616,7 +623,7 @@ impl StorageWrite<BlobData> for MemoryStorage {
         let prev = self
             .memory
             .blobs
-            .insert(*key, BlobBytes::from(buf))
+            .insert(*key, BlobBytes::from(buf.to_vec()))
             .map(Into::into);
         Ok(prev)
     }
@@ -853,10 +860,9 @@ mod tests {
         // Given
         let raw_contract = [1u8; 32];
         let mut mem = MemoryStorage::default();
-        let contract = Contract::from(raw_contract.as_ref());
         mem.memory
             .contracts
-            .insert(ContractId::default(), contract.clone());
+            .insert(ContractId::default(), raw_contract.as_ref().to_vec().into());
         let buf_size = raw_contract.len().saturating_sub(offset).min(load_buf_size);
         let mut buf = vec![0u8; buf_size];
 

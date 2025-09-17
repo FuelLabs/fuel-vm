@@ -12,6 +12,7 @@ use fuel_types::{
     ContractId,
     Nonce,
     Salt,
+    bytes::Bytes,
 };
 
 macro_rules! identity_compression {
@@ -182,5 +183,27 @@ where
             result.push(T::decompress_with(item, ctx).await?);
         }
         Ok(result)
+    }
+}
+
+impl Compressible for Bytes {
+    type Compressed = Self;
+}
+
+impl<Ctx> CompressibleBy<Ctx> for Bytes
+where
+    Ctx: ContextError,
+{
+    async fn compress_with(&self, _: &mut Ctx) -> Result<Self::Compressed, Ctx::Error> {
+        Ok(self.clone())
+    }
+}
+
+impl<Ctx> DecompressibleBy<Ctx> for Bytes
+where
+    Ctx: ContextError,
+{
+    async fn decompress_with(c: Self::Compressed, _: &Ctx) -> Result<Self, Ctx::Error> {
+        Ok(c)
     }
 }

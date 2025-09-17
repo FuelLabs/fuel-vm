@@ -3,29 +3,38 @@ use core::ops::{
     DerefMut,
 };
 use educe::Educe;
-use fuel_types::fmt_truncated_hex;
 
 use alloc::vec::Vec;
+use fuel_types::bytes::Bytes;
 
 #[derive(Clone, Default, Educe, serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[educe(Eq, PartialEq, Hash, Debug)]
 pub struct PredicateCode {
-    #[educe(Debug(method(fmt_truncated_hex::<16>)))]
-    pub bytes: Vec<u8>,
+    pub bytes: Bytes,
+}
+
+impl PredicateCode {
+    pub const fn new(bytes: Vec<u8>) -> Self {
+        Self {
+            bytes: Bytes::new(bytes),
+        }
+    }
 }
 
 impl From<Vec<u8>> for PredicateCode {
     fn from(bytes: Vec<u8>) -> Self {
-        Self { bytes }
+        Self {
+            bytes: bytes.into(),
+        }
     }
 }
 
 impl From<&[u8]> for PredicateCode {
     fn from(bytes: &[u8]) -> Self {
         Self {
-            bytes: bytes.to_vec(),
+            bytes: bytes.to_vec().into(),
         }
     }
 }

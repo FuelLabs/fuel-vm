@@ -72,6 +72,7 @@ pub use fee::{
     Chargeable,
     TransactionFee,
 };
+use fuel_types::bytes::Bytes;
 pub use metadata::Cacheable;
 pub use repr::TransactionRepr;
 pub use types::*;
@@ -151,8 +152,8 @@ impl Transaction {
             body: ScriptBody {
                 script_gas_limit: gas_limit,
                 receipts_root,
-                script: ScriptCode { bytes: script },
-                script_data,
+                script: ScriptCode::new(script),
+                script_data: Bytes::new(script_data),
             },
             policies,
             inputs,

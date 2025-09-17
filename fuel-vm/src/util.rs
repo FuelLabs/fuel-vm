@@ -490,9 +490,8 @@ pub mod test_helpers {
             let salt: Salt = self.rng.r#gen();
             let program: Witness = contract.into();
             let storage_root = Contract::initial_state_root(storage_slots.iter());
-            let contract = Contract::from(program.as_ref());
-            let contract_root = contract.root();
-            let contract_id = contract.id(&salt, &contract_root, &storage_root);
+            let contract_root = Contract::root_from_code(program.as_ref());
+            let contract_id = Contract::id(&salt, &contract_root, &storage_root);
 
             let tx = TransactionBuilder::create(program, salt, storage_slots)
                 .max_fee_limit(self.max_fee_limit)
@@ -751,8 +750,7 @@ pub mod test_helpers {
         let code_root = Contract::root_from_code(contract.as_ref());
         let storage_slots = vec![];
         let state_root = Contract::initial_state_root(storage_slots.iter());
-        let contract_id =
-            Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
+        let contract_id = Contract::id(&salt, &code_root, &state_root);
 
         let contract_deployer = TransactionBuilder::create(contract, salt, storage_slots)
             .max_fee_limit(zero_fee_limit)

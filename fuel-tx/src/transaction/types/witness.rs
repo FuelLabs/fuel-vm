@@ -1,6 +1,3 @@
-use educe::Educe;
-use fuel_types::fmt_truncated_hex;
-
 use alloc::vec::Vec;
 
 use crate::{
@@ -13,6 +10,7 @@ use fuel_crypto::{
     Signature,
 };
 
+use fuel_types::bytes::Bytes;
 #[cfg(feature = "random")]
 use rand::{
     Rng,
@@ -22,7 +20,7 @@ use rand::{
     },
 };
 
-#[derive(Educe, Default, Clone, PartialEq, Eq, Hash)]
+#[derive(educe::Educe, Default, Clone, PartialEq, Eq, Hash)]
 #[educe(Debug)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -32,12 +30,11 @@ use rand::{
 )]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct Witness {
-    #[educe(Debug(method(fmt_truncated_hex::<16>)))]
-    data: Vec<u8>,
+    data: Bytes,
 }
 
 impl Witness {
-    pub const fn as_vec(&self) -> &Vec<u8> {
+    pub fn as_vec(&self) -> &Vec<u8> {
         &self.data
     }
 
@@ -46,7 +43,7 @@ impl Witness {
     }
 
     pub fn into_inner(self) -> Vec<u8> {
-        self.data
+        self.data.into()
     }
 
     /// ECRecover an address from a witness
@@ -70,7 +67,7 @@ impl Witness {
 
 impl From<Vec<u8>> for Witness {
     fn from(data: Vec<u8>) -> Self {
-        Self { data }
+        Self { data: data.into() }
     }
 }
 

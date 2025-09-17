@@ -17,6 +17,8 @@ hex = { version = "0.4", default-features = false }
 rand = { version = "0.8", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"], optional = true }
 wasm-bindgen = { version = "0.2.97", optional = true }
+serde_with = { version = "3", default-features = false, features = ["alloc", "macros"], optional = true }
+educe = { workspace = true, default-features = false, features = ["Debug"] }
 
 [dev-dependencies]
 bincode = { workspace = true }
@@ -31,7 +33,7 @@ default = ["std", "serde?/default"]
 typescript = ["wasm-bindgen"]
 alloc = ["hex/alloc"]
 random = ["rand"]
-serde = ["dep:serde", "alloc"]
+serde = ["dep:serde", "dep:serde_with", "alloc"]
 std = ["alloc", "serde?/std", "hex/std"]
 unsafe = []
 

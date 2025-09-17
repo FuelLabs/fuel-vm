@@ -527,7 +527,11 @@ impl StorageType for ContractsState {
         value: &[u8],
         existing: Option<ContractsStateData>,
     ) -> StorageDelta {
-        StorageDelta::State(MappableDelta::Replace(*key, value.into(), existing))
+        StorageDelta::State(MappableDelta::Replace(
+            *key,
+            value.to_vec().into(),
+            existing,
+        ))
     }
 
     fn record_take(key: &Self::Key, value: ContractsStateData) -> StorageDelta {
@@ -555,7 +559,11 @@ impl StorageType for ContractsRawCode {
         value: &[u8],
         existing: Option<Contract>,
     ) -> StorageDelta {
-        StorageDelta::RawCode(MappableDelta::Replace(*key, value.into(), existing))
+        StorageDelta::RawCode(MappableDelta::Replace(
+            *key,
+            value.to_vec().into(),
+            existing,
+        ))
     }
 
     fn record_take(key: &ContractId, value: Contract) -> StorageDelta {
@@ -587,7 +595,11 @@ impl StorageType for BlobData {
         value: &[u8],
         existing: Option<BlobBytes>,
     ) -> StorageDelta {
-        StorageDelta::BlobData(MappableDelta::Replace(*key, value.into(), existing))
+        StorageDelta::BlobData(MappableDelta::Replace(
+            *key,
+            value.to_vec().into(),
+            existing,
+        ))
     }
 
     fn record_take(key: &BlobId, value: BlobBytes) -> StorageDelta {

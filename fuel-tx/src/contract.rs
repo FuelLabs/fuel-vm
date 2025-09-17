@@ -1,8 +1,4 @@
-use crate::{
-    StorageSlot,
-    Transaction,
-    ValidityError,
-};
+use crate::StorageSlot;
 
 use educe::Educe;
 use fuel_crypto::Hasher;
@@ -17,7 +13,6 @@ use fuel_types::{
     Bytes32,
     ContractId,
     Salt,
-    fmt_truncated_hex,
 };
 
 use alloc::vec::Vec;
@@ -25,6 +20,7 @@ use core::{
     borrow::Borrow,
     iter,
 };
+use fuel_types::bytes::Bytes;
 
 /// The target size of Merkle tree leaves in bytes. Contract code will will be divided
 /// into chunks of this size and pushed to the Merkle tree.
@@ -46,7 +42,7 @@ const MULTIPLE: usize = 8;
     fuel_types::canonical::Serialize,
 )]
 /// Deployable representation of a contract code.
-pub struct Contract(#[educe(Debug(method(fmt_truncated_hex::<16>)))] Vec<u8>);
+pub struct Contract(Bytes);
 
 impl Contract {
     /// The `ContractId` of the contract with empty bytecode, zero salt, and empty state
@@ -117,7 +113,7 @@ impl Contract {
     /// Calculate and return the contract id, provided a salt, code root and state root.
     ///
     /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/identifiers/contract-id.md>
-    pub fn id(&self, salt: &Salt, root: &Bytes32, state_root: &Bytes32) -> ContractId {
+    pub fn id(salt: &Salt, root: &Bytes32, state_root: &Bytes32) -> ContractId {
         let mut hasher = Hasher::default();
 
         hasher.input(ContractId::SEED);
@@ -131,25 +127,13 @@ impl Contract {
 
 impl From<Vec<u8>> for Contract {
     fn from(c: Vec<u8>) -> Self {
-        Self(c)
-    }
-}
-
-impl From<&[u8]> for Contract {
-    fn from(c: &[u8]) -> Self {
-        Self(c.into())
-    }
-}
-
-impl From<&mut [u8]> for Contract {
-    fn from(c: &mut [u8]) -> Self {
         Self(c.into())
     }
 }
 
 impl From<Contract> for Vec<u8> {
     fn from(c: Contract) -> Vec<u8> {
-        c.0
+        c.0.into_inner()
     }
 }
 
@@ -168,19 +152,6 @@ impl AsRef<[u8]> for Contract {
 impl AsMut<[u8]> for Contract {
     fn as_mut(&mut self) -> &mut [u8] {
         self.0.as_mut()
-    }
-}
-
-impl TryFrom<&Transaction> for Contract {
-    type Error = ValidityError;
-
-    fn try_from(tx: &Transaction) -> Result<Self, Self::Error> {
-        match tx {
-            Transaction::Create(create) => TryFrom::try_from(create),
-            _ => {
-                Err(ValidityError::TransactionOutputContainsContractCreated { index: 0 })
-            }
-        }
     }
 }
 
@@ -372,7 +343,7 @@ mod tests {
         let root = contract.root();
         let state_root = Contract::default_state_root();
 
-        let calculated_id = contract.id(&salt, &root, &state_root);
+        let calculated_id = Contract::id(&salt, &root, &state_root);
         assert_eq!(calculated_id, Contract::EMPTY_CONTRACT_ID)
     }
 }

@@ -37,11 +37,11 @@ use fuel_types::{
     bytes,
     bytes::WORD_SIZE,
     canonical::Serialize,
-    fmt_truncated_hex,
 };
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
+use fuel_types::bytes::Bytes;
 
 pub type Script = ChargeableTransaction<ScriptBody, ScriptMetadata>;
 
@@ -55,20 +55,29 @@ pub struct ScriptMetadata {
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[educe(Eq, PartialEq, Hash, Debug)]
 pub struct ScriptCode {
-    #[educe(Debug(method(fmt_truncated_hex::<16>)))]
-    pub bytes: Vec<u8>,
+    pub bytes: Bytes,
+}
+
+impl ScriptCode {
+    pub const fn new(bytes: Vec<u8>) -> Self {
+        Self {
+            bytes: Bytes::new(bytes),
+        }
+    }
 }
 
 impl From<Vec<u8>> for ScriptCode {
     fn from(bytes: Vec<u8>) -> Self {
-        Self { bytes }
+        Self {
+            bytes: bytes.into(),
+        }
     }
 }
 
 impl From<&[u8]> for ScriptCode {
     fn from(bytes: &[u8]) -> Self {
         Self {
-            bytes: bytes.to_vec(),
+            bytes: bytes.to_vec().into(),
         }
     }
 }
@@ -123,8 +132,7 @@ pub struct ScriptBody {
     #[cfg_attr(feature = "da-compression", compress(skip))]
     pub(crate) receipts_root: Bytes32,
     pub(crate) script: ScriptCode,
-    #[educe(Debug(method(fmt_truncated_hex::<16>)))]
-    pub(crate) script_data: Vec<u8>,
+    pub(crate) script_data: Bytes,
 }
 
 impl Default for ScriptBody {

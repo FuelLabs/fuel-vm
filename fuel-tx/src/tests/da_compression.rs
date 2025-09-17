@@ -43,6 +43,7 @@ use fuel_types::{
     ContractId,
     Nonce,
     Word,
+    bytes::Bytes,
 };
 use rand::{
     Rng,
@@ -276,7 +277,7 @@ where
         };
 
         if let Some(data) = message.data.as_mut_field() {
-            data.clone_from(&msg.data)
+            *data = Bytes::new(msg.data.clone())
         }
 
         Ok(message)

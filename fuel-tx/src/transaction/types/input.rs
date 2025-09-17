@@ -2,17 +2,10 @@ use crate::{
     TxPointer,
     UtxoId,
 };
-use alloc::{
-    string::ToString,
-    vec::Vec,
-};
+use alloc::vec::Vec;
 use coin::*;
 use consts::*;
 use contract::*;
-use core::fmt::{
-    self,
-    Formatter,
-};
 use fuel_crypto::{
     Hasher,
     PublicKey,
@@ -26,6 +19,7 @@ use fuel_types::{
     Nonce,
     Word,
     bytes,
+    bytes::Bytes,
     canonical,
     canonical::{
         Deserialize,
@@ -33,7 +27,6 @@ use fuel_types::{
         Output,
         Serialize,
     },
-    fmt_truncated_hex,
 };
 use message::*;
 
@@ -50,21 +43,10 @@ pub use repr::InputRepr;
 #[cfg(all(test, feature = "std"))]
 mod ser_de_tests;
 
-pub trait AsField<Type>: AsFieldFmt {
+pub trait AsField<Type> {
     fn as_field(&self) -> Option<&Type>;
 
     fn as_mut_field(&mut self) -> Option<&mut Type>;
-}
-
-pub trait AsFieldFmt {
-    fn fmt_as_field(&self, f: &mut Formatter) -> fmt::Result;
-}
-
-pub fn fmt_as_field<T>(field: &T, f: &mut Formatter) -> fmt::Result
-where
-    T: AsFieldFmt,
-{
-    field.fmt_as_field(f)
 }
 
 /// The empty field used by sub-types of the specification.
@@ -119,12 +101,6 @@ impl<Type: Deserialize> Deserialize for Empty<Type> {
     }
 }
 
-impl<Type> AsFieldFmt for Empty<Type> {
-    fn fmt_as_field(&self, f: &mut Formatter) -> fmt::Result {
-        f.write_str("Empty")
-    }
-}
-
 impl<Type> AsField<Type> for Empty<Type> {
     #[inline(always)]
     fn as_field(&self) -> Option<&Type> {
@@ -147,12 +123,6 @@ impl AsField<u8> for u8 {
     }
 }
 
-impl AsFieldFmt for u8 {
-    fn fmt_as_field(&self, f: &mut Formatter) -> fmt::Result {
-        f.write_str(self.to_string().as_str())
-    }
-}
-
 impl AsField<u16> for u16 {
     #[inline(always)]
     fn as_field(&self) -> Option<&u16> {
@@ -161,12 +131,6 @@ impl AsField<u16> for u16 {
 
     fn as_mut_field(&mut self) -> Option<&mut u16> {
         Some(self)
-    }
-}
-
-impl AsFieldFmt for u16 {
-    fn fmt_as_field(&self, f: &mut Formatter) -> fmt::Result {
-        f.write_str(self.to_string().as_str())
     }
 }
 
@@ -181,26 +145,14 @@ impl AsField<u64> for u64 {
     }
 }
 
-impl AsFieldFmt for u64 {
-    fn fmt_as_field(&self, f: &mut Formatter) -> fmt::Result {
-        f.write_str(self.to_string().as_str())
-    }
-}
-
-impl AsField<Vec<u8>> for Vec<u8> {
+impl AsField<Bytes> for Bytes {
     #[inline(always)]
-    fn as_field(&self) -> Option<&Vec<u8>> {
+    fn as_field(&self) -> Option<&Bytes> {
         Some(self)
     }
 
-    fn as_mut_field(&mut self) -> Option<&mut Vec<u8>> {
+    fn as_mut_field(&mut self) -> Option<&mut Bytes> {
         Some(self)
-    }
-}
-
-impl AsFieldFmt for Vec<u8> {
-    fn fmt_as_field(&self, f: &mut Formatter) -> fmt::Result {
-        fmt_truncated_hex::<16>(self, f)
     }
 }
 
@@ -212,12 +164,6 @@ impl AsField<PredicateCode> for PredicateCode {
 
     fn as_mut_field(&mut self) -> Option<&mut PredicateCode> {
         Some(self)
-    }
-}
-
-impl AsFieldFmt for PredicateCode {
-    fn fmt_as_field(&self, f: &mut Formatter) -> fmt::Result {
-        fmt_truncated_hex::<16>(self, f)
     }
 }
 
@@ -286,8 +232,8 @@ impl Input {
             tx_pointer,
             witness_index: Empty::new(),
             predicate_gas_used,
-            predicate: PredicateCode { bytes: predicate },
-            predicate_data,
+            predicate: PredicateCode::new(predicate),
+            predicate_data: Bytes::new(predicate_data),
         })
     }
 
@@ -365,8 +311,8 @@ impl Input {
             witness_index: Empty::new(),
             predicate_gas_used,
             data: Empty::new(),
-            predicate: PredicateCode { bytes: predicate },
-            predicate_data,
+            predicate: PredicateCode::new(predicate),
+            predicate_data: Bytes::new(predicate_data),
         })
     }
 
@@ -384,7 +330,7 @@ impl Input {
             amount,
             nonce,
             witness_index,
-            data,
+            data: Bytes::new(data),
             predicate: Empty::new(),
             predicate_data: Empty::new(),
             predicate_gas_used: Empty::new(),
@@ -408,9 +354,9 @@ impl Input {
             nonce,
             witness_index: Empty::new(),
             predicate_gas_used,
-            data,
-            predicate: PredicateCode { bytes: predicate },
-            predicate_data,
+            data: Bytes::new(data),
+            predicate: PredicateCode::new(predicate),
+            predicate_data: Bytes::new(predicate_data),
         })
     }
 
@@ -1024,8 +970,8 @@ pub mod typescript {
                 tx_pointer,
                 witness_index: Empty::new(),
                 predicate_gas_used,
-                predicate: PredicateCode { bytes: predicate },
-                predicate_data,
+                predicate: PredicateCode::new(predicate),
+                predicate_data: Bytes::new(predicate_data),
             })))
         }
 
@@ -1110,8 +1056,8 @@ pub mod typescript {
                     witness_index: Empty::new(),
                     predicate_gas_used,
                     data: Empty::new(),
-                    predicate: PredicateCode { bytes: predicate },
-                    predicate_data,
+                    predicate: PredicateCode::new(predicate),
+                    predicate_data: Bytes::new(predicate_data),
                 },
             )))
         }
@@ -1132,7 +1078,7 @@ pub mod typescript {
                     amount,
                     nonce,
                     witness_index,
-                    data,
+                    data: Bytes::new(data),
                     predicate: Empty::new(),
                     predicate_data: Empty::new(),
                     predicate_gas_used: Empty::new(),
@@ -1159,9 +1105,9 @@ pub mod typescript {
                     nonce,
                     witness_index: Empty::new(),
                     predicate_gas_used,
-                    data,
-                    predicate: PredicateCode { bytes: predicate },
-                    predicate_data,
+                    data: Bytes::new(data),
+                    predicate: PredicateCode::new(predicate),
+                    predicate_data: Bytes::new(predicate_data),
                 },
             )))
         }

@@ -953,14 +953,14 @@ fn create__check__cannot_create_multiple_contract_outputs() {
 
     let secret = SecretKey::random(rng);
 
-    let witness = generate_bytes(rng);
-    let contract = Contract::from(witness.as_ref());
+    let witness: Witness = generate_bytes(rng).into();
+    let root = Contract::root_from_code(witness.as_ref());
     let salt = rng.r#gen();
     let storage_slots: Vec<StorageSlot> = vec![];
     let state_root = Contract::initial_state_root(storage_slots.iter());
-    let contract_id = contract.id(&salt, &contract.root(), &state_root);
+    let contract_id = Contract::id(&salt, &root, &state_root);
 
-    let err = TransactionBuilder::create(witness.into(), salt, storage_slots)
+    let err = TransactionBuilder::create(witness, salt, storage_slots)
         .maturity(maturity)
         .add_unsigned_coin_input(
             secret,

@@ -23,6 +23,7 @@ use alloc::{
     vec,
     vec::Vec,
 };
+use core::ops::Deref;
 use fuel_asm::{
     Instruction,
     PanicReason::{
@@ -54,6 +55,7 @@ use fuel_types::{
     AssetId,
     BlockHeight,
     ChainId,
+    bytes::Bytes,
     canonical::Serialize,
 };
 use itertools::Itertools;
@@ -312,7 +314,7 @@ fn state_read_write() {
     bytes[24..].copy_from_slice(&p.to_be_bytes());
 
     // Assert the state is correct
-    let data = ContractsStateData::from(bytes.as_ref());
+    let data = ContractsStateData::from(bytes.as_ref().to_vec());
     let state = test_context
         .get_storage()
         .contract_state(&contract_id, &key);
@@ -590,10 +592,9 @@ where
     let maturity = Default::default();
     let height = Default::default();
 
-    let contract = Contract::from(target_contract_witness.as_ref());
-    let contract_root = contract.root();
+    let contract_root = Contract::root_from_code(target_contract_witness.as_ref());
     let state_root = Contract::default_state_root();
-    let contract_id = contract.id(&salt, &contract_root, &state_root);
+    let contract_id = Contract::id(&salt, &contract_root, &state_root);
 
     let input0 = Input::contract(
         rng.r#gen(),
@@ -735,10 +736,9 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
 
     let program: Witness = contract_code.into_iter().collect::<Vec<u8>>().into();
 
-    let contract = Contract::from(program.as_ref());
-    let contract_root = contract.root();
+    let contract_root = Contract::root_from_code(program.as_ref());
     let state_root = Contract::default_state_root();
-    let contract_id = contract.id(&salt, &contract_root, &state_root);
+    let contract_id = Contract::id(&salt, &contract_root, &state_root);
 
     let tx_create_target = TransactionBuilder::create(program, salt, vec![])
         .maturity(maturity)
@@ -1188,8 +1188,7 @@ fn code_root_a_plus_32_overflow() {
     let storage_slots = vec![];
 
     let state_root = Contract::initial_state_root(storage_slots.iter());
-    let contract_id =
-        Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
+    let contract_id = Contract::id(&salt, &code_root, &state_root);
 
     deploy_contract(&mut client, contract, salt, storage_slots);
 
@@ -1234,8 +1233,7 @@ fn code_root_a_over_max_ram() {
     let storage_slots = vec![];
 
     let state_root = Contract::initial_state_root(storage_slots.iter());
-    let contract_id =
-        Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
+    let contract_id = Contract::id(&salt, &code_root, &state_root);
 
     deploy_contract(&mut client, contract, salt, storage_slots);
 
@@ -1834,7 +1832,7 @@ fn smo_instruction_works() {
                 amount,
                 data,
                 ..
-            } => Some((*recipient, *amount, data.clone())),
+            } => Some((*recipient, *amount, data.clone().map(Bytes::into_inner))),
             _ => None,
         });
         assert_eq!(message_receipt.is_some(), success);
@@ -2060,7 +2058,7 @@ fn block_hash_works(
         panic!("expected log receipt");
     };
 
-    assert_eq!(data.as_ref().unwrap(), &*expected);
+    assert_eq!(data.as_ref().unwrap().deref(), &*expected);
 }
 
 #[rstest::rstest]
@@ -2098,7 +2096,7 @@ fn coinbase_works() {
         panic!("expected log receipt");
     };
 
-    assert_eq!(data.as_ref().unwrap(), &*expected);
+    assert_eq!(data.as_ref().unwrap().deref(), &*expected);
 }
 
 #[test]
@@ -2122,11 +2120,10 @@ fn various_ldc_issues_poc() {
     let target_program: Witness = bytes.into();
 
     // deploy target contract
-    let target_contract = Contract::from(target_program.as_ref());
-    let target_contract_root = target_contract.root();
+    let target_contract_root = Contract::root_from_code(target_program.as_ref());
     let target_state_root = Contract::default_state_root();
     let target_contract_id =
-        target_contract.id(&salt, &target_contract_root, &target_state_root);
+        Contract::id(&salt, &target_contract_root, &target_state_root);
 
     let consensus_params = ConsensusParameters::standard();
 
@@ -2194,11 +2191,10 @@ fn various_ldc_issues_poc() {
     let loader_program: Witness = bytes.into();
 
     // deploy loader contract
-    let loader_contract = Contract::from(loader_program.as_ref());
-    let loader_contract_root = loader_contract.root();
+    let loader_contract_root = Contract::root_from_code(loader_program.as_ref());
     let loader_state_root = Contract::default_state_root();
     let loader_contract_id =
-        loader_contract.id(&salt, &loader_contract_root, &loader_state_root);
+        Contract::id(&salt, &loader_contract_root, &loader_state_root);
     let consensus_params = ConsensusParameters::standard();
 
     let tx_create_loader =

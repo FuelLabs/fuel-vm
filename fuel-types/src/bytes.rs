@@ -7,14 +7,78 @@ use alloc::vec::Vec;
 /// A new type around `Vec<u8>` with useful utilities and optimizations.
 #[derive(educe::Educe, Default, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[educe(Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde_with::serde_as)]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
-pub struct Bytes(
-    #[educe(Debug(method(crate::fmt::fmt_truncated_hex::<16>)))]
-    #[cfg_attr(feature = "serde", serde_as(as = "Bytes"))]
-    Vec<u8>,
-);
+pub struct Bytes(#[educe(Debug(method(crate::fmt::fmt_truncated_hex::<16>)))] Vec<u8>);
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for Bytes {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_bytes(&self.0)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for Bytes {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        /// A visitor for deserializing a bytes.
+        struct BytesVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for BytesVisitor {
+            type Value = Vec<u8>;
+
+            fn expecting(
+                &self,
+                formatter: &mut core::fmt::Formatter,
+            ) -> core::fmt::Result {
+                write!(formatter, "an array of bytes")
+            }
+
+            #[inline(always)]
+            fn visit_borrowed_bytes<E>(self, items: &'de [u8]) -> Result<Self::Value, E> {
+                Ok(items.to_vec())
+            }
+
+            #[inline(always)]
+            fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(v)
+            }
+
+            #[inline(always)]
+            fn visit_seq<A>(self, mut value: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                let size = value.size_hint().unwrap_or(0);
+                let mut arr = Vec::with_capacity(size);
+
+                while let Some(elem) = {
+                    let result = value.next_element();
+
+                    match result {
+                        Ok(value) => value,
+                        Err(err) => return Err(err),
+                    }
+                } {
+                    arr.push(elem);
+                }
+                Ok(arr)
+            }
+        }
+
+        let bytes = deserializer.deserialize_bytes(BytesVisitor)?;
+
+        Ok(Self(bytes))
+    }
+}
 
 #[cfg(feature = "alloc")]
 impl Bytes {

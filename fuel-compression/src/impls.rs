@@ -12,7 +12,6 @@ use fuel_types::{
     ContractId,
     Nonce,
     Salt,
-    bytes::Bytes,
 };
 
 macro_rules! identity_compression {
@@ -186,11 +185,13 @@ where
     }
 }
 
-impl Compressible for Bytes {
+#[cfg(feature = "alloc")]
+impl Compressible for fuel_types::bytes::Bytes {
     type Compressed = Self;
 }
 
-impl<Ctx> CompressibleBy<Ctx> for Bytes
+#[cfg(feature = "alloc")]
+impl<Ctx> CompressibleBy<Ctx> for fuel_types::bytes::Bytes
 where
     Ctx: ContextError,
 {
@@ -199,7 +200,8 @@ where
     }
 }
 
-impl<Ctx> DecompressibleBy<Ctx> for Bytes
+#[cfg(feature = "alloc")]
+impl<Ctx> DecompressibleBy<Ctx> for fuel_types::bytes::Bytes
 where
     Ctx: ContextError,
 {

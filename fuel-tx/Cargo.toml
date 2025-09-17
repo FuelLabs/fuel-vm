@@ -44,6 +44,7 @@ std = [
 alloc = [
     "hashbrown",
     "fuel-types/alloc",
+    "fuel-compression?/alloc",
     "itertools/use_alloc",
     "fuel-merkle",
     "strum",

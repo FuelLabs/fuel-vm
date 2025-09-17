@@ -334,26 +334,10 @@ impl<T: Deserialize> Deserialize for Vec<T> {
         }
 
         if T::UNALIGNED_BYTES {
-            let layout = core::alloc::Layout::array::<u8>(cap).map_err(|_| {
-                Error::Unknown("Allocation of the layout for bytes failed")
-            })?;
-
             // SAFETY: `UNALIGNED_BYTES` only set for `u8`.
             let vec = unsafe {
-                let mem = alloc::alloc::alloc(layout).cast::<u8>();
-                if mem.is_null() {
-                    return Err(Error::Unknown(
-                        "Allocation of the vector for bytes failed",
-                    ));
-                }
-
-                let transmuted_mem = ::core::mem::transmute::<*mut u8, *mut T>(mem);
-                // We set the length to cap,
-                // but in reality elements are not initialized yet.
-                // So there can be trash values in the memory.
-                let len = cap;
-
-                Vec::from_raw_parts(transmuted_mem, len, cap)
+                let vec = vec![0u8; cap];
+                ::core::mem::transmute::<Vec<u8>, Vec<T>>(vec)
             };
 
             Ok(vec)

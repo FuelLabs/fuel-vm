@@ -6,7 +6,10 @@
 #![allow(unsafe_code)]
 
 #[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+use alloc::{
+    vec,
+    vec::Vec,
+};
 use core::fmt;
 
 use core::mem::MaybeUninit;

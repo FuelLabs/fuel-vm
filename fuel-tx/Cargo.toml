@@ -57,7 +57,7 @@ internals = []
 typescript = ["dep:serde_json", "alloc", "js-sys", "wasm-bindgen", "serde-wasm-bindgen", "fuel-types/typescript"]
 random = ["fuel-crypto/random", "fuel-types/random", "rand"]
 std = ["alloc", "fuel-asm/std", "fuel-crypto/std", "fuel-merkle/std", "fuel-types/std", "itertools/default", "rand?/default", "serde/default", "hex/std"]
-alloc = ["hashbrown", "fuel-types/alloc", "itertools/use_alloc", "fuel-merkle", "strum", "strum_macros", "bitflags", "postcard", "educe", "derive_more", "fuel-asm/serde", "fuel-types/serde"]
+alloc = ["hashbrown", "fuel-types/alloc", "fuel-compression?/alloc", "itertools/use_alloc", "fuel-merkle", "strum", "strum_macros", "bitflags", "postcard", "educe", "derive_more", "fuel-asm/serde", "fuel-types/serde"]
 da-compression = ["fuel-compression"]
 u32-tx-pointer = []
 

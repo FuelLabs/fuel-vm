@@ -332,20 +332,46 @@ impl<T: Deserialize> Deserialize for Vec<T> {
         if cap > VEC_DECODE_LIMIT {
             return Err(Error::AllocationLimit)
         }
-        Ok(Vec::with_capacity(cap))
+
+        if T::UNALIGNED_BYTES {
+            let layout = core::alloc::Layout::array::<u8>(cap).map_err(|_| {
+                Error::Unknown("Allocation of the layout for bytes failed")
+            })?;
+
+            // SAFETY: `UNALIGNED_BYTES` only set for `u8`.
+            let vec = unsafe {
+                let mem = alloc::alloc::alloc(layout).cast::<u8>();
+                if mem.is_null() {
+                    return Err(Error::Unknown(
+                        "Allocation of the vector for bytes failed",
+                    ));
+                }
+
+                let transmuted_mem = ::core::mem::transmute::<*mut u8, *mut T>(mem);
+                // We set the length to cap,
+                // but in reality elements are not initialized yet.
+                // So there can be trash values in the memory.
+                let len = cap;
+
+                Vec::from_raw_parts(transmuted_mem, len, cap)
+            };
+
+            Ok(vec)
+        } else {
+            Ok(Vec::with_capacity(cap))
+        }
     }
 
     fn decode_dynamic<I: Input + ?Sized>(&mut self, buffer: &mut I) -> Result<(), Error> {
-        for _ in 0..self.capacity() {
-            // Bytes - Vec<u8> it a separate case without unpadding for each element.
-            // It should unpadded at the end if is not % ALIGN
-            if T::UNALIGNED_BYTES {
-                let byte = buffer.read_byte()?;
-                // SAFETY: `UNALIGNED_BYTES` implemented set for `u8`.
-                let _self =
-                    unsafe { ::core::mem::transmute::<&mut Vec<T>, &mut Vec<u8>>(self) };
-                _self.push(byte);
-            } else {
+        // Bytes - Vec<u8> it a separate case without unpadding for each element.
+        // It should unpadded at the end if is not % ALIGN
+        if T::UNALIGNED_BYTES {
+            // SAFETY: `UNALIGNED_BYTES` implemented set for `u8`.
+            let _self =
+                unsafe { ::core::mem::transmute::<&mut Vec<T>, &mut Vec<u8>>(self) };
+            buffer.read(_self.as_mut())?;
+        } else {
+            for _ in 0..self.capacity() {
                 self.push(T::decode(buffer)?);
             }
         }
@@ -406,8 +432,10 @@ impl<const N: usize, T: Serialize> Serialize for [T; N] {
     }
 
     fn encode_dynamic<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
-        for e in self.iter() {
-            e.encode_dynamic(buffer)?;
+        if !T::UNALIGNED_BYTES {
+            for e in self.iter() {
+                e.encode_dynamic(buffer)?;
+            }
         }
 
         Ok(())
@@ -462,9 +490,12 @@ impl<const N: usize, T: Deserialize> Deserialize for [T; N] {
     }
 
     fn decode_dynamic<I: Input + ?Sized>(&mut self, buffer: &mut I) -> Result<(), Error> {
-        for e in self.iter_mut() {
-            e.decode_dynamic(buffer)?;
+        if !T::UNALIGNED_BYTES {
+            for e in self.iter_mut() {
+                e.decode_dynamic(buffer)?;
+            }
         }
+
         Ok(())
     }
 }

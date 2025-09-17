@@ -76,10 +76,7 @@ mod debug;
 mod ecal;
 
 pub use balances::RuntimeBalances;
-pub use ecal::{
-    EcalHandler,
-    PredicateErrorEcal,
-};
+pub use ecal::EcalHandler;
 pub use executors::predicates;
 pub use memory::{
     Memory,

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased (see .changes folder)]
 
+## [Version 0.63.0]
+
+### Breaking
+- [963](https://github.com/FuelLabs/fuel-vm/pull/963): Adds `ECAL` state parameter to some predicate-related APIs. Allows `ECAL` instruction during predicate execution. Exposes `Interpreter::context` function that can be used by the `ECAL` handler to determine if it's inside a predicate.
+
 ## [Version 0.62.0]
 
 ### Breaking

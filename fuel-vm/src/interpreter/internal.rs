@@ -123,7 +123,8 @@ where
         set_flag(flag, pc, a)
     }
 
-    pub(crate) const fn context(&self) -> &Context {
+    /// Get the current execution context
+    pub const fn context(&self) -> &Context {
         &self.context
     }
 

@@ -137,6 +137,18 @@ impl From<Contract> for Vec<u8> {
     }
 }
 
+impl From<&[u8]> for Contract {
+    fn from(c: &[u8]) -> Self {
+        Self(c.to_vec().into())
+    }
+}
+
+impl From<&mut [u8]> for Contract {
+    fn from(c: &mut [u8]) -> Self {
+        Self(c.to_vec().into())
+    }
+}
+
 impl Borrow<[u8]> for Contract {
     fn borrow(&self) -> &[u8] {
         self.0.borrow()

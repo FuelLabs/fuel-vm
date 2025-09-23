@@ -3,8 +3,8 @@ use crate::Word;
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
-#[cfg(feature = "alloc")]
 /// A new type around `Vec<u8>` with useful utilities and optimizations.
+#[cfg(feature = "alloc")]
 #[derive(educe::Educe, Default, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[educe(Debug)]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]

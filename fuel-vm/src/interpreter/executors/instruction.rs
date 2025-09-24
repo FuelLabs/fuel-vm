@@ -113,7 +113,7 @@ where
         let gas = gas_before.saturating_sub(self.remaining_gas());
         let stat = self.statistic.entry(opcode).or_default();
         stat.count = stat.count.saturating_add(1);
-        stat.gas = gas;
+        stat.gas = stat.gas.saturating_add(gas);
 
         result
     }

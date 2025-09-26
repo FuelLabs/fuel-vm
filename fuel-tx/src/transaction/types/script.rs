@@ -199,6 +199,28 @@ impl UniqueFormatValidityChecks for Script {
             Err(ValidityError::TransactionScriptDataLength)?;
         }
 
+        self.verify_blob_id()?;
+        self.verify_inputs(consensus_params)?;
+        self.verify_outputs(consensus_params)?;
+
+        Ok(())
+    }
+
+    fn verify_blob_id(&self) -> Result<(), ValidityError> {
+        !todo!()
+    }
+
+    fn verify_inputs(
+        &self,
+        consensus_params: &ConsensusParameters,
+    ) -> Result<(), ValidityError> {
+        !todo!()
+    }
+
+    fn verify_outputs(
+        &self,
+        consensus_params: &ConsensusParameters,
+    ) -> Result<(), ValidityError> {
         self.outputs
             .iter()
             .enumerate()

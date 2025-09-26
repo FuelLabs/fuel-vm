@@ -171,6 +171,16 @@ pub(crate) trait UniqueFormatValidityChecks {
         &self,
         consensus_params: &ConsensusParameters,
     ) -> Result<(), ValidityError>;
+
+    fn verify_blob_id(&self) -> Result<(), ValidityError>;
+    fn verify_inputs(
+        &self,
+        consensus_params: &ConsensusParameters,
+    ) -> Result<(), ValidityError>;
+    fn verify_outputs(
+        &self,
+        consensus_params: &ConsensusParameters,
+    ) -> Result<(), ValidityError>;
 }
 
 impl<Body, MetadataBody> FormatValidityChecks

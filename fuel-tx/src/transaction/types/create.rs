@@ -154,7 +154,6 @@ impl UniqueFormatValidityChecks for Create {
         consensus_params: &ConsensusParameters,
     ) -> Result<(), ValidityError> {
         let contract_params = consensus_params.contract_params();
-        let base_asset_id = consensus_params.base_asset_id();
 
         let bytecode_witness_len = self
             .witnesses
@@ -183,6 +182,26 @@ impl UniqueFormatValidityChecks for Create {
             return Err(ValidityError::TransactionCreateStorageSlotOrder);
         }
 
+        debug_assert!(
+            self.metadata.is_some(),
+            "`check_without_signatures` is called without cached metadata"
+        );
+
+        self.verify_blob_id()?;
+        self.verify_inputs(consensus_params)?;
+        self.verify_outputs(consensus_params)?;
+
+        Ok(())
+    }
+
+    fn verify_blob_id(&self) -> Result<(), ValidityError> {
+        todo!()
+    }
+
+    fn verify_inputs(
+        &self,
+        consensus_params: &ConsensusParameters,
+    ) -> Result<(), ValidityError> {
         self.inputs
             .iter()
             .enumerate()
@@ -208,10 +227,15 @@ impl UniqueFormatValidityChecks for Create {
                 }
             })?;
 
-        debug_assert!(
-            self.metadata.is_some(),
-            "`check_without_signatures` is called without cached metadata"
-        );
+        Ok(())
+    }
+
+    fn verify_outputs(
+        &self,
+        consensus_params: &ConsensusParameters,
+    ) -> Result<(), ValidityError> {
+        let base_asset_id = consensus_params.base_asset_id();
+
         let (state_root_calculated, contract_id_calculated) =
             if let Some(metadata) = &self.metadata {
                 (metadata.body.state_root, metadata.body.contract_id)
@@ -219,54 +243,46 @@ impl UniqueFormatValidityChecks for Create {
                 let metadata = CreateMetadata::compute(self)?;
                 (metadata.state_root, metadata.contract_id)
             };
-
         let mut contract_created = false;
         self.outputs
-            .iter()
-            .enumerate()
-            .try_for_each(|(index, output)| match output {
-                Output::Contract(_) => {
-                    Err(ValidityError::TransactionOutputContainsContract { index })
-                }
-
-                Output::Variable { .. } => {
-                    Err(ValidityError::TransactionOutputContainsVariable { index })
-                }
-
-                Output::Change { asset_id, .. } if asset_id != base_asset_id => {
-                    Err(ValidityError::TransactionChangeChangeUsesNotBaseAsset { index })
-                }
-
-                Output::ContractCreated {
-                    contract_id,
-                    state_root,
-                } if contract_id != &contract_id_calculated
-                    || state_root != &state_root_calculated =>
-                    {
-                        Err(
-                            ValidityError::TransactionCreateOutputContractCreatedDoesntMatch {
-                                index,
-                            },
-                        )
+                .iter()
+                .enumerate()
+                .try_for_each(|(index, output)| match output {
+                    Output::Contract(_) => {
+                        Err(ValidityError::TransactionOutputContainsContract { index })
                     }
-
-                // TODO: Output::ContractCreated { contract_id, state_root } if
-                // contract_id == &id && state_root == &storage_root
-                //  maybe move from `fuel-vm` to here
-                Output::ContractCreated { .. } if contract_created => {
-                    Err(ValidityError::TransactionCreateOutputContractCreatedMultiple {
-                        index,
-                    })
-                }
-
-                Output::ContractCreated { .. } => {
-                    contract_created = true;
-
-                    Ok(())
-                }
-
-                _ => Ok(()),
-            })?;
+                    Output::Variable { .. } => {
+                        Err(ValidityError::TransactionOutputContainsVariable { index })
+                    }
+                    Output::Change { asset_id, .. } if asset_id != base_asset_id => {
+                        Err(ValidityError::TransactionChangeChangeUsesNotBaseAsset { index })
+                    }
+                    Output::ContractCreated {
+                        contract_id,
+                        state_root,
+                    } if contract_id != &contract_id_calculated
+                        || state_root != &state_root_calculated =>
+                        {
+                            Err(
+                                ValidityError::TransactionCreateOutputContractCreatedDoesntMatch {
+                                    index,
+                                },
+                            )
+                        }
+                    // TODO: Output::ContractCreated { contract_id, state_root } if
+                    // contract_id == &id && state_root == &storage_root
+                    //  maybe move from `fuel-vm` to here
+                    Output::ContractCreated { .. } if contract_created => {
+                        Err(ValidityError::TransactionCreateOutputContractCreatedMultiple {
+                            index,
+                        })
+                    }
+                    Output::ContractCreated { .. } => {
+                        contract_created = true;
+                        Ok(())
+                    }
+                    _ => Ok(()),
+                })?;
 
         if !contract_created {
             return Err(ValidityError::TransactionOutputDoesntContainContractCreated);

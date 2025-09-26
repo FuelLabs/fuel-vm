@@ -275,6 +275,19 @@ fn check__no_max_fee_fails() {
 }
 
 #[test]
+fn check__fails_if_owner_bad_index() {
+    let block_height = 1000.into();
+    // Given
+    let tx = valid_upload_transaction().owner(1).finalize();
+
+    // When
+    let result = tx.check(block_height, &test_params());
+
+    // Then
+    assert_eq!(Err(ValidityError::TransactionOwnerIndexOutOfBounds), result);
+}
+
+#[test]
 fn check__reached_max_inputs() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let block_height = 1000.into();

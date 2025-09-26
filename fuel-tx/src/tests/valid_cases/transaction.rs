@@ -370,6 +370,139 @@ fn create_not_set_max_fee_limit_success() {
 }
 
 #[test]
+fn script__check__not_set_owner_success() {
+    // Given
+    let rng = &mut StdRng::seed_from_u64(8586);
+    let block_height = 1000.into();
+
+    // When
+    let result = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+        .add_fee_input()
+        .finalize()
+        .check(block_height, &test_params());
+
+    // Then
+    assert!(result.is_ok());
+}
+
+#[test]
+fn script__check__set_owner_success() {
+    // Given
+    let rng = &mut StdRng::seed_from_u64(8586);
+    let block_height = 1000.into();
+
+    // When
+    let result = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+        .add_fee_input()
+        .owner(0)
+        .finalize()
+        .check(block_height, &test_params());
+
+    // Then
+    assert!(result.is_ok());
+}
+
+#[test]
+fn script__check__set_owner_bad_idx() {
+    // Given
+    let rng = &mut StdRng::seed_from_u64(8586);
+    let block_height = 1000.into();
+
+    // When
+    let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+        .add_fee_input()
+        .owner(1)
+        .finalize()
+        .check(block_height, &test_params())
+        .expect_err("Expected erroneous transaction");
+
+    // Then
+    assert_eq!(ValidityError::TransactionOwnerIndexOutOfBounds, err);
+}
+
+#[test]
+fn script__check__set_owner_bad_input_type() {
+    // Given
+    let rng = &mut StdRng::seed_from_u64(8586);
+    let block_height = 1000.into();
+
+    // When
+    let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+        .add_fee_input()
+        .add_input(Input::contract(
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+        ))
+        .owner(1)
+        .finalize()
+        .check(block_height, &test_params())
+        .expect_err("Expected erroneous transaction");
+
+    // Then
+    assert_eq!(
+        ValidityError::TransactionOwnerInputHasNoOwner { index: 1 },
+        err
+    );
+}
+
+#[test]
+fn create__check__not_set_owner_success() {
+    // Given
+    let rng = &mut StdRng::seed_from_u64(8586);
+    let block_height = 1000.into();
+
+    // When
+    let result = TransactionBuilder::create(rng.r#gen(), rng.r#gen(), vec![])
+        .add_fee_input()
+        .add_contract_created()
+        .finalize()
+        .check(block_height, &test_params());
+
+    // Then
+    assert!(result.is_ok());
+}
+
+#[test]
+fn create__check__set_owner_success() {
+    // Given
+    let rng = &mut StdRng::seed_from_u64(8586);
+    let block_height = 1000.into();
+
+    // When
+    let result = TransactionBuilder::create(rng.r#gen(), rng.r#gen(), vec![])
+        .add_fee_input()
+        .add_contract_created()
+        .owner(0)
+        .finalize()
+        .check(block_height, &test_params());
+
+    // Then
+    assert!(result.is_ok());
+}
+
+#[test]
+fn create__check__set_owner_bad_idx() {
+    // Given
+    let rng = &mut StdRng::seed_from_u64(8586);
+    let block_height = 1000.into();
+
+    // When
+    let err = TransactionBuilder::create(rng.r#gen(), rng.r#gen(), vec![])
+        .add_fee_input()
+        .add_contract_created()
+        .owner(1)
+        .finalize()
+        .check(block_height, &test_params())
+        .expect_err("Expected erroneous transaction");
+
+    // Then
+    assert_eq!(ValidityError::TransactionOwnerIndexOutOfBounds, err);
+}
+
+#[test]
 fn create__check__no_max_fee_fails() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let block_height = 1000.into();

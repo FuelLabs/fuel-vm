@@ -32,6 +32,7 @@ use crate::{
             BytecodeWitnessIndex,
             Expiration,
             Maturity,
+            Owner,
             Tip,
             Witnesses,
         },
@@ -392,6 +393,12 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
 
     pub fn max_fee_limit(&mut self, max_fee: Word) -> &mut Self {
         self.tx.set_max_fee_limit(max_fee);
+
+        self
+    }
+
+    pub fn owner(&mut self, owner: Word) -> &mut Self {
+        self.tx.set_owner(owner);
 
         self
     }

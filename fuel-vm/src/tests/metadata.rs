@@ -558,6 +558,7 @@ fn get_transaction_fields() {
     let maturity = 50.into();
     let height = 122.into();
     let expiration = 123.into();
+    let owner_idx = 1;
     let input = 10_000_000;
 
     let tx_params = TxParameters::default();
@@ -630,6 +631,7 @@ fn get_transaction_fields() {
     let tx = TransactionBuilder::script(vec![], vec![])
         .maturity(maturity)
         .expiration(expiration)
+        .owner(owner_idx)
         .with_gas_costs(gas_costs)
         .script_gas_limit(gas_limit)
         .add_unsigned_coin_input(
@@ -795,6 +797,12 @@ fn get_transaction_fields() {
         op::movi(0x19, 0x00),
         op::movi(0x11, witness_limit as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::PolicyWitnessLimit),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::movi(0x19, 0x00),
+        op::movi(0x11, owner_idx as Immediate18),
+        op::gtf_args(0x10, 0x19, GTFArgs::PolicyOwner),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
 
@@ -1175,6 +1183,7 @@ fn get_transaction_fields() {
         .tip(tip)
         .maturity(maturity)
         .expiration(expiration)
+        .owner(owner_idx)
         .script_gas_limit(gas_limit)
         .witness_limit(witness_limit)
         .max_fee_limit(max_fee_limit)

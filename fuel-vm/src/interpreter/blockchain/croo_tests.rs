@@ -55,7 +55,7 @@ fn test_code_root() {
     let contract: Contract = data.into();
     let root = contract.root();
     storage
-        .storage_contract_insert(&contract_id, &contract)
+        .storage_contract_insert(&contract_id, contract.as_ref())
         .expect("Failed to insert contract");
 
     let gas_cost = GasCosts::default().croo();

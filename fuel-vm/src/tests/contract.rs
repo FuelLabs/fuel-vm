@@ -40,10 +40,9 @@ fn prevent_contract_id_redeployment() {
     let salt: Salt = rng.r#gen();
     let program: Witness = function_rvrt.into_iter().collect::<Vec<u8>>().into();
 
-    let contract = Contract::from(program.as_ref());
-    let contract_root = contract.root();
+    let contract_root = Contract::root_from_code(program.as_ref());
     let state_root = Contract::default_state_root();
-    let contract_undefined = contract.id(&salt, &contract_root, &state_root);
+    let contract_undefined = Contract::id(&salt, &contract_root, &state_root);
 
     let output = Output::contract_created(contract_undefined, state_root);
 

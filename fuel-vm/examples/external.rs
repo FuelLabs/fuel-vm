@@ -1,23 +1,6 @@
 //! This example shows how you can provide a custom ECAL instruction to the VM.
 //! Here we use it to provide a way to read from arbitrary files on the host machine.
 
-use std::{
-    fs::{
-        self,
-        File,
-    },
-    io::{
-        Read,
-        Seek,
-        SeekFrom,
-    },
-    path::PathBuf,
-    sync::{
-        Arc,
-        Mutex,
-    },
-};
-
 use fuel_asm::{
     GTFArgs,
     PanicReason,
@@ -43,6 +26,23 @@ use fuel_vm::{
         MemoryClient,
     },
     storage::MemoryStorage,
+};
+use std::{
+    fs::{
+        self,
+        File,
+    },
+    io::{
+        Read,
+        Seek,
+        SeekFrom,
+    },
+    ops::Deref,
+    path::PathBuf,
+    sync::{
+        Arc,
+        Mutex,
+    },
 };
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -119,7 +119,7 @@ fn example_file_read() {
         panic!("Expected a data log receipt");
     };
 
-    let read_bytes = data.as_ref().unwrap();
+    let read_bytes = data.as_ref().unwrap().deref();
     let expected_bytes = &fs::read(file!()).expect("Couldn't read")[4..12];
     assert_eq!(read_bytes, expected_bytes);
 }

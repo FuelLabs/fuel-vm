@@ -5,7 +5,6 @@ use fuel_storage::Mappable;
 use fuel_types::{
     Bytes32,
     ContractId,
-    fmt_truncated_hex,
 };
 
 use alloc::{
@@ -14,6 +13,7 @@ use alloc::{
 };
 use educe::Educe;
 
+use fuel_types::bytes::Bytes;
 #[cfg(feature = "random")]
 use rand::{
     Rng,
@@ -49,38 +49,36 @@ double_key!(
 #[derive(Educe, Clone, PartialEq, Eq, Hash)]
 #[educe(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct ContractsStateData(
-    #[educe(Debug(method(fmt_truncated_hex::<16>)))] pub Vec<u8>,
-);
+pub struct ContractsStateData(pub Bytes);
 
 // TODO: Remove fixed size default when adding support for dynamic storage
 impl Default for ContractsStateData {
     fn default() -> Self {
-        Self(vec![0u8; 32])
+        Self(vec![0u8; 32].into())
     }
 }
 
 impl From<Vec<u8>> for ContractsStateData {
     fn from(c: Vec<u8>) -> Self {
-        Self(c)
-    }
-}
-
-impl From<&[u8]> for ContractsStateData {
-    fn from(c: &[u8]) -> Self {
-        Self(c.into())
-    }
-}
-
-impl From<&mut [u8]> for ContractsStateData {
-    fn from(c: &mut [u8]) -> Self {
         Self(c.into())
     }
 }
 
 impl From<ContractsStateData> for Vec<u8> {
     fn from(c: ContractsStateData) -> Vec<u8> {
-        c.0
+        c.0.into_inner()
+    }
+}
+
+impl From<&[u8]> for ContractsStateData {
+    fn from(c: &[u8]) -> Self {
+        Self(c.to_vec().into())
+    }
+}
+
+impl From<&mut [u8]> for ContractsStateData {
+    fn from(c: &mut [u8]) -> Self {
+        Self(c.to_vec().into())
     }
 }
 
@@ -105,7 +103,7 @@ impl AsMut<[u8]> for ContractsStateData {
 #[cfg(feature = "random")]
 impl Distribution<ContractsStateData> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> ContractsStateData {
-        ContractsStateData(rng.r#gen::<Bytes32>().to_vec())
+        ContractsStateData(rng.r#gen::<Bytes32>().to_vec().into())
     }
 }
 
@@ -114,6 +112,6 @@ impl IntoIterator for ContractsStateData {
     type Item = u8;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
+        self.0.into_inner().into_iter()
     }
 }

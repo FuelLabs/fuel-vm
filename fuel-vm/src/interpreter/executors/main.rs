@@ -54,6 +54,7 @@ use crate::{
     },
     interpreter::InterpreterParams,
     prelude::MemoryInstance,
+    state::StateTransition,
     storage::{
         UploadedBytecode,
         UploadedBytecodes,
@@ -561,11 +562,11 @@ where
         );
         let salt = create.salt();
         let storage_slots = create.storage_slots();
-        let contract = Contract::try_from(&*create)?;
+        let contract = create.bytecode()?;
         let root = if let Some(m) = metadata {
             m.body.contract_root
         } else {
-            contract.root()
+            Contract::root_from_code(contract)
         };
 
         let storage_root = if let Some(m) = metadata {
@@ -577,7 +578,7 @@ where
         let id = if let Some(m) = metadata {
             m.body.contract_id
         } else {
-            contract.id(salt, &root, &storage_root)
+            Contract::id(salt, &root, &storage_root)
         };
 
         // Prevent redeployment of contracts
@@ -591,7 +592,7 @@ where
         }
 
         storage
-            .deploy_contract_with_id(storage_slots, &contract, &id)
+            .deploy_contract_with_id(storage_slots, contract, &id)
             .map_err(RuntimeError::Storage)?;
         Self::finalize_outputs(
             create,
@@ -1117,17 +1118,40 @@ where
     pub fn transact(
         &mut self,
         tx: Ready<Tx>,
-    ) -> Result<StateTransitionRef<'_, Tx>, InterpreterError<S::DataError>> {
+    ) -> Result<StateTransitionRef<'_, Tx, V>, InterpreterError<S::DataError>> {
+        let state = self.transact_inner(tx)?;
+        Ok(StateTransitionRef::new(
+            state,
+            self.transaction(),
+            self.receipts(),
+            self.verifier(),
+        ))
+    }
+
+    /// Similar to `transact`, but takes `self` and returns the `StateTransition`.
+    pub fn into_transact(
+        mut self,
+        tx: Ready<Tx>,
+    ) -> Result<StateTransition<Tx, V>, InterpreterError<S::DataError>> {
+        let state = self.transact_inner(tx)?;
+        Ok(StateTransition::new(
+            state,
+            self.tx,
+            self.receipts.into(),
+            self.verifier,
+        ))
+    }
+
+    fn transact_inner(
+        &mut self,
+        tx: Ready<Tx>,
+    ) -> Result<ProgramState, InterpreterError<S::DataError>> {
         self.verify_ready_tx(&tx)?;
 
         let state_result = self.init_script(tx).and_then(|_| self.run());
 
         let state = state_result?;
-        Ok(StateTransitionRef::new(
-            state,
-            self.transaction(),
-            self.receipts(),
-        ))
+        Ok(state)
     }
 }
 

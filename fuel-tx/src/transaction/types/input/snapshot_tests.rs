@@ -65,7 +65,7 @@ fn tx_with_predicate_coin_snapshot() -> Transaction {
             witness_index: Empty::new(),
             predicate_gas_used: 100_000,
             predicate: vec![3u8; 10].into(),
-            predicate_data: vec![4u8; 12],
+            predicate_data: vec![4u8; 12].into(),
         }))
         .tip(1)
         .maturity(123.into())
@@ -200,7 +200,7 @@ fn tx_with_predicate_message_coin() -> Transaction {
             predicate_gas_used: 100_000,
             data: Empty::new(),
             predicate: vec![7u8; 11].into(),
-            predicate_data: vec![8u8; 12],
+            predicate_data: vec![8u8; 12].into(),
         }))
         .tip(1)
         .maturity(123.into())
@@ -243,7 +243,7 @@ fn tx_with_signed_message_data() -> Transaction {
             nonce: [5u8; 32].into(),
             witness_index: 6,
             predicate_gas_used: Empty::new(),
-            data: vec![7u8; 10],
+            data: vec![7u8; 10].into(),
             predicate: Empty::new(),
             predicate_data: Empty::new(),
         }))
@@ -290,9 +290,9 @@ fn tx_with_predicate_message_data() -> Transaction {
             nonce: [5u8; 32].into(),
             witness_index: Empty::new(),
             predicate_gas_used: 100_000,
-            data: vec![6u8; 10],
+            data: vec![6u8; 10].into(),
             predicate: vec![7u8; 11].into(),
-            predicate_data: vec![8u8; 12],
+            predicate_data: vec![8u8; 12].into(),
         }))
         .tip(1)
         .maturity(123.into())

@@ -35,7 +35,7 @@ const fn key(k: u8) -> [u8; 32] {
 }
 
 fn data(value: &[u8]) -> ContractsStateData {
-    ContractsStateData::from(value)
+    ContractsStateData::from(value.to_vec())
 }
 
 impl OwnershipRegisters {

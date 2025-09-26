@@ -184,3 +184,28 @@ where
         Ok(result)
     }
 }
+
+#[cfg(feature = "alloc")]
+impl Compressible for fuel_types::bytes::Bytes {
+    type Compressed = Self;
+}
+
+#[cfg(feature = "alloc")]
+impl<Ctx> CompressibleBy<Ctx> for fuel_types::bytes::Bytes
+where
+    Ctx: ContextError,
+{
+    async fn compress_with(&self, _: &mut Ctx) -> Result<Self::Compressed, Ctx::Error> {
+        Ok(self.clone())
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<Ctx> DecompressibleBy<Ctx> for fuel_types::bytes::Bytes
+where
+    Ctx: ContextError,
+{
+    async fn decompress_with(c: Self::Compressed, _: &Ctx) -> Result<Self, Ctx::Error> {
+        Ok(c)
+    }
+}

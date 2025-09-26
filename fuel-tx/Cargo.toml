@@ -44,6 +44,7 @@ std = [
 alloc = [
     "hashbrown",
     "fuel-types/alloc",
+    "fuel-compression?/alloc",
     "itertools/use_alloc",
     "fuel-merkle",
     "strum",
@@ -61,7 +62,7 @@ u32-tx-pointer = []
 [dependencies]
 bitflags = { workspace = true, features = ["serde"], optional = true }
 derive_more = { version = "1", default-features = false, features = ["display"], optional = true }
-educe = { version = "0.6", features = ["Eq", "PartialEq", "Hash", "Debug"], default-features = false, optional = true }
+educe = { workspace = true, features = ["Eq", "PartialEq", "Hash", "Debug"], default-features = false, optional = true }
 fuel-asm = { workspace = true, default-features = false }
 fuel-compression = { workspace = true, optional = true }
 fuel-crypto = { workspace = true, default-features = false }

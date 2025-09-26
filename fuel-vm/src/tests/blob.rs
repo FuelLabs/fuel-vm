@@ -381,7 +381,7 @@ fn blob_load_data__bounds(
         receipts
             .iter()
             .filter_map(|receipt| match receipt {
-                Receipt::LogData { data, .. } => Some(data.clone().unwrap()),
+                Receipt::LogData { data, .. } => Some(data.clone().unwrap().into()),
                 _ => None,
             })
             .next()

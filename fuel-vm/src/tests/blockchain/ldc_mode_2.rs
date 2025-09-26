@@ -81,7 +81,7 @@ fn ldcv2__has_correct_padding(offset: u32, len: u32) -> Vec<u8> {
     let Some(Receipt::LogData { data, .. }) = receipts.first() else {
         panic!("Expected LogData receipt");
     };
-    data.clone().unwrap()
+    data.clone().unwrap().into()
 }
 
 fn ldcv2_reason_helper(script: Vec<Instruction>) -> Result<(), PanicReason> {

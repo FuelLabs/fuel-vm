@@ -285,11 +285,10 @@ fn test_copy_from_storage_zero_fill(
     src_data: &[u8],
 ) -> (bool, [u8; 5]) {
     let contract_id = ContractId::zeroed();
-    let contract = Contract::from(src_data);
     let contract_size = src_data.len();
     let mut storage = MemoryStorage::default();
     storage
-        .storage_contract_insert(&contract_id, &contract)
+        .storage_contract_insert(&contract_id, src_data)
         .unwrap();
 
     let mut memory: MemoryInstance = vec![0xffu8; MEM_SIZE].try_into().unwrap();

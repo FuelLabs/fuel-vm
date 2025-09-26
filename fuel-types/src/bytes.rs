@@ -1,5 +1,135 @@
 use crate::Word;
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
+/// A new type around `Vec<u8>` with useful utilities and optimizations.
+#[cfg(feature = "alloc")]
+#[derive(educe::Educe, Default, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[educe(Debug)]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+pub struct Bytes(#[educe(Debug(method(crate::fmt::fmt_truncated_hex::<16>)))] Vec<u8>);
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for Bytes {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_bytes(&self.0)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for Bytes {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        /// A visitor for deserializing a bytes.
+        struct BytesVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for BytesVisitor {
+            type Value = Vec<u8>;
+
+            fn expecting(
+                &self,
+                formatter: &mut core::fmt::Formatter,
+            ) -> core::fmt::Result {
+                write!(formatter, "an array of bytes")
+            }
+
+            #[inline(always)]
+            fn visit_borrowed_bytes<E>(self, items: &'de [u8]) -> Result<Self::Value, E> {
+                Ok(items.to_vec())
+            }
+
+            #[inline(always)]
+            fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(v)
+            }
+
+            #[inline(always)]
+            fn visit_seq<A>(self, mut value: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                let size = value.size_hint().unwrap_or(0);
+                let mut arr = Vec::with_capacity(size);
+
+                while let Some(elem) = value.next_element()? {
+                    arr.push(elem);
+                }
+                Ok(arr)
+            }
+        }
+
+        let bytes = deserializer.deserialize_bytes(BytesVisitor)?;
+
+        Ok(Self(bytes))
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl Bytes {
+    /// Creates a new `Bytes` from a `Vec<u8>`.
+    pub const fn new(bytes: Vec<u8>) -> Self {
+        Self(bytes)
+    }
+
+    /// Consumes the `Bytes`, returning the underlying `Vec<u8>`.
+    pub fn into_inner(self) -> Vec<u8> {
+        self.0
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl core::ops::Deref for Bytes {
+    type Target = Vec<u8>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl core::ops::DerefMut for Bytes {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl From<Vec<u8>> for Bytes {
+    fn from(value: Vec<u8>) -> Self {
+        Self(value)
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl From<Bytes> for Vec<u8> {
+    fn from(value: Bytes) -> Self {
+        value.0
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl AsRef<[u8]> for Bytes {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl AsMut<[u8]> for Bytes {
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
+}
+
 /// Size of a word, in bytes
 pub const WORD_SIZE: usize = core::mem::size_of::<Word>();
 
@@ -53,31 +183,129 @@ pub unsafe fn from_slice_unchecked<const N: usize>(buf: &[u8]) -> [u8; N] {
     }
 }
 
-#[test]
-#[allow(clippy::erasing_op)]
-#[allow(clippy::identity_op)]
-fn padded_len_returns_multiple_of_word_len() {
-    assert_eq!(Some(WORD_SIZE * 0), padded_len(&[]));
-    assert_eq!(Some(WORD_SIZE * 1), padded_len(&[0]));
-    assert_eq!(Some(WORD_SIZE * 1), padded_len(&[0; WORD_SIZE]));
-    assert_eq!(Some(WORD_SIZE * 2), padded_len(&[0; WORD_SIZE + 1]));
-    assert_eq!(Some(WORD_SIZE * 2), padded_len(&[0; WORD_SIZE * 2]));
-}
+#[allow(non_snake_case)]
+#[cfg(test)]
+mod tests {
+    use crate::bytes::{
+        Bytes,
+        WORD_SIZE,
+        padded_len,
+        padded_len_usize,
+    };
 
-#[test]
-fn padded_len_usize_returns_multiple_of_word_len() {
-    assert_eq!(padded_len_usize(0), Some(0));
-    assert_eq!(padded_len_usize(1), Some(8));
-    assert_eq!(padded_len_usize(2), Some(8));
-    assert_eq!(padded_len_usize(7), Some(8));
-    assert_eq!(padded_len_usize(8), Some(8));
-    assert_eq!(padded_len_usize(9), Some(16));
-}
-
-#[test]
-fn padded_len_usize_handles_overflow() {
-    for i in 0..7 {
-        assert_eq!(padded_len_usize(usize::MAX - i), None);
+    #[test]
+    #[allow(clippy::erasing_op)]
+    #[allow(clippy::identity_op)]
+    fn padded_len_returns_multiple_of_word_len() {
+        assert_eq!(Some(WORD_SIZE * 0), padded_len(&[]));
+        assert_eq!(Some(WORD_SIZE * 1), padded_len(&[0]));
+        assert_eq!(Some(WORD_SIZE * 1), padded_len(&[0; WORD_SIZE]));
+        assert_eq!(Some(WORD_SIZE * 2), padded_len(&[0; WORD_SIZE + 1]));
+        assert_eq!(Some(WORD_SIZE * 2), padded_len(&[0; WORD_SIZE * 2]));
     }
-    assert_eq!(padded_len_usize(usize::MAX - 7), Some(usize::MAX - 7));
+
+    #[test]
+    fn padded_len_usize_returns_multiple_of_word_len() {
+        assert_eq!(padded_len_usize(0), Some(0));
+        assert_eq!(padded_len_usize(1), Some(8));
+        assert_eq!(padded_len_usize(2), Some(8));
+        assert_eq!(padded_len_usize(7), Some(8));
+        assert_eq!(padded_len_usize(8), Some(8));
+        assert_eq!(padded_len_usize(9), Some(16));
+    }
+
+    #[test]
+    fn padded_len_usize_handles_overflow() {
+        for i in 0..7 {
+            assert_eq!(padded_len_usize(usize::MAX - i), None);
+        }
+        assert_eq!(padded_len_usize(usize::MAX - 7), Some(usize::MAX - 7));
+    }
+
+    #[test]
+    fn bytes__postcard__serialization_correct() {
+        // Given
+        let original_bytes = vec![1u8, 2u8, 3u8, 4u8, 5u8];
+        let bytes = Bytes::new(original_bytes.clone());
+
+        // When
+        let serialized_bytes = postcard::to_allocvec(&bytes).unwrap();
+        let serialized_original_bytes = postcard::to_allocvec(&original_bytes).unwrap();
+
+        // Then
+        assert_eq!(serialized_bytes, serialized_original_bytes);
+    }
+
+    #[test]
+    fn bytes__postcard__deserialization_correct() {
+        // Given
+        let original_bytes = vec![1u8, 2u8, 3u8, 4u8, 5u8];
+        let serialized_original_bytes = postcard::to_allocvec(&original_bytes).unwrap();
+
+        // When
+        let deserialized_bytes: Bytes =
+            postcard::from_bytes(&serialized_original_bytes).unwrap();
+        let expected_bytes = Bytes::new(original_bytes);
+
+        // Then
+        assert_eq!(deserialized_bytes, expected_bytes);
+    }
+
+    #[test]
+    fn bytes__bincode__serialization_correct() {
+        // Given
+        let original_bytes = vec![1u8, 2u8, 3u8, 4u8, 5u8];
+        let bytes = Bytes::new(original_bytes.clone());
+
+        // When
+        let serialized_bytes = bincode::serialize(&bytes).unwrap();
+        let serialized_original_bytes = bincode::serialize(&original_bytes).unwrap();
+
+        // Then
+        assert_eq!(serialized_bytes, serialized_original_bytes);
+    }
+
+    #[test]
+    fn bytes__bincode__deserialization_correct() {
+        // Given
+        let original_bytes = vec![1u8, 2u8, 3u8, 4u8, 5u8];
+        let serialized_original_bytes = bincode::serialize(&original_bytes).unwrap();
+
+        // When
+        let deserialized_bytes: Bytes =
+            bincode::deserialize(&serialized_original_bytes).unwrap();
+        let expected_bytes = Bytes::new(original_bytes);
+
+        // Then
+        assert_eq!(deserialized_bytes, expected_bytes);
+    }
+
+    #[test]
+    fn bytes__json__serialization_correct() {
+        // Given
+        let original_bytes = vec![1u8, 2u8, 3u8, 4u8, 5u8];
+        let bytes = Bytes::new(original_bytes.clone());
+
+        // When
+        let serialized_bytes = serde_json::to_string(&bytes).unwrap();
+        let serialized_original_bytes = serde_json::to_string(&original_bytes).unwrap();
+
+        // Then
+        assert_eq!(serialized_bytes, serialized_original_bytes);
+    }
+
+    #[test]
+    fn bytes__json__deserialization_correct() {
+        // Given
+        let original_bytes = vec![1u8, 2u8, 3u8, 4u8, 5u8];
+        let serialized_original_bytes = serde_json::to_string(&original_bytes).unwrap();
+
+        // When
+        let deserialized_bytes: Bytes =
+            serde_json::from_str(&serialized_original_bytes).unwrap();
+        let expected_bytes = Bytes::new(original_bytes);
+
+        // Then
+        assert_eq!(deserialized_bytes, expected_bytes);
+    }
 }

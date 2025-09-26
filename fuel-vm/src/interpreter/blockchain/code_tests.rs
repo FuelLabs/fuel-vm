@@ -11,7 +11,6 @@ use crate::{
     },
     verification::Normal,
 };
-use fuel_tx::Contract;
 
 #[test]
 fn test_load_contract_in_script() -> IoResult<(), MemoryStorageError> {
@@ -36,10 +35,7 @@ fn test_load_contract_in_script() -> IoResult<(), MemoryStorageError> {
         ..contract_id_mem_address as usize + ContractId::LEN]
         .copy_from_slice(contract_id.as_ref());
     storage
-        .storage_contract_insert(
-            &contract_id,
-            &Contract::from(vec![5u8; CONTRACT_SIZE as usize]),
-        )
+        .storage_contract_insert(&contract_id, &vec![5u8; CONTRACT_SIZE as usize])
         .unwrap();
 
     let mut panic_context = PanicContext::None;
@@ -94,10 +90,7 @@ fn test_load_contract_in_call() -> IoResult<(), MemoryStorageError> {
         ..contract_id_mem_address as usize + ContractId::LEN]
         .copy_from_slice(contract_id.as_ref());
     storage
-        .storage_contract_insert(
-            &contract_id,
-            &Contract::from(vec![5u8; CONTRACT_SIZE as usize]),
-        )
+        .storage_contract_insert(&contract_id, &vec![5u8; CONTRACT_SIZE as usize])
         .unwrap();
 
     let mut panic_context = PanicContext::None;
@@ -150,10 +143,7 @@ fn test_code_copy() -> IoResult<(), MemoryStorageError> {
         ..contract_id_mem_address as usize + ContractId::LEN]
         .copy_from_slice(contract_id.as_ref());
     storage
-        .storage_contract_insert(
-            &contract_id,
-            &Contract::from(vec![5u8; CONTRACT_SIZE as usize]),
-        )
+        .storage_contract_insert(&contract_id, &vec![5u8; CONTRACT_SIZE as usize])
         .unwrap();
 
     let input_contracts = [contract_id];

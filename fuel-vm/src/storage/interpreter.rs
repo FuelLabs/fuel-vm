@@ -132,7 +132,7 @@ pub trait InterpreterStorage:
     fn deploy_contract_with_id(
         &mut self,
         slots: &[StorageSlot],
-        contract: &Contract,
+        contract: &[u8],
         id: &ContractId,
     ) -> Result<(), Self::DataError> {
         self.storage_contract_insert(id, contract)?;
@@ -169,9 +169,9 @@ pub trait InterpreterStorage:
     fn storage_contract_insert(
         &mut self,
         id: &ContractId,
-        contract: &Contract,
+        contract: &[u8],
     ) -> Result<(), Self::DataError> {
-        StorageMutate::<ContractsRawCode>::insert(self, id, contract.as_ref())
+        StorageMutate::<ContractsRawCode>::insert(self, id, contract)
     }
 
     /// Check if a provided contract exists in the chain.

@@ -391,7 +391,7 @@ fn incr_u128(
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
         let expected = v + 1;
         let data = data.as_ref().unwrap();
-        let bytes: [u8; 16] = data.clone().try_into().unwrap();
+        let bytes: [u8; 16] = data.clone().into_inner().try_into().unwrap();
         let result = u128::from_be_bytes(bytes);
         assert_eq!(result, expected);
     } else {
@@ -425,7 +425,7 @@ fn incr_u256(
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
         let data = data.as_ref().unwrap();
         let expected = v + 1;
-        let bytes: [u8; 32] = data.clone().try_into().unwrap();
+        let bytes: [u8; 32] = data.clone().into_inner().try_into().unwrap();
         let result = U256::from_be_bytes(bytes);
         assert_eq!(result, expected);
     } else {
@@ -511,7 +511,7 @@ fn incr_wrapping_u128() {
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
         let data = data.as_ref().unwrap();
-        let bytes: [u8; 16] = data.clone().try_into().unwrap();
+        let bytes: [u8; 16] = data.clone().into_inner().try_into().unwrap();
         let result = u128::from_be_bytes(bytes);
         assert_eq!(result, 0);
     } else {
@@ -543,7 +543,7 @@ fn incr_wrapping_u256() {
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
         let data = data.as_ref().unwrap();
-        let bytes: [u8; 32] = data.clone().try_into().unwrap();
+        let bytes: [u8; 32] = data.clone().into_inner().try_into().unwrap();
         let result = U256::from_be_bytes(bytes);
         assert_eq!(result, 0);
     } else {
@@ -625,7 +625,7 @@ fn multiply_overflow_wrapping_u128() {
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
         let data = data.as_ref().unwrap();
-        let bytes: [u8; 16] = data.clone().try_into().unwrap();
+        let bytes: [u8; 16] = data.clone().into_inner().try_into().unwrap();
         let result = u128::from_be_bytes(bytes);
         assert_eq!(result, u128::MAX.wrapping_mul(u128::MAX));
     } else {
@@ -657,7 +657,7 @@ fn multiply_overflow_wrapping_u256() {
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
         let data = data.as_ref().unwrap();
-        let bytes: [u8; 32] = data.clone().try_into().unwrap();
+        let bytes: [u8; 32] = data.clone().into_inner().try_into().unwrap();
         let result = U256::from_be_bytes(bytes);
         assert_eq!(result, U256::MAX.wrapping_mul(U256::MAX));
     } else {
@@ -691,7 +691,7 @@ fn multiply_ok_u128(
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
         let data = data.as_ref().unwrap();
-        let bytes: [u8; 16] = data.clone().try_into().unwrap();
+        let bytes: [u8; 16] = data.clone().into_inner().try_into().unwrap();
         let result = u128::from_be_bytes(bytes);
         assert_eq!(result, a * b);
     } else {
@@ -725,7 +725,7 @@ fn multiply_ok_u256(
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
         let data = data.as_ref().unwrap();
-        let bytes: [u8; 32] = data.clone().try_into().unwrap();
+        let bytes: [u8; 32] = data.clone().into_inner().try_into().unwrap();
         let result = U256::from_be_bytes(bytes);
         assert_eq!(result, a * b);
     } else {
@@ -779,7 +779,7 @@ fn multiply_single_indirect_u128(
 
     if let Receipt::LogData { data, .. } = lhs_receipts.first().unwrap() {
         let data = data.as_ref().unwrap();
-        let bytes: [u8; 16] = data.clone().try_into().unwrap();
+        let bytes: [u8; 16] = data.clone().into_inner().try_into().unwrap();
         let result = u128::from_be_bytes(bytes);
         assert_eq!(result, expected);
     } else {
@@ -788,7 +788,7 @@ fn multiply_single_indirect_u128(
 
     if let Receipt::LogData { data, .. } = rhs_receipts.first().unwrap() {
         let data = data.as_ref().unwrap();
-        let bytes: [u8; 16] = data.clone().try_into().unwrap();
+        let bytes: [u8; 16] = data.clone().into_inner().try_into().unwrap();
         let result = u128::from_be_bytes(bytes);
         assert_eq!(result, expected);
     } else {
@@ -842,7 +842,7 @@ fn multiply_single_indirect_u256(
 
     if let Receipt::LogData { data, .. } = lhs_receipts.first().unwrap() {
         let data = data.as_ref().unwrap();
-        let bytes: [u8; 32] = data.clone().try_into().unwrap();
+        let bytes: [u8; 32] = data.clone().into_inner().try_into().unwrap();
         let result = U256::from_be_bytes(bytes);
         assert_eq!(result, expected);
     } else {
@@ -851,7 +851,7 @@ fn multiply_single_indirect_u256(
 
     if let Receipt::LogData { data, .. } = rhs_receipts.first().unwrap() {
         let data = data.as_ref().unwrap();
-        let bytes: [u8; 32] = data.clone().try_into().unwrap();
+        let bytes: [u8; 32] = data.clone().into_inner().try_into().unwrap();
         let result = U256::from_be_bytes(bytes);
         assert_eq!(result, expected);
     } else {
@@ -885,7 +885,7 @@ fn multiply_two_directs_u128(
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
         let data = data.as_ref().unwrap();
-        let bytes: [u8; 16] = data.clone().try_into().unwrap();
+        let bytes: [u8; 16] = data.clone().into_inner().try_into().unwrap();
         let result = u128::from_be_bytes(bytes);
         assert_eq!(result, u128::from(a * b));
     } else {
@@ -919,7 +919,7 @@ fn multiply_two_directs_u256(
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
         let data = data.as_ref().unwrap();
-        let bytes: [u8; 32] = data.clone().try_into().unwrap();
+        let bytes: [u8; 32] = data.clone().into_inner().try_into().unwrap();
         let result = U256::from_be_bytes(bytes);
         assert_eq!(result, U256::from(a * b));
     } else {
@@ -992,7 +992,7 @@ fn divide_by_zero_unsafemath_u128() {
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
         let data = data.as_ref().unwrap();
-        let bytes: [u8; 16] = data.clone().try_into().unwrap();
+        let bytes: [u8; 16] = data.clone().into_inner().try_into().unwrap();
         let result = u128::from_be_bytes(bytes);
         assert_eq!(result, 0);
     } else {
@@ -1021,7 +1021,7 @@ fn divide_by_zero_unsafemath_u256() {
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
         let data = data.as_ref().unwrap();
-        let bytes: [u8; 32] = data.clone().try_into().unwrap();
+        let bytes: [u8; 32] = data.clone().into_inner().try_into().unwrap();
         let result = U256::from_be_bytes(bytes);
         assert_eq!(result, 0);
     } else {
@@ -1054,7 +1054,7 @@ fn divide_ok_u128(
 
     if let &Receipt::LogData { data, .. } = &recp {
         let data = data.as_ref().unwrap();
-        let bytes: [u8; 16] = data.clone().try_into().unwrap();
+        let bytes: [u8; 16] = data.clone().into_inner().try_into().unwrap();
         let result = u128::from_be_bytes(bytes);
         assert_eq!(result, a / b);
     } else {
@@ -1085,7 +1085,7 @@ fn divide_ok_u256(
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
         let data = data.as_ref().unwrap();
-        let bytes: [u8; 32] = data.clone().try_into().unwrap();
+        let bytes: [u8; 32] = data.clone().into_inner().try_into().unwrap();
         let result = U256::from_be_bytes(bytes);
         assert_eq!(result, a / b);
     } else {
@@ -1123,7 +1123,7 @@ fn fused_mul_div_u128(
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
         let data = data.as_ref().unwrap();
-        let bytes: [u8; 16] = data.clone().try_into().unwrap();
+        let bytes: [u8; 16] = data.clone().into_inner().try_into().unwrap();
         let v = u128::from_be_bytes(bytes);
         assert_eq!(v, expected);
     } else {
@@ -1234,7 +1234,7 @@ fn fused_mul_div_u256(
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
         let data = data.as_ref().unwrap();
-        let bytes: [u8; 32] = data.clone().try_into().unwrap();
+        let bytes: [u8; 32] = data.clone().into_inner().try_into().unwrap();
         let v = U256::from_be_bytes(bytes);
         assert_eq!(v, expected);
     } else {
@@ -1336,7 +1336,7 @@ fn addmod_u128(
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
         let data = data.as_ref().unwrap();
-        let bytes: [u8; 16] = data.clone().try_into().unwrap();
+        let bytes: [u8; 16] = data.clone().into_inner().try_into().unwrap();
         let v = u128::from_be_bytes(bytes);
         assert_eq!(v, expected);
     } else {
@@ -1375,7 +1375,7 @@ fn addmod_u256(
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
         let data = data.as_ref().unwrap();
-        let bytes: [u8; 32] = data.clone().try_into().unwrap();
+        let bytes: [u8; 32] = data.clone().into_inner().try_into().unwrap();
         let v = U256::from_be_bytes(bytes);
         assert_eq!(v, expected);
     } else {
@@ -1480,7 +1480,7 @@ fn mulmod_u128(
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
         let data = data.as_ref().unwrap();
-        let bytes: [u8; 16] = data.clone().try_into().unwrap();
+        let bytes: [u8; 16] = data.clone().into_inner().try_into().unwrap();
         let v = u128::from_be_bytes(bytes);
         assert_eq!(v, expected);
     } else {
@@ -1521,7 +1521,7 @@ fn mulmod_u256(
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
         let data = data.as_ref().unwrap();
-        let bytes: [u8; 32] = data.clone().try_into().unwrap();
+        let bytes: [u8; 32] = data.clone().into_inner().try_into().unwrap();
         let v = U256::from_be_bytes(bytes);
         assert_eq!(v, expected);
     } else {

@@ -111,7 +111,7 @@ where
     }
 
     /// State transition representation after the execution of a transaction.
-    pub fn state_transition(&self) -> Option<StateTransitionRef<'_, Script>> {
+    pub fn state_transition(&self) -> Option<StateTransitionRef<'_, Script, V>> {
         self.transactor.state_transition()
     }
 

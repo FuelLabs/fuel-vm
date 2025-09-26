@@ -126,6 +126,7 @@ pub mod test_helpers {
             Backtrace,
             Call,
         },
+        verification::Normal,
     };
     use fuel_asm::{
         GTFArgs,
@@ -489,9 +490,8 @@ pub mod test_helpers {
             let salt: Salt = self.rng.r#gen();
             let program: Witness = contract.into();
             let storage_root = Contract::initial_state_root(storage_slots.iter());
-            let contract = Contract::from(program.as_ref());
-            let contract_root = contract.root();
-            let contract_id = contract.id(&salt, &contract_root, &storage_root);
+            let contract_root = Contract::root_from_code(program.as_ref());
+            let contract_id = Contract::id(&salt, &contract_root, &storage_root);
 
             let tx = TransactionBuilder::create(program, salt, storage_slots)
                 .max_fee_limit(self.max_fee_limit)
@@ -552,7 +552,7 @@ pub mod test_helpers {
             &mut self,
             transactor: &mut Transactor<M, MemoryStorage, Tx, Ecal, V>,
             checked: Checked<Tx>,
-        ) -> anyhow::Result<(StateTransition<Tx>, V)>
+        ) -> anyhow::Result<(StateTransition<Tx, V>, V)>
         where
             M: Memory,
             Tx: ExecutableTransaction,
@@ -603,7 +603,7 @@ pub mod test_helpers {
         pub fn deploy(
             &mut self,
             checked: Checked<Create>,
-        ) -> anyhow::Result<StateTransition<Create>> {
+        ) -> anyhow::Result<StateTransition<Create, Normal>> {
             let interpreter_params =
                 InterpreterParams::new(self.gas_price, &self.consensus_params);
             let mut transactor = Transactor::<_, _, _>::new(
@@ -618,7 +618,8 @@ pub mod test_helpers {
         pub fn attempt_execute_tx(
             &mut self,
             checked: Checked<Script>,
-        ) -> anyhow::Result<(StateTransition<Script>, AttemptContinue)> {
+        ) -> anyhow::Result<(StateTransition<Script, AttemptContinue>, AttemptContinue)>
+        {
             let interpreter_params =
                 InterpreterParams::new(self.gas_price, &self.consensus_params);
             let mut transactor =
@@ -634,7 +635,7 @@ pub mod test_helpers {
         pub fn execute_tx(
             &mut self,
             checked: Checked<Script>,
-        ) -> anyhow::Result<StateTransition<Script>> {
+        ) -> anyhow::Result<StateTransition<Script, Normal>> {
             let interpreter_params =
                 InterpreterParams::new(self.gas_price, &self.consensus_params);
             let mut transactor = Transactor::<_, _, _>::new(
@@ -650,7 +651,8 @@ pub mod test_helpers {
             &mut self,
             checked: Checked<Script>,
             gas_price: u64,
-        ) -> anyhow::Result<(StateTransition<Script>, Option<Backtrace>)> {
+        ) -> anyhow::Result<(StateTransition<Script, Normal>, Option<Backtrace>)>
+        {
             let interpreter_params =
                 InterpreterParams::new(gas_price, &self.consensus_params);
             let mut transactor = Transactor::<_, _, _>::new(
@@ -666,7 +668,9 @@ pub mod test_helpers {
         }
 
         /// Build test tx and execute it with error collection
-        pub fn attempt_execute(&mut self) -> (StateTransition<Script>, AttemptContinue) {
+        pub fn attempt_execute(
+            &mut self,
+        ) -> (StateTransition<Script, AttemptContinue>, AttemptContinue) {
             let tx = self.build();
 
             self.attempt_execute_tx(tx)
@@ -674,7 +678,7 @@ pub mod test_helpers {
         }
 
         /// Build test tx and execute it
-        pub fn execute(&mut self) -> StateTransition<Script> {
+        pub fn execute(&mut self) -> StateTransition<Script, Normal> {
             let tx = self.build();
 
             self.execute_tx(tx)
@@ -746,8 +750,7 @@ pub mod test_helpers {
         let code_root = Contract::root_from_code(contract.as_ref());
         let storage_slots = vec![];
         let state_root = Contract::initial_state_root(storage_slots.iter());
-        let contract_id =
-            Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
+        let contract_id = Contract::id(&salt, &code_root, &state_root);
 
         let contract_deployer = TransactionBuilder::create(contract, salt, storage_slots)
             .max_fee_limit(zero_fee_limit)

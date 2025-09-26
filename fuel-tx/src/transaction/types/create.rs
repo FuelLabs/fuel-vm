@@ -43,6 +43,25 @@ mod ser_de_tests;
 
 pub type Create = ChargeableTransaction<CreateBody, CreateMetadata>;
 
+impl Create {
+    pub fn bytecode(&self) -> Result<&[u8], ValidityError> {
+        let Create {
+            body:
+                CreateBody {
+                    bytecode_witness_index,
+                    ..
+                },
+            witnesses,
+            ..
+        } = self;
+
+        witnesses
+            .get(*bytecode_witness_index as usize)
+            .map(|c| c.as_ref())
+            .ok_or(ValidityError::TransactionCreateBytecodeWitnessIndex)
+    }
+}
+
 #[derive(Default, Debug, Clone, Educe)]
 #[educe(Eq, PartialEq, Hash)]
 pub struct CreateMetadata {
@@ -56,10 +75,10 @@ impl CreateMetadata {
     pub fn compute(tx: &Create) -> Result<Self, ValidityError> {
         let salt = tx.salt();
         let storage_slots = tx.storage_slots();
-        let contract = Contract::try_from(tx)?;
-        let contract_root = contract.root();
+        let bytecode = tx.bytecode()?;
+        let contract_root = Contract::root_from_code(bytecode);
         let state_root = Contract::initial_state_root(storage_slots.iter());
-        let contract_id = contract.id(salt, &contract_root, &state_root);
+        let contract_id = Contract::id(salt, &contract_root, &state_root);
 
         Ok(Self {
             contract_id,
@@ -367,27 +386,6 @@ mod field {
                     .saturating_mul(StorageSlot::SLOT_SIZE),
             )
         }
-    }
-}
-
-impl TryFrom<&Create> for Contract {
-    type Error = ValidityError;
-
-    fn try_from(tx: &Create) -> Result<Self, Self::Error> {
-        let Create {
-            body:
-                CreateBody {
-                    bytecode_witness_index,
-                    ..
-                },
-            witnesses,
-            ..
-        } = tx;
-
-        witnesses
-            .get(*bytecode_witness_index as usize)
-            .map(|c| c.as_ref().into())
-            .ok_or(ValidityError::TransactionCreateBytecodeWitnessIndex)
     }
 }
 

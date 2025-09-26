@@ -11,6 +11,9 @@ license = { workspace = true }
 repository = { workspace = true }
 description = "Compression and decompression of Fuel blocks for DA storage."
 
+[features]
+alloc = ["fuel-types/alloc"]
+
 [dependencies]
 fuel-derive = { workspace = true }
 fuel-types = { workspace = true }

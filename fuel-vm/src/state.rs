@@ -1,7 +1,6 @@
 //! Runtime state representation for the VM
 
 use alloc::vec::Vec;
-
 use fuel_tx::Receipt;
 use fuel_types::{
     Bytes32,
@@ -101,19 +100,26 @@ impl ProgramState {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// Representation of the result of a transaction execution.
-pub struct StateTransition<Tx> {
+pub struct StateTransition<Tx, Verifier> {
     state: ProgramState,
     tx: Tx,
     receipts: Vec<Receipt>,
+    verifier: Verifier,
 }
 
-impl<Tx> StateTransition<Tx> {
+impl<Tx, Verifier> StateTransition<Tx, Verifier> {
     /// Create a new state transition representation.
-    pub const fn new(state: ProgramState, tx: Tx, receipts: Vec<Receipt>) -> Self {
+    pub fn new(
+        state: ProgramState,
+        tx: Tx,
+        receipts: Vec<Receipt>,
+        verifier: Verifier,
+    ) -> Self {
         Self {
             state,
             tx,
             receipts,
+            verifier,
         }
     }
 
@@ -139,14 +145,19 @@ impl<Tx> StateTransition<Tx> {
         self.receipts.as_slice()
     }
 
+    /// Verifier used during the transaction execution.
+    pub const fn verifier(&self) -> &Verifier {
+        &self.verifier
+    }
+
     /// Convert this instance into its internal attributes.
-    pub fn into_inner(self) -> (ProgramState, Tx, Vec<Receipt>) {
-        (self.state, self.tx, self.receipts)
+    pub fn into_inner(self) -> (ProgramState, Tx, Vec<Receipt>, Verifier) {
+        (self.state, self.tx, self.receipts, self.verifier)
     }
 }
 
-impl<Tx> From<StateTransition<Tx>> for ProgramState {
-    fn from(t: StateTransition<Tx>) -> ProgramState {
+impl<Tx, Verifier> From<StateTransition<Tx, Verifier>> for ProgramState {
+    fn from(t: StateTransition<Tx, Verifier>) -> ProgramState {
         t.state
     }
 }
@@ -154,19 +165,26 @@ impl<Tx> From<StateTransition<Tx>> for ProgramState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// Zero-copy Representation of the result of a transaction execution bound to
 /// the lifetime of the VM.
-pub struct StateTransitionRef<'a, Tx> {
+pub struct StateTransitionRef<'a, Tx, Verifier> {
     state: ProgramState,
     tx: &'a Tx,
     receipts: &'a [Receipt],
+    verifier: &'a Verifier,
 }
 
-impl<'a, Tx> StateTransitionRef<'a, Tx> {
+impl<'a, Tx, Verifier> StateTransitionRef<'a, Tx, Verifier> {
     /// Create a new by reference state transition representation.
-    pub const fn new(state: ProgramState, tx: &'a Tx, receipts: &'a [Receipt]) -> Self {
+    pub const fn new(
+        state: ProgramState,
+        tx: &'a Tx,
+        receipts: &'a [Receipt],
+        verifier: &'a Verifier,
+    ) -> Self {
         Self {
             state,
             tx,
             receipts,
+            verifier,
         }
     }
 
@@ -185,6 +203,11 @@ impl<'a, Tx> StateTransitionRef<'a, Tx> {
         self.receipts
     }
 
+    /// Verifier used during the transaction execution.
+    pub const fn verifier(&self) -> &Verifier {
+        self.verifier
+    }
+
     /// Flag whether the client should revert after execution.
     pub fn should_revert(&self) -> bool {
         self.receipts
@@ -193,28 +216,39 @@ impl<'a, Tx> StateTransitionRef<'a, Tx> {
     }
 }
 
-impl<'a, Tx> From<&'a StateTransition<Tx>> for StateTransitionRef<'a, Tx> {
-    fn from(t: &'a StateTransition<Tx>) -> StateTransitionRef<'a, Tx> {
+impl<'a, Tx, Verifier> From<&'a StateTransition<Tx, Verifier>>
+    for StateTransitionRef<'a, Tx, Verifier>
+{
+    fn from(
+        t: &'a StateTransition<Tx, Verifier>,
+    ) -> StateTransitionRef<'a, Tx, Verifier> {
         Self {
             state: *t.state(),
             tx: t.tx(),
             receipts: t.receipts(),
+            verifier: t.verifier(),
         }
     }
 }
 
-impl<Tx: Clone> From<StateTransitionRef<'_, Tx>> for StateTransition<Tx> {
-    fn from(t: StateTransitionRef<Tx>) -> StateTransition<Tx> {
+impl<Tx, Verifier> From<StateTransitionRef<'_, Tx, Verifier>>
+    for StateTransition<Tx, Verifier>
+where
+    Tx: Clone,
+    Verifier: Clone,
+{
+    fn from(t: StateTransitionRef<Tx, Verifier>) -> StateTransition<Tx, Verifier> {
         StateTransition {
             state: *t.state(),
             tx: t.tx().clone(),
             receipts: t.receipts().to_vec(),
+            verifier: t.verifier.clone(),
         }
     }
 }
 
-impl<'a, Tx: Clone> From<StateTransitionRef<'a, Tx>> for ProgramState {
-    fn from(t: StateTransitionRef<'a, Tx>) -> ProgramState {
+impl<'a, Tx, Verifier> From<StateTransitionRef<'a, Tx, Verifier>> for ProgramState {
+    fn from(t: StateTransitionRef<'a, Tx, Verifier>) -> ProgramState {
         t.state
     }
 }

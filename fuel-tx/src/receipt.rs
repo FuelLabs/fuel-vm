@@ -12,11 +12,11 @@ use fuel_types::{
     Nonce,
     SubAssetId,
     Word,
+    bytes::Bytes,
     canonical::{
         Deserialize,
         Serialize,
     },
-    fmt_option_truncated_hex,
 };
 
 mod receipt_repr;
@@ -54,11 +54,10 @@ pub enum Receipt {
         digest: Bytes32,
         pc: Word,
         is: Word,
-        #[educe(Debug(method("fmt_option_truncated_hex::<16>")))]
         #[educe(PartialEq(ignore))]
         #[educe(Hash(ignore))]
         #[canonical(skip)]
-        data: Option<Vec<u8>>,
+        data: Option<Bytes>,
     },
 
     Panic {
@@ -98,11 +97,10 @@ pub enum Receipt {
         digest: Bytes32,
         pc: Word,
         is: Word,
-        #[educe(Debug(method("fmt_option_truncated_hex::<16>")))]
         #[educe(PartialEq(ignore))]
         #[educe(Hash(ignore))]
         #[canonical(skip)]
-        data: Option<Vec<u8>>,
+        data: Option<Bytes>,
     },
 
     Transfer {
@@ -135,11 +133,10 @@ pub enum Receipt {
         nonce: Nonce,
         len: Word,
         digest: Bytes32,
-        #[educe(Debug(method("fmt_option_truncated_hex::<16>")))]
         #[educe(PartialEq(ignore))]
         #[educe(Hash(ignore))]
         #[canonical(skip)]
-        data: Option<Vec<u8>>,
+        data: Option<Bytes>,
     },
     Mint {
         sub_id: SubAssetId,
@@ -261,7 +258,7 @@ impl Receipt {
         )
     }
 
-    pub const fn return_data_with_len(
+    pub fn return_data_with_len(
         id: ContractId,
         ptr: Word,
         len: Word,
@@ -277,7 +274,7 @@ impl Receipt {
             digest,
             pc,
             is,
-            data,
+            data: data.map(Bytes::from),
         }
     }
 
@@ -354,7 +351,7 @@ impl Receipt {
         )
     }
 
-    pub const fn log_data_with_len(
+    pub fn log_data_with_len(
         id: ContractId,
         ra: Word,
         rb: Word,
@@ -374,7 +371,7 @@ impl Receipt {
             digest,
             pc,
             is,
-            data,
+            data: data.map(Bytes::from),
         }
     }
 
@@ -440,7 +437,7 @@ impl Receipt {
         )
     }
 
-    pub const fn message_out_with_len(
+    pub fn message_out_with_len(
         sender: Address,
         recipient: Address,
         amount: Word,
@@ -456,7 +453,7 @@ impl Receipt {
             nonce,
             len,
             digest,
-            data,
+            data: data.map(Bytes::from),
         }
     }
 

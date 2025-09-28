@@ -133,6 +133,8 @@ pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal, V = verification:
     panic_context: PanicContext,
     ecal_state: Ecal,
     verifier: V,
+    /// Pointer to the memory, where the owner of the transaction lies.
+    owner_ptr: Option<Word>,
 }
 
 /// Interpreter parameters

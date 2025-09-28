@@ -245,6 +245,12 @@ impl Policies {
             }
         }
 
+        if let Some(owner) = self.get(PolicyType::Owner) {
+            if owner > u32::MAX as u64 {
+                return false;
+            }
+        }
+
         true
     }
 

@@ -38,6 +38,8 @@ crate::enum_try_from! {
 
         /// Get gas price for block
         GetGasPrice = 0x07,
+        /// Get owner of the transaction.
+        GetOwner = 0x08,
     },
     Immediate18
 }

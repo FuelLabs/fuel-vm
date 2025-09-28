@@ -327,18 +327,20 @@ where
     T: Chargeable,
 {
     if let Some(owner) = tx.owner() {
-        let owner = usize::try_from(owner)
+        let owner = u32::try_from(owner)
             .map_err(|_| ValidityError::TransactionOwnerIndexOutOfBounds)?;
-        if owner >= tx.inputs().len() {
+        if owner as usize >= tx.inputs().len() {
             Err(ValidityError::TransactionOwnerIndexOutOfBounds)?
         }
         if tx
             .inputs()
-            .get(owner)
+            .get(owner as usize)
             .and_then(|input| input.input_owner())
             .is_none()
         {
-            Err(ValidityError::TransactionOwnerInputHasNoOwner { index: owner })?
+            Err(ValidityError::TransactionOwnerInputHasNoOwner {
+                index: owner as usize,
+            })?
         }
     }
     Ok(())

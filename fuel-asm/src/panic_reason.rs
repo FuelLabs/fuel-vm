@@ -168,6 +168,8 @@ enum_from! {
         InvalidUpgradePurposeType = 0x3f,
         /// Cannot get gas price in predicate
         CanNotGetGasPriceInPredicate = 0x40,
+        /// The owner of the transaction is unknown
+        OwnerIsUnknown = 0x41,
     }
 }
 

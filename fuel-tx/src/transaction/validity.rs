@@ -8,6 +8,7 @@ use crate::{
     field::{
         Expiration,
         Maturity,
+        Owner,
     },
     input::{
         coin::{
@@ -321,6 +322,30 @@ where
     Ok(())
 }
 
+pub(crate) fn check_owner<T>(tx: &T) -> Result<(), ValidityError>
+where
+    T: Chargeable,
+{
+    if let Some(owner) = tx.owner() {
+        let owner = u32::try_from(owner)
+            .map_err(|_| ValidityError::TransactionOwnerIndexOutOfBounds)?;
+        if owner as usize >= tx.inputs().len() {
+            Err(ValidityError::TransactionOwnerIndexOutOfBounds)?
+        }
+        if tx
+            .inputs()
+            .get(owner as usize)
+            .and_then(|input| input.input_owner())
+            .is_none()
+        {
+            Err(ValidityError::TransactionOwnerInputHasNoOwner {
+                index: owner as usize,
+            })?
+        }
+    }
+    Ok(())
+}
+
 pub(crate) fn check_common_part<T>(
     tx: &T,
     block_height: BlockHeight,
@@ -376,6 +401,8 @@ where
     if tx.witnesses().len() > tx_params.max_witnesses() as usize {
         Err(ValidityError::TransactionWitnessesMax)?
     }
+
+    check_owner(tx)?;
 
     let any_spendable_input = tx.inputs().iter().find(|input| match input {
         Input::CoinSigned(_)

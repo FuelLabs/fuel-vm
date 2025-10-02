@@ -111,6 +111,7 @@ where
             interpreter_params: self.interpreter_params,
             ecal_state: self.ecal_state,
             verifier: self.verifier,
+            owner_ptr: self.owner_ptr,
         }
     }
 
@@ -201,6 +202,7 @@ where
             interpreter_params: self.interpreter_params,
             ecal_state: self.ecal_state,
             verifier: self.verifier,
+            owner_ptr: self.owner_ptr,
         }
     }
 

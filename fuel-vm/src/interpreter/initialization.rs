@@ -12,7 +12,12 @@ use crate::{
     },
     consts::*,
     context::Context,
-    error::InterpreterError,
+    error::{
+        Bug,
+        BugVariant,
+        InterpreterError,
+    },
+    interpreter::CheckedMetadata,
     prelude::RuntimeError,
     storage::InterpreterStorage,
 };
@@ -21,13 +26,15 @@ use fuel_tx::{
     Input,
     Output,
     field::{
+        Owner,
         Script,
         ScriptGasLimit,
     },
 };
-use fuel_types::Word;
-
-use crate::interpreter::CheckedMetadata;
+use fuel_types::{
+    Address,
+    Word,
+};
 
 impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
@@ -54,6 +61,67 @@ where
                 _ => None,
             })
             .collect();
+
+        let mut owner: Option<(usize, Address)> = None;
+
+        // If policy is set, use the owner from it.
+        if let Some(owner_index) = self.tx.owner() {
+            // Error below shouldn't be possible, because this check is done by
+            // `Checked<Tx>`.
+            let owner_index = u32::try_from(owner_index).map_err(|_| {
+                RuntimeError::Bug(Bug::new(BugVariant::TransactionOwnerIndexOutOfBounds))
+            })? as usize;
+
+            if owner_index >= self.tx.inputs().len() {
+                return Err(Bug::new(BugVariant::TransactionOwnerIndexOutOfBounds).into());
+            }
+
+            let input = &self.tx.inputs()[owner_index];
+            if let Some(input_owner) = input.input_owner() {
+                owner = Some((owner_index, *input_owner));
+            } else {
+                return Err(Bug::new(BugVariant::TransactionOwnerInputHasNoOwner {
+                    index: owner_index,
+                })
+                .into());
+            }
+        } else {
+            // Otherwise, use the owner if all inputs have the same owner.
+            for (idx, input) in self.tx.inputs().iter().enumerate() {
+                if let Some(input_owner) = input.input_owner() {
+                    match owner {
+                        None => {
+                            owner = Some((idx, *input_owner));
+                        }
+                        Some((_, cached_owner)) => {
+                            if *input_owner != cached_owner {
+                                owner = None;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let owner = owner.and_then(|(idx, _)| {
+            let tx_offset = self.tx_offset() as Word;
+            let owner_offset = self
+                .tx
+                .inputs()
+                .get(idx)
+                .map(Input::repr)
+                .and_then(|r| r.owner_offset())
+                .and_then(|ofs| {
+                    self.tx.inputs_offset_at(idx).map(|o| o.saturating_add(ofs))
+                })?;
+
+            let owner_ptr = tx_offset.saturating_add(owner_offset as Word);
+
+            Some(owner_ptr)
+        });
+
+        self.owner_ptr = owner;
 
         self.input_contracts_index_to_output_index = self
             .tx

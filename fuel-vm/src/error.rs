@@ -395,6 +395,15 @@ pub enum BugVariant {
     /// Input index more than u16::MAX was used internally.
     #[strum(message = "Input index more than u16::MAX was used internally.")]
     InputIndexMoreThanU16Max,
+    #[strum(message = "Transaction owner index is out of bounds.")]
+    /// The transaction owner index is out of bounds.
+    TransactionOwnerIndexOutOfBounds,
+    #[strum(message = "The `Input::Owner` at the given index is missing an owner.")]
+    /// The `Input::Owner` at the given index is missing an owner.
+    TransactionOwnerInputHasNoOwner {
+        /// Input index used in the policy
+        index: usize,
+    },
 }
 
 impl fmt::Display for BugVariant {

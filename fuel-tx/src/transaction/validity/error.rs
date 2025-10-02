@@ -187,4 +187,9 @@ pub enum ValidityError {
     TransactionOutputDoesntContainContractCreated,
     /// Blob id of the transaction differs from the data.
     TransactionBlobIdVerificationFailed,
+    TransactionOwnerIndexOutOfBounds,
+    /// The `Input::Owner` at the given index is missing an owner.
+    TransactionOwnerInputHasNoOwner {
+        index: usize,
+    },
 }

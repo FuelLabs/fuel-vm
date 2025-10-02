@@ -103,6 +103,19 @@ fn check__fails_if_expiration_not_met() {
 }
 
 #[test]
+fn check__fails_if_owner_bad_index() {
+    // Given
+    let block_height: BlockHeight = 1000.into();
+    let tx = valid_blob_transaction().owner(1).finalize_as_transaction();
+
+    // When
+    let result = tx.check(block_height, &test_params());
+
+    // Then
+    assert_eq!(Err(ValidityError::TransactionOwnerIndexOutOfBounds), result);
+}
+
+#[test]
 fn check__fails_if_blob_id_doesnt_match_payload() {
     // Given
     let blob_data = vec![1; 100];

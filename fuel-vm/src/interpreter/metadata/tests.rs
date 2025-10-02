@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use alloc::vec;
 
 use fuel_tx::{
@@ -29,6 +31,7 @@ fn test_metadata() {
         ChainId::default(),
         TxParameters::default().tx_offset() as Word,
         0,
+        None,
     )
     .unwrap();
     assert_eq!(pc, 8);
@@ -78,10 +81,68 @@ fn get_chain_id(context: Context, chain_id: u64) {
         chain_id.into(),
         TxParameters::default().tx_offset() as Word,
         0,
+        None,
     )
     .unwrap();
 
     assert_eq!(result, chain_id);
+}
+
+#[test_case(Context::PredicateEstimation { program: RuntimePredicate::empty() }, 100 => (); "can fetch inside predicate estimation")]
+#[test_case(Context::PredicateVerification { program: RuntimePredicate::empty() }, 200 => (); "can fetch inside predicate verification")]
+#[test_case(Context::Script { block_height: BlockHeight::default() }, 300 => (); "can fetch inside script")]
+#[test_case(Context::Call { block_height: BlockHeight::default() }, 400 => (); "can fetch inside call")]
+fn get_owner(context: Context, owner: Word) {
+    let mut frames = vec![];
+    let mut pc = 4;
+    let mut result = 1;
+    let imm = GMArgs::GetOwner as Immediate18;
+
+    if context.is_internal() {
+        frames.push(CallFrame::default());
+    }
+    metadata(
+        &context,
+        &frames,
+        RegMut::new(&mut pc),
+        &mut result,
+        imm,
+        ChainId::default(),
+        TxParameters::default().tx_offset() as Word,
+        0,
+        Some(owner),
+    )
+    .unwrap();
+
+    assert_eq!(result, owner);
+}
+
+#[test]
+fn get_owner__panic_if_owner_if_not_set() {
+    // Given
+    let owner = None;
+    let frames = vec![];
+    let mut pc = 4;
+    let mut result = 1;
+    let imm = GMArgs::GetOwner as Immediate18;
+
+    // When
+    let result = metadata(
+        &Context::Script {
+            block_height: BlockHeight::default(),
+        },
+        &frames,
+        RegMut::new(&mut pc),
+        &mut result,
+        imm,
+        ChainId::default(),
+        TxParameters::default().tx_offset() as Word,
+        0,
+        owner,
+    );
+
+    // Then
+    assert_eq!(result, Err(PanicReason::OwnerIsUnknown.into()));
 }
 
 // should fail in predicate estimation and predicate verification, but pass in other
@@ -111,6 +172,7 @@ fn get_gas_price(context: Context, gas_price: u64, expected_res: SimpleResult<()
         ChainId::default(),
         TxParameters::default().tx_offset() as Word,
         gas_price,
+        None,
     );
 
     // then

@@ -558,6 +558,7 @@ fn get_transaction_fields() {
     let maturity = 50.into();
     let height = 122.into();
     let expiration = 123.into();
+    let owner_idx = 1;
     let input = 10_000_000;
 
     let tx_params = TxParameters::default();
@@ -630,6 +631,7 @@ fn get_transaction_fields() {
     let tx = TransactionBuilder::script(vec![], vec![])
         .maturity(maturity)
         .expiration(expiration)
+        .owner(owner_idx)
         .with_gas_costs(gas_costs)
         .script_gas_limit(gas_limit)
         .add_unsigned_coin_input(
@@ -795,6 +797,12 @@ fn get_transaction_fields() {
         op::movi(0x19, 0x00),
         op::movi(0x11, witness_limit as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::PolicyWitnessLimit),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::movi(0x19, 0x00),
+        op::movi(0x11, owner_idx as Immediate18),
+        op::gtf_args(0x10, 0x19, GTFArgs::PolicyOwner),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
 
@@ -1175,6 +1183,7 @@ fn get_transaction_fields() {
         .tip(tip)
         .maturity(maturity)
         .expiration(expiration)
+        .owner(owner_idx)
         .script_gas_limit(gas_limit)
         .witness_limit(witness_limit)
         .max_fee_limit(max_fee_limit)
@@ -1185,6 +1194,222 @@ fn get_transaction_fields() {
         .iter()
         .any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));
 
+    assert!(success);
+}
+
+#[test]
+fn get_owner_metadata__two_different_owners__policy_set() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+    let gas_costs = GasCosts::default();
+
+    let mut client = MemoryClient::default();
+
+    let predicate_1 = vec![op::ret(RegId::ONE)].into_iter().collect::<Vec<u8>>();
+
+    let owner_1 = Input::predicate_owner(&predicate_1);
+    let input_coin_predicate_1 = Input::coin_predicate(
+        rng.r#gen(),
+        owner_1,
+        100_000_000,
+        AssetId::BASE,
+        rng.r#gen(),
+        gas_costs.ret(),
+        predicate_1.clone(),
+        vec![],
+    );
+
+    let predicate_2 = vec![op::ret(RegId::ONE), op::ret(RegId::ONE)]
+        .into_iter()
+        .collect::<Vec<u8>>();
+
+    let owner_2 = Input::predicate_owner(&predicate_2);
+    let input_coin_predicate_2 = Input::coin_predicate(
+        rng.r#gen(),
+        owner_2,
+        100_000_000,
+        AssetId::BASE,
+        rng.r#gen(),
+        gas_costs.ret(),
+        predicate_2.clone(),
+        vec![],
+    );
+    // Set second predicate as an owner
+    let owner_idx = 1;
+
+    assert_ne!(predicate_2, predicate_1);
+
+    #[rustfmt::skip]
+    let script: Vec<u8> = vec![
+        op::movi(0x20, 0x01),
+        op::gm_args(0x10, GMArgs::GetOwner),
+
+        op::movi(0x19, owner_idx as u32),
+        op::gtf_args(0x11, 0x19, GTFArgs::InputCoinOwner),
+
+        op::movi(0x13, 32),
+        op::meq(0x12, 0x10, 0x11, 0x13),
+
+        op::log(0x12, 0x00, 0x00, 0x00),
+        op::ret(0x00)
+    ].into_iter().collect();
+
+    let tx = TransactionBuilder::script(script, vec![])
+        // Given
+        .owner(owner_idx)
+        .max_fee_limit(1_000_000)
+        .script_gas_limit(1_000_000)
+        .with_gas_costs(gas_costs)
+        .add_input(input_coin_predicate_1)
+        .add_input(input_coin_predicate_2)
+        .finalize_checked(1u32.into());
+
+    // When
+    let receipts = client.transact(tx);
+
+    // Then
+    let success = receipts
+        .iter()
+        .any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));
+    assert!(success);
+}
+
+#[test]
+fn get_owner_metadata__two_different_owners__policy_not_set_causes_panic() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+    let gas_costs = GasCosts::default();
+
+    let mut client = MemoryClient::default();
+
+    let predicate_1 = vec![op::ret(RegId::ONE)].into_iter().collect::<Vec<u8>>();
+
+    let owner_1 = Input::predicate_owner(&predicate_1);
+    let input_coin_predicate_1 = Input::coin_predicate(
+        rng.r#gen(),
+        owner_1,
+        100_000_000,
+        AssetId::BASE,
+        rng.r#gen(),
+        gas_costs.ret(),
+        predicate_1.clone(),
+        vec![],
+    );
+
+    let predicate_2 = vec![op::ret(RegId::ONE), op::ret(RegId::ONE)]
+        .into_iter()
+        .collect::<Vec<u8>>();
+
+    let owner_2 = Input::predicate_owner(&predicate_2);
+    let input_coin_predicate_2 = Input::coin_predicate(
+        rng.r#gen(),
+        owner_2,
+        100_000_000,
+        AssetId::BASE,
+        rng.r#gen(),
+        gas_costs.ret(),
+        predicate_2.clone(),
+        vec![],
+    );
+    // Set second predicate as an owner
+    let owner_idx = 1u32;
+
+    assert_ne!(predicate_2, predicate_1);
+
+    #[rustfmt::skip]
+    let script: Vec<u8> = vec![
+        op::movi(0x20, 0x01),
+        op::gm_args(0x10, GMArgs::GetOwner),
+
+        op::movi(0x19, owner_idx),
+        op::gtf_args(0x11, 0x19, GTFArgs::InputCoinOwner),
+
+        op::movi(0x13, 32),
+        op::meq(0x12, 0x10, 0x11, 0x13),
+
+        op::log(0x12, 0x00, 0x00, 0x00),
+        op::ret(0x00)
+    ].into_iter().collect();
+
+    // Given
+    let tx = TransactionBuilder::script(script, vec![])
+        .max_fee_limit(1_000_000)
+        .script_gas_limit(1_000_000)
+        .with_gas_costs(gas_costs)
+        .add_input(input_coin_predicate_1)
+        .add_input(input_coin_predicate_2)
+        .finalize_checked(1u32.into());
+
+    // When
+    let receipts = client.transact(tx);
+
+    // Then
+    let panic = receipts.iter().any(|r| matches!(r, Receipt::Panic { .. }));
+    assert!(panic);
+}
+
+#[test]
+fn get_owner_metadata__two_same_owners__policy_not_set_returns_owner() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+    let gas_costs = GasCosts::default();
+
+    let mut client = MemoryClient::default();
+
+    let predicate_1 = vec![op::ret(RegId::ONE)].into_iter().collect::<Vec<u8>>();
+
+    let owner_1 = Input::predicate_owner(&predicate_1);
+    let input_coin_predicate_1 = Input::coin_predicate(
+        rng.r#gen(),
+        owner_1,
+        100_000_000,
+        AssetId::BASE,
+        rng.r#gen(),
+        gas_costs.ret(),
+        predicate_1.clone(),
+        vec![],
+    );
+
+    let input_coin_predicate_2 = Input::coin_predicate(
+        rng.r#gen(),
+        owner_1,
+        100_000_000,
+        AssetId::BASE,
+        rng.r#gen(),
+        gas_costs.ret(),
+        predicate_1.clone(),
+        vec![],
+    );
+    let owner_idx = 0u32;
+
+    #[rustfmt::skip]
+    let script: Vec<u8> = vec![
+        op::movi(0x20, 0x01),
+        op::gm_args(0x10, GMArgs::GetOwner),
+
+        op::movi(0x19, owner_idx),
+        op::gtf_args(0x11, 0x19, GTFArgs::InputCoinOwner),
+
+        op::movi(0x13, 32),
+        op::meq(0x12, 0x10, 0x11, 0x13),
+
+        op::log(0x12, 0x00, 0x00, 0x00),
+        op::ret(0x00)
+    ].into_iter().collect();
+
+    // Given
+    let tx = TransactionBuilder::script(script, vec![])
+        .max_fee_limit(1_000_000)
+        .script_gas_limit(1_000_000)
+        .with_gas_costs(gas_costs)
+        .add_input(input_coin_predicate_1)
+        .add_input(input_coin_predicate_2)
+        .finalize_checked(1u32.into());
+
+    // When
+    let receipts = client.transact(tx);
+
+    // Then
+    let success = receipts
+        .iter()
+        .any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));
     assert!(success);
 }
 

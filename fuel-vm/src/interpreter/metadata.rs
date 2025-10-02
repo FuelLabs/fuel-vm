@@ -71,6 +71,7 @@ where
             chain_id,
             tx_offset,
             gas_price,
+            self.owner_ptr,
         )
     }
 
@@ -112,6 +113,7 @@ pub(crate) fn metadata(
     chain_id: ChainId,
     tx_offset: Word,
     gas_price: Word,
+    owner_ptr: Option<Word>,
 ) -> SimpleResult<()> {
     let parent = context
         .is_internal()
@@ -141,6 +143,10 @@ pub(crate) fn metadata(
                 return Err(PanicReason::CanNotGetGasPriceInPredicate.into())
             }
             _ => gas_price,
+        },
+        GMArgs::GetOwner => match owner_ptr {
+            None => return Err(PanicReason::OwnerIsUnknown.into()),
+            Some(ptr) => ptr,
         },
     };
 
@@ -205,6 +211,10 @@ impl<Tx> GTFInput<'_, Tx> {
             GTFArgs::PolicyMaxFee => tx
                 .policies()
                 .get(PolicyType::MaxFee)
+                .ok_or(PanicReason::PolicyIsNotSet)?,
+            GTFArgs::PolicyOwner => tx
+                .policies()
+                .get(PolicyType::Owner)
                 .ok_or(PanicReason::PolicyIsNotSet)?,
             GTFArgs::ScriptInputsCount
             | GTFArgs::CreateInputsCount

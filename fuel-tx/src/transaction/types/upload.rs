@@ -220,6 +220,21 @@ impl UniqueFormatValidityChecks for Upload {
             return Err(ValidityError::TransactionUploadRootVerificationFailed);
         }
 
+        self.verify_blob_id()?;
+        self.verify_inputs(consensus_params)?;
+        self.verify_outputs(consensus_params)?;
+
+        Ok(())
+    }
+
+    fn verify_blob_id(&self) -> Result<(), ValidityError> {
+        todo!()
+    }
+
+    fn verify_inputs(
+        &self,
+        consensus_params: &ConsensusParameters,
+    ) -> Result<(), ValidityError> {
         self.inputs
             .iter()
             .enumerate()
@@ -245,6 +260,13 @@ impl UniqueFormatValidityChecks for Upload {
                 }
             })?;
 
+        Ok(())
+    }
+
+    fn verify_outputs(
+        &self,
+        consensus_params: &ConsensusParameters,
+    ) -> Result<(), ValidityError> {
         self.outputs
             .iter()
             .enumerate()

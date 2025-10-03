@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased (see .changes folder)]
 
+## [Version 0.64.0]
+
+### Breaking
+- [971](https://github.com/FuelLabs/fuel-vm/pull/971): All `Vec<u8>` fields in the transaction now use `Bytes` type. This type has truncated `Debug` string, and has optimized serialization and deserialization for `postcard` and `binacode` encodings. The new encoding is compatible(was tested) for `serde_json`, `bincode`, `postcard`.
+  `StateTransition` and `StateTransitionRef` now contains `Verifier` generic from the VM.
+- [972](https://github.com/FuelLabs/fuel-vm/pull/972): A new policy has been added to track the owner of the transaction. Serialization and deserialization should now support a new variant to decode a new policy.
+
+### Added
+- [971](https://github.com/FuelLabs/fuel-vm/pull/971): Added a new `into_transact` method for the `Interpreter` to return `StateTransition` with `receipts`. It allows caller to avoid cloning of receipts which can be critical in some scenarios.
+  Added benchmarks for `Bytes` type to show serialization and deserialization performance.
+- [972](https://github.com/FuelLabs/fuel-vm/pull/972): Added a new `Owner` policy. The policy stores the index of the transaction input, which is nominated as the owner. In the case of multiple inputs with different owners, it helps to identify the owner of the transaction.
+  Added a new `GM::GetOwner` opcode, which retrieves the owner of the transaction. If the `Owner` policy is set, the opcode returns a pointer to the owner from the policy. If policy is not set, but all inputs have the same owner, it returns the pointer to the owner. Otherwise, it panics with `OwnerIsUnknown`.
+
+### Fixed
+- [971](https://github.com/FuelLabs/fuel-vm/pull/971): Increased performance of the postcard bytes serialization and deserialization in 40 times.
+  Increased performance of the canonical bytes deserialization in 200 times.
+  `Contract::id` method now a static function, instead of the method of the instance.
+  Remove `impl TryFrom<&Create> for Contract` implementation for the `Create` transaction. Instead, use `Create::bytecode` to get the contract bytecode.
+  Removed `AsFieldFmt` trait and its implementations. `Bytes` type truncates its `Debug` output by default.
+  Optimized interactions with `Create` transaction to avoid unnecessary cloning of the bytecode.
+
 ## [Version 0.63.0]
 
 ### Breaking

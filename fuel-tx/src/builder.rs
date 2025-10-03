@@ -427,6 +427,31 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self
     }
 
+
+    pub fn add_unsigned_data_coin_input(
+        &mut self,
+        secret: SecretKey,
+        utxo_id: crate::UtxoId,
+        amount: Word,
+        asset_id: fuel_types::AssetId,
+        tx_pointer: TxPointer,
+    ) -> &mut Self {
+        let pk = secret.public_key();
+
+        let witness_index = self.upsert_secret(secret);
+
+        self.tx.add_unsigned_coin_input(
+            utxo_id,
+            &pk,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+        );
+
+        self
+    }
+
     #[cfg(feature = "rand")]
     pub fn add_random_fee_input(&mut self, rng: &mut StdRng) -> &mut Self {
         self.add_unsigned_coin_input(

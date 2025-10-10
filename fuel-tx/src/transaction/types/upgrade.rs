@@ -205,10 +205,10 @@ impl UniqueFormatValidityChecks for Upgrade {
         // `UpgradeMetadata::compute`.
         let calculated_metadata = UpgradeMetadata::compute(self)?;
 
-        if let Some(metadata) = self.metadata.as_ref() {
-            if metadata.body != calculated_metadata {
-                return Err(ValidityError::TransactionMetadataMismatch);
-            }
+        if let Some(metadata) = self.metadata.as_ref()
+            && metadata.body != calculated_metadata
+        {
+            return Err(ValidityError::TransactionMetadataMismatch);
         }
 
         // The upgrade transaction cant touch the contract.
@@ -216,14 +216,12 @@ impl UniqueFormatValidityChecks for Upgrade {
             .iter()
             .enumerate()
             .try_for_each(|(index, input)| {
-                if let Some(asset_id) = input.asset_id(consensus_params.base_asset_id()) {
-                    if asset_id != consensus_params.base_asset_id() {
-                        return Err(
-                            ValidityError::TransactionInputContainsNonBaseAssetId {
-                                index,
-                            },
-                        );
-                    }
+                if let Some(asset_id) = input.asset_id(consensus_params.base_asset_id())
+                    && asset_id != consensus_params.base_asset_id()
+                {
+                    return Err(ValidityError::TransactionInputContainsNonBaseAssetId {
+                        index,
+                    });
                 }
 
                 match input {

@@ -228,7 +228,7 @@ impl Position {
     /// position is an internal node if and only if its in-order index is
     /// odd.
     pub fn is_leaf(self) -> bool {
-        self.in_order_index() % 2 == 0
+        self.in_order_index().is_multiple_of(2)
     }
 
     /// Whether or not this position represents an internal node.

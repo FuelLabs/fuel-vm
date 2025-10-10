@@ -37,6 +37,7 @@ macro_rules! enum_from {
 }
 
 enum_from! {
+    #[allow(dead_code)]
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub enum ReceiptRepr {
         Call = 0x00,

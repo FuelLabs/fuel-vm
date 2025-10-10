@@ -209,10 +209,10 @@ impl<Tx: IntoChecked + Chargeable> Checked<Tx> {
         let max_fee_from_policies = transaction.max_fee_limit();
         let max_fee_from_gas_price = fee.max_fee();
 
-        if let Some(block_height) = block_height {
-            if block_height > transaction.expiration() {
-                return Err(CheckError::Validity(ValidityError::TransactionExpiration));
-            }
+        if let Some(block_height) = block_height
+            && block_height > transaction.expiration()
+        {
+            return Err(CheckError::Validity(ValidityError::TransactionExpiration));
         }
 
         if max_fee_from_gas_price > max_fee_from_policies {

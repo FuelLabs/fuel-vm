@@ -189,7 +189,7 @@ mod tests {
     #[test]
     fn root_returns_merkle_root_of_pushed_receipts() {
         let mut ctx = ReceiptsCtx::default();
-        let receipts = iter::repeat(create_receipt()).take(5);
+        let receipts = iter::repeat_n(create_receipt(), 5);
         for receipt in receipts.clone() {
             ctx.push(receipt).expect("context not full");
         }
@@ -207,7 +207,7 @@ mod tests {
     #[test]
     fn root_returns_merkle_root_of_directly_modified_receipts() {
         let mut ctx = ReceiptsCtx::default();
-        let receipts = iter::repeat(create_receipt()).take(5);
+        let receipts = iter::repeat_n(create_receipt(), 5);
 
         {
             let mut ctx_mut = ctx.lock();

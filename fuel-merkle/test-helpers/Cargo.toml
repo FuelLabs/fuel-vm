@@ -19,6 +19,9 @@ serde_yaml = "0.9"
 sha2 = "0.10"
 thiserror = "1.0"
 
+[lints]
+workspace = true
+
 [[bin]]
 name = "write-bmt-test-suite"
 path = "src/suites/binary_proofs.rs"

@@ -26,6 +26,9 @@ optional = true
 version = "0.13"
 optional = true
 
+[lints]
+workspace = true
+
 # Prevent this from interfering with workspaces as this crate requires unstable features.
 [workspace]
 members = ["."]

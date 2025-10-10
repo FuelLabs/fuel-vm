@@ -10,3 +10,6 @@ keywords = ["blockchain", "cryptocurrencies", "fuel", "fuel-vm"]
 license = "Apache-2.0"
 repository = { workspace = true }
 description = "Storage traits for Fuel storage-backed data structures."
+
+[lints]
+workspace = true

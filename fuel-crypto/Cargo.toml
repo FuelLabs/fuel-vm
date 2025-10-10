@@ -63,8 +63,8 @@ fuel-crypto = { path = ".", features = ["random", "test-helpers"] }
 sha2 = "0.10"
 test-case = "3.3"
 
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }
+[lints]
+workspace = true
 
 [[bench]]
 name = "signature"

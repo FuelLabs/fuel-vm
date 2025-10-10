@@ -80,7 +80,7 @@ impl Distribution<StorageSlot> for Standard {
 
 impl PartialOrd for StorageSlot {
     fn partial_cmp(&self, other: &StorageSlot) -> Option<Ordering> {
-        Some(self.key.cmp(&other.key))
+        Some(self.cmp(other))
     }
 }
 

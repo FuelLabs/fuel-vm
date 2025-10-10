@@ -191,7 +191,7 @@ mod tests {
             let padded_predicate: Vec<u8> = predicate
                 .iter()
                 .copied()
-                .chain(iter::repeat(0u8).take(pad))
+                .chain(iter::repeat_n(0u8, pad))
                 .collect();
 
             let program = runtime.program();

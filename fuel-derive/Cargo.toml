@@ -19,3 +19,6 @@ quote = "1"
 syn = { version = "2", features = ["full"] }
 proc-macro2 = "1"
 synstructure = "0.13"
+
+[lints]
+workspace = true

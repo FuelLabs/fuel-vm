@@ -98,5 +98,5 @@ serde_json = { version = "1.0" }
 serde_test = { version = "1.0" }
 tokio = { version = "1.27", features = ["full"] }
 
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }
+[lints]
+workspace = true

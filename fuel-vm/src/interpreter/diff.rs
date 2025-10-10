@@ -179,7 +179,7 @@ where
 {
     a.enumerate()
         .zip(b)
-        .filter(|&(a, b)| (a.1 != b))
+        .filter(|&(a, b)| a.1 != b)
         .map(move |(a, b)| {
             change(Delta {
                 from: VecState {
@@ -289,7 +289,7 @@ where
         .enumerate()
         .zip(b.map(Some).chain(core::iter::repeat(None)))
         .take_while(|((_, a), b)| a.is_some() || b.is_some())
-        .filter(|((_, a), b)| b.map_or(true, |b| a.map_or(true, |a| a != b)))
+        .filter(|((_, a), b)| b.is_none_or(|b| a.is_none_or(|a| a != b)))
         .map(|((index, a), b)| (index, a.cloned(), b.cloned()))
 }
 

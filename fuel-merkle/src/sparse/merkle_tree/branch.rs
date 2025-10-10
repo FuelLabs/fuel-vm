@@ -58,7 +58,7 @@ where
                 // common_path_length <= max_height
                 let stale_depth = ancestor_height - parent_height;
                 let placeholders =
-                    iter::repeat(Node::create_placeholder()).take(stale_depth as usize);
+                    iter::repeat_n(Node::create_placeholder(), stale_depth as usize);
                 for placeholder in placeholders {
                     branch.node =
                         Node::create_node_on_path(&path, &branch.node, &placeholder);

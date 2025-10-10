@@ -256,7 +256,7 @@ mod test {
         }
 
         pub fn is_leaf(&self) -> bool {
-            self.in_order_index() % 2 == 0
+            self.in_order_index().is_multiple_of(2)
         }
 
         fn child(&self, direction: i64) -> Self {

@@ -37,6 +37,3 @@ wasm-bindgen = { version = "0.2.97", optional = true }
 bincode = { workspace = true }
 fuel-asm = { path = ".", features = ["serde"] }
 rstest = "0.16"
-
-[lints]
-workspace = true

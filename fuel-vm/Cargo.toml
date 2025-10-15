@@ -107,5 +107,5 @@ name = "execution"
 harness = false
 required-features = ["std"]
 
-[lints]
-workspace = true
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }

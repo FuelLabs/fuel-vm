@@ -17,6 +17,3 @@ latest-fuel-compression = { package = "fuel-compression", path = "../fuel-compre
 latest-fuel-tx = { package = "fuel-tx", path = "../fuel-tx", features = ["random", "test-helpers"] }
 postcard = { version = "1.0", features = ["use-std"] }
 tokio = { version = "1.27", features = ["full"] }
-
-[lints]
-workspace = true

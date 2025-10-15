@@ -37,9 +37,6 @@ rand = "0.8"
 serde_json = "1.0"
 serde_yaml = "0.9"
 
-[lints]
-workspace = true
-
 [[test]]
 name = "tests-data"
 path = "./tests-data/tests-data.rs"

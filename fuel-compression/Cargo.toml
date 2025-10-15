@@ -18,6 +18,3 @@ alloc = ["fuel-types/alloc"]
 fuel-derive = { workspace = true }
 fuel-types = { workspace = true }
 serde = { version = "1.0", features = ["derive"] }
-
-[lints]
-workspace = true

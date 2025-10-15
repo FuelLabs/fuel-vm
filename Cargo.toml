@@ -22,10 +22,6 @@ repository = "https://github.com/FuelLabs/fuel-vm"
 rust-version = "1.90.0"
 version = "0.64.0"
 
-[workspace.lints.rust]
-mismatched_lifetime_syntaxes = "allow"
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }
-
 [workspace.dependencies]
 bincode = { version = "1.3", default-features = false }
 bitflags = "2"

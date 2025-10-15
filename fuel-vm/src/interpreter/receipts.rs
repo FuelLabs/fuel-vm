@@ -79,7 +79,7 @@ impl ReceiptsCtx {
     }
 
     /// Get a mutable lock on this context
-    pub fn lock(&mut self) -> ReceiptsCtxMut {
+    pub fn lock(&mut self) -> ReceiptsCtxMut<'_> {
         ReceiptsCtxMut::new(self)
     }
 

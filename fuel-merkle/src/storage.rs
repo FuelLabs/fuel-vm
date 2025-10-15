@@ -9,7 +9,7 @@ pub use fuel_storage::{
 };
 
 pub trait StorageInspectInfallible<Type: Mappable> {
-    fn get(&self, key: &Type::Key) -> Option<Cow<Type::OwnedValue>>;
+    fn get(&self, key: &Type::Key) -> Option<Cow<'_, Type::OwnedValue>>;
     fn contains_key(&self, key: &Type::Key) -> bool;
 }
 
@@ -23,7 +23,7 @@ where
     S: StorageInspect<Type, Error = Infallible>,
     Type: Mappable,
 {
-    fn get(&self, key: &Type::Key) -> Option<Cow<Type::OwnedValue>> {
+    fn get(&self, key: &Type::Key) -> Option<Cow<'_, Type::OwnedValue>> {
         <Self as StorageInspect<Type>>::get(self, key)
             .expect("Expected get() to be infallible")
     }

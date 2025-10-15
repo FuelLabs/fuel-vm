@@ -432,7 +432,7 @@ pub trait ExecutableTransaction:
     fn transaction_type() -> TransactionRepr;
 
     /// Returns `ExecutableTxType` type associated with transaction.
-    fn executable_type(&self) -> ExecutableTxType;
+    fn executable_type(&self) -> ExecutableTxType<'_>;
 
     /// Replaces the `Output::Variable` with the `output`(should be also
     /// `Output::Variable`) by the `idx` index.
@@ -548,7 +548,7 @@ impl ExecutableTransaction for Create {
         TransactionRepr::Create
     }
 
-    fn executable_type(&self) -> ExecutableTxType {
+    fn executable_type(&self) -> ExecutableTxType<'_> {
         ExecutableTxType::Create(self)
     }
 }
@@ -566,7 +566,7 @@ impl ExecutableTransaction for Script {
         TransactionRepr::Script
     }
 
-    fn executable_type(&self) -> ExecutableTxType {
+    fn executable_type(&self) -> ExecutableTxType<'_> {
         ExecutableTxType::Script(self)
     }
 }
@@ -584,7 +584,7 @@ impl ExecutableTransaction for Upgrade {
         TransactionRepr::Upgrade
     }
 
-    fn executable_type(&self) -> ExecutableTxType {
+    fn executable_type(&self) -> ExecutableTxType<'_> {
         ExecutableTxType::Upgrade(self)
     }
 }
@@ -602,7 +602,7 @@ impl ExecutableTransaction for Upload {
         TransactionRepr::Upload
     }
 
-    fn executable_type(&self) -> ExecutableTxType {
+    fn executable_type(&self) -> ExecutableTxType<'_> {
         ExecutableTxType::Upload(self)
     }
 }
@@ -620,7 +620,7 @@ impl ExecutableTransaction for Blob {
         TransactionRepr::Blob
     }
 
-    fn executable_type(&self) -> ExecutableTxType {
+    fn executable_type(&self) -> ExecutableTxType<'_> {
         ExecutableTxType::Blob(self)
     }
 }

@@ -123,7 +123,7 @@ impl StorageInspect<BlobData> for EmptyStorage {
     fn get(
         &self,
         _: &BlobId,
-    ) -> Result<Option<Cow<<BlobData as Mappable>::OwnedValue>>, Self::Error> {
+    ) -> Result<Option<Cow<'_, <BlobData as Mappable>::OwnedValue>>, Self::Error> {
         Err(Self::Error::UnsupportedStorageOperation)
     }
 
@@ -449,7 +449,7 @@ where
         _id: &ContractId,
         _start_key: &Bytes32,
         _range: usize,
-    ) -> Result<Vec<Option<Cow<ContractsStateData>>>, Self::DataError> {
+    ) -> Result<Vec<Option<Cow<'_, ContractsStateData>>>, Self::DataError> {
         Err(Self::DataError::UnsupportedStorageOperation)
     }
 

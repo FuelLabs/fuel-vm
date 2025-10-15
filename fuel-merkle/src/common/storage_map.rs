@@ -54,7 +54,10 @@ where
 {
     type Error = core::convert::Infallible;
 
-    fn get(&self, key: &Type::Key) -> Result<Option<Cow<Type::OwnedValue>>, Self::Error> {
+    fn get(
+        &self,
+        key: &Type::Key,
+    ) -> Result<Option<Cow<'_, Type::OwnedValue>>, Self::Error> {
         let result = self.map.get(key);
         let value = result.map(Cow::Borrowed);
         Ok(value)

@@ -337,7 +337,7 @@ mod field {
         }
 
         #[inline(always)]
-        fn storage_slots_mut(&mut self) -> StorageSlotRef {
+        fn storage_slots_mut(&mut self) -> StorageSlotRef<'_> {
             StorageSlotRef {
                 storage_slots: &mut self.body.storage_slots,
             }

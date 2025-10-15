@@ -85,7 +85,10 @@ impl MerkleTree {
         impl StorageInspect<NodesTable> for EmptyStorage {
             type Error = core::convert::Infallible;
 
-            fn get(&self, _: &Bytes32) -> Result<Option<Cow<Primitive>>, Self::Error> {
+            fn get(
+                &self,
+                _: &Bytes32,
+            ) -> Result<Option<Cow<'_, Primitive>>, Self::Error> {
                 Ok(None)
             }
 
@@ -142,7 +145,10 @@ impl MerkleTree {
         impl StorageInspect<NodesTable> for VectorStorage {
             type Error = core::convert::Infallible;
 
-            fn get(&self, _: &Bytes32) -> Result<Option<Cow<Primitive>>, Self::Error> {
+            fn get(
+                &self,
+                _: &Bytes32,
+            ) -> Result<Option<Cow<'_, Primitive>>, Self::Error> {
                 unimplemented!("Read operation is not supported")
             }
 

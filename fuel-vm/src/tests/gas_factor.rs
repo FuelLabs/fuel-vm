@@ -31,8 +31,7 @@ fn gas_factor_rounds_correctly() {
     let fee_params = FeeParameters::default().with_gas_price_factor(factor);
 
     // Random script to consume some gas
-    let script = iter::repeat(op::add(0x10, 0x00, 0x01))
-        .take(6688)
+    let script = iter::repeat_n(op::add(0x10, 0x00, 0x01), 6688)
         .chain(iter::once(op::ret(0x01)))
         .collect();
 

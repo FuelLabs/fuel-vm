@@ -224,14 +224,12 @@ impl UniqueFormatValidityChecks for Upload {
             .iter()
             .enumerate()
             .try_for_each(|(index, input)| {
-                if let Some(asset_id) = input.asset_id(consensus_params.base_asset_id()) {
-                    if asset_id != consensus_params.base_asset_id() {
-                        return Err(
-                            ValidityError::TransactionInputContainsNonBaseAssetId {
-                                index,
-                            },
-                        );
-                    }
+                if let Some(asset_id) = input.asset_id(consensus_params.base_asset_id())
+                    && asset_id != consensus_params.base_asset_id()
+                {
+                    return Err(ValidityError::TransactionInputContainsNonBaseAssetId {
+                        index,
+                    });
                 }
 
                 match input {

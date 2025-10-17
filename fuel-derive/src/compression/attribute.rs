@@ -16,26 +16,25 @@ pub enum StructureAttrs {
 }
 impl Parse for StructureAttrs {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        if let Ok(ml) = input.parse::<syn::MetaList>() {
-            if ml.path.segments.len() == 1
-                && ml.path.segments[0].ident.to_string().as_str() == "discard"
-            {
-                let mut discard = Vec::new();
-                for item in ml.tokens {
-                    match item {
-                        TokenTree2::Ident(ident) => {
-                            discard.push(ident.to_string());
-                        }
-                        other => {
-                            return Err(syn::Error::new_spanned(
-                                other,
-                                "Expected generic (type) name",
-                            ))
-                        }
+        if let Ok(ml) = input.parse::<syn::MetaList>()
+            && ml.path.segments.len() == 1
+            && ml.path.segments[0].ident.to_string().as_str() == "discard"
+        {
+            let mut discard = Vec::new();
+            for item in ml.tokens {
+                match item {
+                    TokenTree2::Ident(ident) => {
+                        discard.push(ident.to_string());
+                    }
+                    other => {
+                        return Err(syn::Error::new_spanned(
+                            other,
+                            "Expected generic (type) name",
+                        ))
                     }
                 }
-                return Ok(Self::Discard(discard));
             }
+            return Ok(Self::Discard(discard));
         }
         Err(syn::Error::new_spanned(
             input.parse::<syn::Ident>()?,
@@ -51,10 +50,11 @@ impl StructureAttrs {
                 continue;
             }
 
-            if let syn::Meta::List(ml) = &attr.meta {
-                if ml.path.segments.len() == 1 && ml.path.segments[0].ident == ATTR {
-                    result.push(syn::parse2::<StructureAttrs>(ml.tokens.clone())?);
-                }
+            if let syn::Meta::List(ml) = &attr.meta
+                && ml.path.segments.len() == 1
+                && ml.path.segments[0].ident == ATTR
+            {
+                result.push(syn::parse2::<StructureAttrs>(ml.tokens.clone())?);
             }
         }
 
@@ -78,20 +78,21 @@ impl FieldAttrs {
                 continue;
             }
 
-            if let syn::Meta::List(ml) = &attr.meta {
-                if ml.path.segments.len() == 1 && ml.path.segments[0].ident == ATTR {
-                    if !matches!(result, Self::Normal) {
-                        panic!("Duplicate attribute: {}", ml.tokens);
-                    }
-
-                    if let Ok(ident) = syn::parse2::<syn::Ident>(ml.tokens.clone()) {
-                        if ident == "skip" {
-                            result = Self::Skip;
-                            continue;
-                        }
-                    }
-                    panic!("Invalid attribute: {}", ml.tokens);
+            if let syn::Meta::List(ml) = &attr.meta
+                && ml.path.segments.len() == 1
+                && ml.path.segments[0].ident == ATTR
+            {
+                if !matches!(result, Self::Normal) {
+                    panic!("Duplicate attribute: {}", ml.tokens);
                 }
+
+                if let Ok(ident) = syn::parse2::<syn::Ident>(ml.tokens.clone())
+                    && ident == "skip"
+                {
+                    result = Self::Skip;
+                    continue;
+                }
+                panic!("Invalid attribute: {}", ml.tokens);
             }
         }
 

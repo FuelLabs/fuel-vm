@@ -225,7 +225,7 @@ pub trait InterpreterStorage:
         id: &ContractId,
         start_key: &Bytes32,
         range: usize,
-    ) -> Result<Vec<Option<Cow<ContractsStateData>>>, Self::DataError>;
+    ) -> Result<Vec<Option<Cow<'_, ContractsStateData>>>, Self::DataError>;
 
     /// Insert a range of key-value mappings into contract storage.
     /// Returns the number of keys that were previously unset but are now set.
@@ -362,7 +362,7 @@ where
         id: &ContractId,
         start_key: &Bytes32,
         range: usize,
-    ) -> Result<Vec<Option<Cow<ContractsStateData>>>, Self::DataError> {
+    ) -> Result<Vec<Option<Cow<'_, ContractsStateData>>>, Self::DataError> {
         <S as InterpreterStorage>::contract_state_range(
             self.deref(),
             id,

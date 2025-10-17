@@ -83,7 +83,7 @@ mod use_std {
 
     impl From<Error> for io::Error {
         fn from(e: Error) -> io::Error {
-            io::Error::new(io::ErrorKind::Other, e)
+            io::Error::other(e)
         }
     }
 }

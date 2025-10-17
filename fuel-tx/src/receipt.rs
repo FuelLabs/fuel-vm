@@ -19,7 +19,6 @@ use fuel_types::{
     },
 };
 
-mod receipt_repr;
 mod script_result;
 
 use crate::input::message::compute_message_id;

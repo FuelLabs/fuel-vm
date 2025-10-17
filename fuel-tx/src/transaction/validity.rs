@@ -483,26 +483,24 @@ where
         .try_for_each(|(index, output)| {
             output.check(index, tx.inputs())?;
 
-            if let Output::Change { asset_id, .. } = output {
-                if !tx
+            if let Output::Change { asset_id, .. } = output
+                && !tx
                     .input_asset_ids(base_asset_id)
                     .any(|input_asset_id| input_asset_id == asset_id)
-                {
-                    return Err(ValidityError::TransactionOutputChangeAssetIdNotFound(
-                        *asset_id,
-                    ));
-                }
+            {
+                return Err(ValidityError::TransactionOutputChangeAssetIdNotFound(
+                    *asset_id,
+                ));
             }
 
-            if let Output::Coin { asset_id, .. } = output {
-                if !tx
+            if let Output::Coin { asset_id, .. } = output
+                && !tx
                     .input_asset_ids(base_asset_id)
                     .any(|input_asset_id| input_asset_id == asset_id)
-                {
-                    return Err(ValidityError::TransactionOutputCoinAssetIdNotFound(
-                        *asset_id,
-                    ));
-                }
+            {
+                return Err(ValidityError::TransactionOutputCoinAssetIdNotFound(
+                    *asset_id,
+                ));
             }
 
             Ok(())

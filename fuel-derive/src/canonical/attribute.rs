@@ -20,16 +20,18 @@ fn parse_attrs(s: &synstructure::Structure) -> HashMap<String, TokenStream> {
         if attr.style != AttrStyle::Outer {
             continue
         }
-        if let Meta::List(ml) = &attr.meta {
-            if ml.path.segments.len() == 1 && ml.path.segments[0].ident == "canonical" {
-                let mut tt = ml.tokens.clone().into_iter().peekable();
-                if let Some(key) = tt.next() {
-                    let key = key.to_string();
-                    if let Some(eq_sign) = tt.peek() {
-                        if eq_sign.to_string() == "=" {
-                            let _ = tt.next();
-                        }
-                    } else {
+        if let Meta::List(ml) = &attr.meta
+            && ml.path.segments.len() == 1
+            && ml.path.segments[0].ident == "canonical"
+        {
+            let mut tt = ml.tokens.clone().into_iter().peekable();
+            if let Some(key) = tt.next() {
+                let key = key.to_string();
+                match tt.peek() {
+                    Some(eq_sign) if eq_sign.to_string() == "=" => {
+                        let _ = tt.next();
+                    }
+                    None => {
                         // Single token, no `=`, so it's a boolean flag.
                         let old = attrs.insert(key.clone(), TokenStream::new());
                         if old.is_some() {
@@ -37,17 +39,17 @@ fn parse_attrs(s: &synstructure::Structure) -> HashMap<String, TokenStream> {
                         }
                         continue
                     }
-
-                    // Key-value pair
-                    let value = TokenStream::from_iter(tt);
-                    let old = attrs.insert(key.clone(), value);
-                    if old.is_some() {
-                        panic!("duplicate canonical attribute: {}", key);
-                    }
-                    continue
+                    _ => {}
                 }
-                panic!("enum-level canonical attribute must be a `key = value` pair");
+                // Key-value pair
+                let value = TokenStream::from_iter(tt);
+                let old = attrs.insert(key.clone(), value);
+                if old.is_some() {
+                    panic!("duplicate canonical attribute: {}", key);
+                }
+                continue
             }
+            panic!("enum-level canonical attribute must be a `key = value` pair");
         }
     }
 
@@ -86,15 +88,16 @@ pub fn should_skip_field(attrs: &[Attribute]) -> bool {
         if attr.style != AttrStyle::Outer {
             continue
         }
-        if let Meta::List(ml) = &attr.meta {
-            if ml.path.segments.len() == 1 && ml.path.segments[0].ident == "canonical" {
-                for token in ml.tokens.clone() {
-                    if let TokenTree::Ident(ident) = &token {
-                        if ident == "skip" {
-                            return true
-                        } else {
-                            panic!("unknown canonical attribute: {}", ident)
-                        }
+        if let Meta::List(ml) = &attr.meta
+            && ml.path.segments.len() == 1
+            && ml.path.segments[0].ident == "canonical"
+        {
+            for token in ml.tokens.clone() {
+                if let TokenTree::Ident(ident) = &token {
+                    if ident == "skip" {
+                        return true
+                    } else {
+                        panic!("unknown canonical attribute: {}", ident)
                     }
                 }
             }

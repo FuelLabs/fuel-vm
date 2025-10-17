@@ -233,22 +233,22 @@ impl Policies {
             return false;
         }
 
-        if let Some(maturity) = self.get(PolicyType::Maturity) {
-            if maturity > u32::MAX as u64 {
-                return false;
-            }
+        if let Some(maturity) = self.get(PolicyType::Maturity)
+            && maturity > u32::MAX as u64
+        {
+            return false;
         }
 
-        if let Some(expiration) = self.get(PolicyType::Expiration) {
-            if expiration > u32::MAX as u64 {
-                return false;
-            }
+        if let Some(expiration) = self.get(PolicyType::Expiration)
+            && expiration > u32::MAX as u64
+        {
+            return false;
         }
 
-        if let Some(owner) = self.get(PolicyType::Owner) {
-            if owner > u32::MAX as u64 {
-                return false;
-            }
+        if let Some(owner) = self.get(PolicyType::Owner)
+            && owner > u32::MAX as u64
+        {
+            return false;
         }
 
         true
@@ -614,16 +614,16 @@ impl Deserialize for Policies {
             }
         }
 
-        if let Some(maturity) = self.get(PolicyType::Maturity) {
-            if maturity > u32::MAX as u64 {
-                return Err(Error::Unknown("The maturity in more than `u32::MAX`"));
-            }
+        if let Some(maturity) = self.get(PolicyType::Maturity)
+            && maturity > u32::MAX as u64
+        {
+            return Err(Error::Unknown("The maturity in more than `u32::MAX`"));
         }
 
-        if let Some(expiration) = self.get(PolicyType::Expiration) {
-            if expiration > u32::MAX as u64 {
-                return Err(Error::Unknown("The expiration in more than `u32::MAX`"));
-            }
+        if let Some(expiration) = self.get(PolicyType::Expiration)
+            && expiration > u32::MAX as u64
+        {
+            return Err(Error::Unknown("The expiration in more than `u32::MAX`"));
         }
 
         Ok(())

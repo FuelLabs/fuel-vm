@@ -64,7 +64,10 @@ pub trait StorageInspect<Type: Mappable> {
     type Error;
 
     /// Retrieve `Cow<Value>` such as `Key->Value`.
-    fn get(&self, key: &Type::Key) -> Result<Option<Cow<Type::OwnedValue>>, Self::Error>;
+    fn get(
+        &self,
+        key: &Type::Key,
+    ) -> Result<Option<Cow<'_, Type::OwnedValue>>, Self::Error>;
 
     /// Return `true` if there is a `Key` mapping to a value in the storage.
     fn contains_key(&self, key: &Type::Key) -> Result<bool, Self::Error>;
@@ -226,7 +229,7 @@ pub struct StorageRef<'a, T: 'a + ?Sized, Type: Mappable>(
 /// ```
 pub trait StorageAsRef {
     #[inline(always)]
-    fn storage<Type>(&self) -> StorageRef<Self, Type>
+    fn storage<Type>(&self) -> StorageRef<'_, Self, Type>
     where
         Type: Mappable,
     {
@@ -234,7 +237,7 @@ pub trait StorageAsRef {
     }
 
     #[inline(always)]
-    fn storage_as_ref<Type>(&self) -> StorageRef<Self, Type>
+    fn storage_as_ref<Type>(&self) -> StorageRef<'_, Self, Type>
     where
         Type: Mappable,
     {
@@ -288,7 +291,7 @@ pub struct StorageMut<'a, T: 'a + ?Sized, Type: Mappable>(
 /// ```
 pub trait StorageAsMut {
     #[inline(always)]
-    fn storage<Type>(&mut self) -> StorageMut<Self, Type>
+    fn storage<Type>(&mut self) -> StorageMut<'_, Self, Type>
     where
         Type: Mappable,
     {
@@ -296,7 +299,7 @@ pub trait StorageAsMut {
     }
 
     #[inline(always)]
-    fn storage_as_mut<Type>(&mut self) -> StorageMut<Self, Type>
+    fn storage_as_mut<Type>(&mut self) -> StorageMut<'_, Self, Type>
     where
         Type: Mappable,
     {

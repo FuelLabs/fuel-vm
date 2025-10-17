@@ -340,7 +340,7 @@ where
     fn get(
         &self,
         key: &<Type as Mappable>::Key,
-    ) -> Result<Option<alloc::borrow::Cow<<Type as Mappable>::OwnedValue>>, Self::Error>
+    ) -> Result<Option<alloc::borrow::Cow<'_, <Type as Mappable>::OwnedValue>>, Self::Error>
     {
         <S as StorageInspect<Type>>::get(&self.0, key)
     }
@@ -494,7 +494,7 @@ where
         id: &ContractId,
         start_key: &Bytes32,
         range: usize,
-    ) -> Result<Vec<Option<alloc::borrow::Cow<ContractsStateData>>>, Self::DataError>
+    ) -> Result<Vec<Option<alloc::borrow::Cow<'_, ContractsStateData>>>, Self::DataError>
     {
         self.0.contract_state_range(id, start_key, range)
     }

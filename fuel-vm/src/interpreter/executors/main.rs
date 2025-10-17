@@ -894,12 +894,12 @@ where
 
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError<S::DataError>> {
         for input in self.transaction().inputs() {
-            if let Input::Contract(contract) = input {
-                if !self.check_contract_exists(&contract.contract_id)? {
-                    return Err(InterpreterError::Panic(
-                        PanicReason::InputContractDoesNotExist,
-                    ));
-                }
+            if let Input::Contract(contract) = input
+                && !self.check_contract_exists(&contract.contract_id)?
+            {
+                return Err(InterpreterError::Panic(
+                    PanicReason::InputContractDoesNotExist,
+                ));
             }
         }
 

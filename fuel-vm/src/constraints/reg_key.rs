@@ -102,14 +102,14 @@ impl<'a, const INDEX: u8> From<RegMut<'a, INDEX>> for Reg<'a, INDEX> {
 
 impl<const INDEX: u8> RegMut<'_, INDEX> {
     /// Re-borrow the register as an immutable reference.
-    pub fn as_ref(&self) -> Reg<INDEX> {
+    pub fn as_ref(&self) -> Reg<'_, INDEX> {
         Reg(self.0)
     }
 }
 
 impl<const INDEX: u8> RegMut<'_, INDEX> {
     /// Re-borrow the register as a mutable reference.
-    pub fn as_mut(&mut self) -> RegMut<INDEX> {
+    pub fn as_mut(&mut self) -> RegMut<'_, INDEX> {
         RegMut(self.0)
     }
 }

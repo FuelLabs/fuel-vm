@@ -130,10 +130,10 @@ impl ExclusionProof {
     pub fn verify(&self, root: &Bytes32, key: &MerkleTreeKey) -> bool {
         let Self { proof_set, leaf } = self;
 
-        if let ExclusionLeaf::Leaf(data) = leaf {
-            if data.leaf_key == key.as_ref() {
-                return false;
-            }
+        if let ExclusionLeaf::Leaf(data) = leaf
+            && data.leaf_key == key.as_ref()
+        {
+            return false;
         }
 
         if proof_set.len() > 256usize {

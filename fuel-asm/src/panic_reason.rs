@@ -192,7 +192,8 @@ mod tests {
 
     #[test]
     fn test_u8_panic_reason_round_trip() {
-        let last_known_panic_reason: u8 = PanicReason::iter().last().unwrap() as u8 + 1;
+        let last_known_panic_reason: u8 =
+            PanicReason::iter().next_back().unwrap() as u8 + 1;
         let reason = PanicReason::from(0);
         assert_eq!(reason, PanicReason::UnknownPanicReason);
 

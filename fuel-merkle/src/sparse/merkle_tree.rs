@@ -390,7 +390,7 @@ where
         let height = node.height();
         #[allow(clippy::arithmetic_side_effects)] // height <= max_height
         let depth = Node::max_height() - height;
-        let placeholders = iter::repeat(Node::create_placeholder()).take(depth as usize);
+        let placeholders = iter::repeat_n(Node::create_placeholder(), depth as usize);
         for placeholder in placeholders {
             node = Node::create_node_on_path(&path, &node, &placeholder);
             storage.insert(node.hash(), &node.as_ref().into())?;
@@ -501,7 +501,7 @@ where
             let placeholders_count =
                 (ancestor_depth as usize).saturating_sub(side_nodes.len());
             let placeholders =
-                iter::repeat(Node::create_placeholder()).take(placeholders_count);
+                iter::repeat_n(Node::create_placeholder(), placeholders_count);
             for placeholder in placeholders {
                 current_node =
                     Node::create_node_on_path(path, &current_node, &placeholder);

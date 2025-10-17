@@ -187,14 +187,12 @@ impl UniqueFormatValidityChecks for Create {
             .iter()
             .enumerate()
             .try_for_each(|(index, input)| {
-                if let Some(asset_id) = input.asset_id(consensus_params.base_asset_id()) {
-                    if asset_id != consensus_params.base_asset_id() {
-                        return Err(
-                            ValidityError::TransactionInputContainsNonBaseAssetId {
-                                index,
-                            },
-                        );
-                    }
+                if let Some(asset_id) = input.asset_id(consensus_params.base_asset_id())
+                    && asset_id != consensus_params.base_asset_id()
+                {
+                    return Err(ValidityError::TransactionInputContainsNonBaseAssetId {
+                        index,
+                    });
                 }
 
                 match input {
@@ -339,7 +337,7 @@ mod field {
         }
 
         #[inline(always)]
-        fn storage_slots_mut(&mut self) -> StorageSlotRef {
+        fn storage_slots_mut(&mut self) -> StorageSlotRef<'_> {
             StorageSlotRef {
                 storage_slots: &mut self.body.storage_slots,
             }

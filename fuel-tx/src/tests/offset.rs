@@ -229,31 +229,29 @@ where
             assert_eq!(data, data_p);
         }
 
-        if i.is_message() {
-            if let Some(predicate) = i.input_predicate() {
-                cases.message_predicate =
-                    cases.message_predicate || !predicate.is_empty();
+        if i.is_message()
+            && let Some(predicate) = i.input_predicate()
+        {
+            cases.message_predicate = cases.message_predicate || !predicate.is_empty();
 
-                let ofs =
-                    input_ofs + i.predicate_offset().expect("input contains predicate");
-                let predicate_p = &bytes[ofs..ofs + predicate.len()];
+            let ofs = input_ofs + i.predicate_offset().expect("input contains predicate");
+            let predicate_p = &bytes[ofs..ofs + predicate.len()];
 
-                assert_eq!(predicate, predicate_p);
-            }
+            assert_eq!(predicate, predicate_p);
         }
 
-        if i.is_message() {
-            if let Some(predicate_data) = i.input_predicate_data() {
-                cases.message_predicate_data =
-                    cases.message_predicate_data || !predicate_data.is_empty();
+        if i.is_message()
+            && let Some(predicate_data) = i.input_predicate_data()
+        {
+            cases.message_predicate_data =
+                cases.message_predicate_data || !predicate_data.is_empty();
 
-                let ofs = input_ofs
-                    + i.predicate_data_offset()
-                        .expect("input contains predicate data");
-                let predicate_data_p = &bytes[ofs..ofs + predicate_data.len()];
+            let ofs = input_ofs
+                + i.predicate_data_offset()
+                    .expect("input contains predicate data");
+            let predicate_data_p = &bytes[ofs..ofs + predicate_data.len()];
 
-                assert_eq!(predicate_data, predicate_data_p);
-            }
+            assert_eq!(predicate_data, predicate_data_p);
         }
     });
 }

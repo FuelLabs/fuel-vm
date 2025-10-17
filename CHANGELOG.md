@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased (see .changes folder)]
 
+## [Version 0.65.0]
+
+### Breaking
+- [974](https://github.com/FuelLabs/fuel-vm/pull/974): Bump Rust version to `1.90.0`.
+
 ## [Version 0.64.0]
 
 ### Breaking

@@ -1,5 +1,6 @@
 use fuel_types::{
     Address,
+    AssetId,
     Bytes32,
     ContractId,
     bytes::WORD_SIZE,
@@ -9,6 +10,11 @@ pub(super) const OUTPUT_CCV_TO_OFFSET: usize = WORD_SIZE; // Identifier
 pub(super) const OUTPUT_CCV_ASSET_ID_OFFSET: usize = OUTPUT_CCV_TO_OFFSET
     + Address::LEN // To
     + WORD_SIZE; // Amount
+
+const VEC_SIZE_SPECIFIER_OFFSET: usize = WORD_SIZE;
+
+pub(super) const OUTPUT_DATA_COIN_DATA_OFFSET: usize =
+    OUTPUT_CCV_ASSET_ID_OFFSET + AssetId::LEN + VEC_SIZE_SPECIFIER_OFFSET;
 
 pub(super) const OUTPUT_CONTRACT_BALANCE_ROOT_OFFSET: usize = WORD_SIZE // Identifier
     + WORD_SIZE; // Input index

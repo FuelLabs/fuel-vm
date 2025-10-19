@@ -21,6 +21,10 @@ pub type CoinFull = Coin<Full>;
 pub type CoinSigned = Coin<Signed>;
 pub type CoinPredicate = Coin<Predicate>;
 
+pub type DataCoinFull = DataCoin<Full>;
+pub type DataCoinSigned = DataCoin<Signed>;
+pub type DataCoinPredicate = DataCoin<Predicate>;
+
 mod private {
     pub trait Seal {}
 
@@ -277,6 +281,107 @@ impl Coin<Predicate> {
             predicate,
             predicate_data,
             predicate_gas_used,
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(Default, Educe, Clone, PartialEq, Eq, Hash)]
+#[educe(Debug)]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+pub struct DataCoin<Specification>
+where
+    Specification: CoinSpecification,
+{
+    pub utxo_id: UtxoId,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    pub owner: Address,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    pub amount: Word,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    pub asset_id: AssetId,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    pub tx_pointer: TxPointer,
+    #[educe(Debug(method(fmt_as_field)))]
+    pub witness_index: Specification::Witness,
+    /// Exact amount of gas used by the predicate.
+    /// If the predicate consumes different amount of gas,
+    /// it's considered to be false.
+    #[educe(Debug(method(fmt_as_field)))]
+    pub predicate_gas_used: Specification::PredicateGasUsed,
+    #[educe(Debug(method(fmt_as_field)))]
+    pub predicate: Specification::Predicate,
+    #[educe(Debug(method(fmt_as_field)))]
+    pub predicate_data: Specification::PredicateData,
+    #[educe(Debug(method(fmt_as_field)))]
+    pub data: Vec<u8>,
+}
+
+impl<Specification> DataCoin<Specification>
+where
+    Specification: CoinSpecification,
+{
+    /// The "Note" section from the specification:
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/input.md#inputcoin>.
+    pub fn prepare_sign(&mut self) {
+        self.tx_pointer = Default::default();
+        if let Some(predicate_gas_used_field) = self.predicate_gas_used.as_mut_field() {
+            *predicate_gas_used_field = Default::default();
+        }
+    }
+}
+
+impl DataCoin<Full> {
+    pub fn into_signed(self) -> DataCoin<Signed> {
+        let Self {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+            data,
+            ..
+        } = self;
+
+        DataCoin {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+            data,
+            ..Default::default()
+        }
+    }
+
+    pub fn into_predicate(self) -> DataCoin<Predicate> {
+        let Self {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            predicate,
+            predicate_data,
+            predicate_gas_used,
+            data,
+            ..
+        } = self;
+
+        DataCoin {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            predicate,
+            predicate_data,
+            predicate_gas_used,
+            data,
             ..Default::default()
         }
     }

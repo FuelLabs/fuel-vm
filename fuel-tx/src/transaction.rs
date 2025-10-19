@@ -84,6 +84,10 @@ pub use validity::{
 #[cfg(feature = "alloc")]
 pub use id::Signable;
 
+use crate::input::coin::{
+    DataCoinPredicate,
+    DataCoinSigned,
+};
 pub use id::{
     PrepareSign,
     UniqueIdentifier,
@@ -487,7 +491,11 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
             .iter()
             .filter_map(|input| match input {
                 Input::CoinPredicate(CoinPredicate { asset_id, .. })
-                | Input::CoinSigned(CoinSigned { asset_id, .. }) => Some(asset_id),
+                | Input::CoinSigned(CoinSigned { asset_id, .. })
+                | Input::DataCoinSigned(DataCoinSigned { asset_id, .. })
+                | Input::DataCoinPredicate(DataCoinPredicate { asset_id, .. }) => {
+                    Some(asset_id)
+                }
                 Input::MessageCoinSigned(_)
                 | Input::MessageCoinPredicate(_)
                 | Input::MessageDataPredicate(_)
@@ -565,6 +573,30 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
             asset_id,
             tx_pointer,
             witness_index,
+        );
+        self.inputs_mut().push(input);
+    }
+
+    fn add_unsigned_data_coin_input(
+        &mut self,
+        utxo_id: UtxoId,
+        owner: &PublicKey,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        witness_index: u16,
+        data: Vec<u8>,
+    ) {
+        let owner = Input::owner(owner);
+
+        let input = Input::data_coin_signed(
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+            data,
         );
         self.inputs_mut().push(input);
     }

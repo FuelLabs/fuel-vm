@@ -8,6 +8,7 @@ use fuel_tx::{
         coin::{
             CoinPredicate,
             CoinSigned,
+            DataCoinPredicate,
         },
         message::{
             MessageCoinPredicate,
@@ -23,7 +24,10 @@ use fuel_types::{
 };
 
 use alloc::collections::BTreeMap;
-use fuel_tx::policies::PolicyType;
+use fuel_tx::{
+    input::coin::DataCoinSigned,
+    policies::PolicyType,
+};
 
 pub(crate) fn initial_free_balances<T>(
     tx: &T,
@@ -65,7 +69,16 @@ fn add_up_input_balances<T: field::Inputs>(
             Input::CoinPredicate(CoinPredicate {
                 asset_id, amount, ..
             })
+            | Input::DataCoinPredicate(DataCoinPredicate {
+                asset_id, amount, ..
+            })
             | Input::CoinSigned(CoinSigned {
+                asset_id, amount, ..
+            }) => {
+                let balance = non_retryable_balances.entry(*asset_id).or_default();
+                *balance = (*balance).checked_add(*amount)?;
+            }
+            Input::DataCoinSigned(DataCoinSigned {
                 asset_id, amount, ..
             }) => {
                 let balance = non_retryable_balances.entry(*asset_id).or_default();
@@ -110,24 +123,18 @@ fn reduce_free_balances_by_coin_outputs(
     transaction: &impl field::Outputs,
 ) -> Result<(), ValidityError> {
     // reduce free balances by coin outputs
-    for (asset_id, amount) in
-        transaction
-            .outputs()
-            .iter()
-            .filter_map(|output| match output {
-                Output::Coin {
-                    asset_id, amount, ..
-                } => Some((asset_id, amount)),
-                _ => None,
-            })
+    for (asset_id, amount) in transaction
+        .outputs()
+        .iter()
+        .filter_map(Output::coin_balance)
     {
-        let balance = non_retryable_balances.get_mut(asset_id).ok_or(
-            ValidityError::TransactionOutputCoinAssetIdNotFound(*asset_id),
+        let balance = non_retryable_balances.get_mut(&asset_id).ok_or(
+            ValidityError::TransactionOutputCoinAssetIdNotFound(asset_id),
         )?;
-        *balance = balance.checked_sub(*amount).ok_or(
+        *balance = balance.checked_sub(amount).ok_or(
             ValidityError::InsufficientInputAmount {
-                asset: *asset_id,
-                expected: *amount,
+                asset: asset_id,
+                expected: amount,
                 provided: *balance,
             },
         )?;

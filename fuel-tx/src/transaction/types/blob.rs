@@ -158,6 +158,7 @@ impl UniqueFormatValidityChecks for Blob {
                 }
 
                 Output::Coin { .. } => Ok(()),
+                Output::DataCoin { .. } => Ok(()),
             })?;
 
         Ok(())

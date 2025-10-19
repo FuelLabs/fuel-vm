@@ -13,6 +13,7 @@ use fuel_types::{
 
 pub(super) const INPUT_UTXO_ID_OFFSET: usize = WORD_SIZE; // Identifier
 pub(super) const INPUT_COIN_OWNER_OFFSET: usize = INPUT_UTXO_ID_OFFSET + UtxoId::LEN;
+
 pub(super) const INPUT_COIN_ASSET_ID_OFFSET: usize = INPUT_COIN_OWNER_OFFSET
     + Address::LEN // Owner
     + WORD_SIZE; // Amount
@@ -24,6 +25,14 @@ pub(super) const INPUT_COIN_FIXED_SIZE: usize = INPUT_COIN_TX_POINTER_OFFSET
     + WORD_SIZE // Predicate size
     + WORD_SIZE // Predicate data size
     + WORD_SIZE; // Predicate gas used
+
+pub(super) const INPUT_DATA_COIN_FIXED_SIZE: usize = INPUT_COIN_TX_POINTER_OFFSET
+    + TxPointer::LEN // TxPointer
+    + WORD_SIZE // Witness index
+    + WORD_SIZE // Predicate size
+    + WORD_SIZE // Predicate data size
+    + WORD_SIZE // Predicate gas used
+    + WORD_SIZE; // TODO: Figure out why is this the right size.
 
 pub(super) const INPUT_CONTRACT_BALANCE_ROOT_OFFSET: usize =
     INPUT_UTXO_ID_OFFSET + UtxoId::LEN; // UtxoId

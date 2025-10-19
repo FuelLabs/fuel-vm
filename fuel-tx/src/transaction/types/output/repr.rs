@@ -16,23 +16,33 @@ pub enum OutputRepr {
     Change = 0x02,
     Variable = 0x03,
     ContractCreated = 0x04,
+    Data = 0x05,
 }
 
 impl OutputRepr {
     pub const fn to_offset(&self) -> Option<usize> {
         match self {
-            OutputRepr::Coin | OutputRepr::Change | OutputRepr::Variable => {
-                Some(OUTPUT_CCV_TO_OFFSET)
-            }
+            OutputRepr::Coin
+            | OutputRepr::Change
+            | OutputRepr::Variable
+            | OutputRepr::Data => Some(OUTPUT_CCV_TO_OFFSET),
             _ => None,
         }
     }
 
     pub const fn asset_id_offset(&self) -> Option<usize> {
         match self {
-            OutputRepr::Coin | OutputRepr::Change | OutputRepr::Variable => {
-                Some(OUTPUT_CCV_ASSET_ID_OFFSET)
-            }
+            OutputRepr::Coin
+            | OutputRepr::Change
+            | OutputRepr::Variable
+            | OutputRepr::Data => Some(OUTPUT_CCV_ASSET_ID_OFFSET),
+            _ => None,
+        }
+    }
+
+    pub const fn data_coin_data_offset(&self) -> Option<usize> {
+        match self {
+            Self::Data => Some(OUTPUT_DATA_COIN_DATA_OFFSET),
             _ => None,
         }
     }
@@ -72,6 +82,7 @@ impl OutputRepr {
             Output::Change { .. } => Self::Change,
             Output::Variable { .. } => Self::Variable,
             Output::ContractCreated { .. } => Self::ContractCreated,
+            Output::DataCoin { .. } => Self::Data,
         }
     }
 }

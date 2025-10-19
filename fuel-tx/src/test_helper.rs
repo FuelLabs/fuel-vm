@@ -38,9 +38,20 @@ where
     data
 }
 
+pub fn generate_byte_array<R, const SIZE: usize>(rng: &mut R) -> [u8; SIZE]
+where
+    R: Rng + CryptoRng,
+{
+    let mut data = [0u8; SIZE];
+    rng.fill_bytes(data.as_mut_slice());
+
+    data
+}
+
 #[cfg(feature = "std")]
 mod use_std {
     use super::{
+        generate_byte_array,
         generate_bytes,
         generate_nonempty_padded_bytes,
     };
@@ -115,6 +126,8 @@ mod use_std {
                     .map(|i| match i {
                         Input::CoinSigned(_) => (),
                         Input::CoinPredicate(_) => (),
+                        Input::DataCoinSigned(_) => (),
+                        Input::DataCoinPredicate(_) => (),
                         Input::Contract(_) => (),
                         Input::MessageCoinSigned(_) => (),
                         Input::MessageCoinPredicate(_) => (),
@@ -130,6 +143,7 @@ mod use_std {
                         Output::Change { .. } => (),
                         Output::Variable { .. } => (),
                         Output::ContractCreated { .. } => (),
+                        Output::DataCoin { .. } => (),
                     })
                     .unwrap_or(());
 
@@ -192,7 +206,12 @@ mod use_std {
                         self.rng.r#gen(),
                     ),
                     4 => Output::contract_created(self.rng.r#gen(), self.rng.r#gen()),
-
+                    5 => Output::data_coin(
+                        self.rng.r#gen(),
+                        self.rng.r#gen(),
+                        self.rng.r#gen(),
+                        generate_byte_array::<_, 69>(&mut self.rng).to_vec(),
+                    ),
                     _ => unreachable!(),
                 };
 
@@ -212,6 +231,7 @@ mod use_std {
         ) -> Vec<SecretKey> {
             let inputs = self.rng.gen_range(0..10);
             let mut input_coin_keys = Vec::with_capacity(10);
+            let mut input_data_coin_keys = Vec::with_capacity(10);
             let mut input_message_keys = Vec::with_capacity(10);
 
             enum MessageType {
@@ -306,12 +326,47 @@ mod use_std {
                         builder.add_input(input);
                     }
 
+                    7 => {
+                        let secret = SecretKey::random(&mut self.rng);
+
+                        input_data_coin_keys.push(secret);
+                    }
+
+                    8 => {
+                        let predicate = generate_nonempty_padded_bytes(&mut self.rng);
+                        let owner = (*Contract::root_from_code(&predicate)).into();
+
+                        let input = Input::data_coin_predicate(
+                            self.rng.r#gen(),
+                            owner,
+                            self.rng.r#gen(),
+                            self.rng.r#gen(),
+                            self.rng.r#gen(),
+                            self.rng.r#gen(),
+                            predicate,
+                            generate_bytes(&mut self.rng),
+                            generate_bytes(&mut self.rng),
+                        );
+
+                        builder.add_input(input);
+                    }
+
                     _ => unreachable!(),
                 }
             }
 
             input_coin_keys.iter().for_each(|k| {
                 builder.add_unsigned_coin_input(
+                    *k,
+                    self.rng.r#gen(),
+                    self.rng.r#gen(),
+                    self.rng.r#gen(),
+                    self.rng.r#gen(),
+                );
+            });
+
+            input_coin_keys.iter().for_each(|k| {
+                builder.add_unsigned_data_coin_input(
                     *k,
                     self.rng.r#gen(),
                     self.rng.r#gen(),

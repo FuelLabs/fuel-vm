@@ -16,13 +16,13 @@ mod consts;
 pub mod contract;
 mod repr;
 
+use alloc::vec::Vec;
 use contract::Contract;
 pub use repr::OutputRepr;
 
 #[derive(
     Debug,
     Clone,
-    Copy,
     PartialEq,
     Eq,
     Hash,
@@ -63,6 +63,13 @@ pub enum Output {
     ContractCreated {
         contract_id: ContractId,
         state_root: Bytes32,
+    },
+
+    DataCoin {
+        to: Address,
+        amount: Word,
+        asset_id: AssetId,
+        data: Vec<u8>,
     },
 }
 
@@ -123,11 +130,38 @@ impl Output {
         }
     }
 
+    pub const fn data_coin(
+        to: Address,
+        amount: Word,
+        asset_id: AssetId,
+        data: Vec<u8>,
+    ) -> Self {
+        Self::DataCoin {
+            to,
+            amount,
+            asset_id,
+            data,
+        }
+    }
+
     pub const fn asset_id(&self) -> Option<&AssetId> {
         match self {
             Output::Coin { asset_id, .. }
+            | Output::DataCoin { asset_id, .. }
             | Output::Change { asset_id, .. }
             | Output::Variable { asset_id, .. } => Some(asset_id),
+            _ => None,
+        }
+    }
+
+    pub const fn coin_balance(&self) -> Option<(AssetId, Word)> {
+        match self {
+            Output::Coin {
+                asset_id, amount, ..
+            } => Some((*asset_id, *amount)),
+            Output::DataCoin {
+                asset_id, amount, ..
+            } => Some((*asset_id, *amount)),
             _ => None,
         }
     }
@@ -144,8 +178,17 @@ impl Output {
     pub const fn amount(&self) -> Option<Word> {
         match self {
             Output::Coin { amount, .. }
+            | Output::DataCoin { amount, .. }
             | Output::Change { amount, .. }
             | Output::Variable { amount, .. } => Some(*amount),
+
+            _ => None,
+        }
+    }
+
+    pub fn data_coin_data_len(&self) -> Option<usize> {
+        match self {
+            Output::DataCoin { data, .. } => Some(data.len()),
             _ => None,
         }
     }
@@ -180,7 +223,11 @@ impl Output {
     }
 
     pub const fn is_coin(&self) -> bool {
-        matches!(self, Self::Coin { .. })
+        matches!(self, Self::Coin { .. }) || self.is_data_coin()
+    }
+
+    pub const fn is_data_coin(&self) -> bool {
+        matches!(self, Self::DataCoin { .. })
     }
 
     pub const fn is_change(&self) -> bool {

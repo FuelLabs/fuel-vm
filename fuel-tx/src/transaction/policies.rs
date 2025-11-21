@@ -1,28 +1,16 @@
 use alloc::vec::Vec;
-use core::{
-    fmt,
-    marker::PhantomData,
-    ops::Deref,
-};
+use core::{fmt, marker::PhantomData, ops::Deref};
 use fuel_types::{
-    BlockHeight,
-    Word,
+    BlockHeight, Word,
     canonical::{
-        Deserialize,
-        Error,
-        Input,
-        Output,
-        Serialize,
+        Deserialize, DeserializeForwardCompatible, Error, Input, Output, Serialize,
     },
 };
 
 #[cfg(feature = "random")]
 use rand::{
     Rng,
-    distributions::{
-        Distribution,
-        Standard,
-    },
+    distributions::{Distribution, Standard},
 };
 use serde::ser::SerializeStruct;
 
@@ -387,7 +375,7 @@ impl<'de> serde::Deserialize<'de> for Policies {
                         return Err(serde::de::Error::invalid_length(
                             0,
                             &"struct Policies with 2 elements",
-                        ))
+                        ));
                     }
                 };
                 // For the `values` field, we always write the 4 elements for the first 4
@@ -409,7 +397,7 @@ impl<'de> serde::Deserialize<'de> for Policies {
                                 return Err(serde::de::Error::invalid_length(
                                     1,
                                     &"struct Policies with 2 elements",
-                                ))
+                                ));
                             }
                         };
                     let mut values: [Word; POLICIES_NUMBER] = [0; POLICIES_NUMBER];
@@ -423,7 +411,7 @@ impl<'de> serde::Deserialize<'de> for Policies {
                             return Err(serde::de::Error::invalid_length(
                                 1,
                                 &"struct Policies with 2 elements",
-                            ))
+                            ));
                         }
                     };
                     let mut values: [Word; POLICIES_NUMBER] = [0; POLICIES_NUMBER];
@@ -630,6 +618,53 @@ impl Deserialize for Policies {
     }
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct PoliciesDeserializeMetadata {
+    /// Which policy bits were unknown
+    pub unknown_bits: u32,
+
+    /// Whether any unknown policy was encountered
+    pub has_unknown_policy: bool,
+}
+
+impl DeserializeForwardCompatible for Policies {
+    type Metadata = PoliciesDeserializeMetadata;
+
+    fn decode_static_forward_compatible<I: Input + ?Sized>(
+        buffer: &mut I,
+    ) -> Result<(Self, Self::Metadata), Error> {
+        let raw_bits = u32::decode(buffer)?;
+        let bits = PoliciesBits::from_bits_truncate(raw_bits);
+
+        let metadata = PoliciesDeserializeMetadata {
+            unknown_bits: raw_bits & !bits.bits(),
+            has_unknown_policy: raw_bits & !bits.bits() != 0,
+        };
+
+        Ok((
+            Self {
+                bits,
+                values: Default::default(),
+            },
+            metadata,
+        ))
+    }
+
+    fn decode_dynamic_forward_compatible<I: Input + ?Sized>(
+        &mut self,
+        buffer: &mut I,
+        _metadata: &mut Self::Metadata,
+    ) -> Result<(), Error> {
+        // Decode only known policy values, skip unknowns
+        for (index, bit) in PoliciesBits::all().iter().enumerate() {
+            if self.bits.contains(bit) {
+                self.values[index] = Word::decode(buffer)?;
+            }
+        }
+        Ok(())
+    }
+}
+
 #[cfg(feature = "random")]
 impl Distribution<Policies> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Policies {
@@ -661,11 +696,7 @@ pub mod typescript {
     use wasm_bindgen::prelude::*;
 
     use crate::transaction::Policies;
-    use alloc::{
-        format,
-        string::String,
-        vec::Vec,
-    };
+    use alloc::{format, string::String, vec::Vec};
 
     #[wasm_bindgen]
     impl Policies {
@@ -767,11 +798,7 @@ fn canonical_serialization_deserialization_for_any_combination_of_values_works()
 
 #[test]
 fn serde_de_serialization_is_backward_compatible() {
-    use serde_test::{
-        Configure,
-        Token,
-        assert_tokens,
-    };
+    use serde_test::{Configure, Token, assert_tokens};
 
     // Given
     let policies = Policies {
@@ -807,11 +834,7 @@ fn serde_de_serialization_is_backward_compatible() {
 
 #[test]
 fn serde_deserialization_empty_use_backward_compatibility() {
-    use serde_test::{
-        Configure,
-        Token,
-        assert_tokens,
-    };
+    use serde_test::{Configure, Token, assert_tokens};
 
     // Given
     let policies = Policies::new();
@@ -844,11 +867,7 @@ fn serde_deserialization_empty_use_backward_compatibility() {
 
 #[test]
 fn serde_deserialization_new_format() {
-    use serde_test::{
-        Configure,
-        Token,
-        assert_tokens,
-    };
+    use serde_test::{Configure, Token, assert_tokens};
 
     // Given
     let policies = Policies {
@@ -879,4 +898,180 @@ fn serde_deserialization_new_format() {
             Token::StructEnd,
         ],
     );
+}
+
+#[test]
+fn forward_compatible_deserialization_with_unknown_policies() {
+    use fuel_types::canonical::{Deserialize, DeserializeForwardCompatible, Serialize};
+
+    // Simulate a future policy bit (bit 6 doesn't exist yet)
+    let unknown_bit = 1u32 << 6;
+    let known_bits = PoliciesBits::Tip.union(PoliciesBits::Maturity);
+    let raw_bits = known_bits.bits() | unknown_bit;
+
+    // Manually serialize policies with unknown bit
+    let mut buffer = Vec::new();
+    raw_bits.encode(&mut buffer).expect("Should encode bits");
+    100u64.encode(&mut buffer).expect("Should encode tip value");
+    50u64
+        .encode(&mut buffer)
+        .expect("Should encode maturity value");
+
+    // Strict deserialization should fail
+    let strict_result = Policies::from_bytes(&buffer);
+    assert!(strict_result.is_err());
+    assert!(matches!(
+        strict_result.unwrap_err(),
+        fuel_types::canonical::Error::Unknown(_)
+    ));
+
+    // Forward-compatible deserialization should succeed
+    let (policies, metadata) = Policies::from_bytes_forward_compatible(&buffer)
+        .expect("Forward-compatible deserialization should succeed");
+
+    // Known policies should be accessible
+    assert_eq!(policies.get(PolicyType::Tip), Some(100));
+    assert_eq!(policies.get(PolicyType::Maturity), Some(50));
+
+    // Metadata should report unknown policy
+    assert!(metadata.has_unknown_policy);
+    assert_eq!(metadata.unknown_bits, unknown_bit);
+
+    // Policies should only have known bits set
+    assert_eq!(policies.bits(), known_bits.bits());
+}
+
+#[test]
+fn forward_compatible_deserialization_without_unknown_policies() {
+    use fuel_types::canonical::DeserializeForwardCompatible;
+
+    // Given - Only known policies
+    let policies = Policies::new()
+        .with_tip(100)
+        .with_witness_limit(200)
+        .with_maturity(BlockHeight::new(10));
+
+    let bytes = policies.to_bytes();
+
+    // When - Forward-compatible deserialization should succeed
+    let (deserialized, metadata) = Policies::from_bytes_forward_compatible(&bytes)
+        .expect("Forward-compatible deserialization should succeed");
+
+    // Then - Should not have unknown policies
+    assert!(!metadata.has_unknown_policy);
+    assert_eq!(metadata.unknown_bits, 0);
+
+    // Policies should match
+    assert_eq!(deserialized, policies);
+}
+
+#[test]
+fn forward_compatible_deserialization_with_multiple_unknown_policies() {
+    use fuel_types::canonical::{Deserialize, DeserializeForwardCompatible, Serialize};
+
+    // Given - Simulate multiple unknown policy bits
+    let unknown_bit1 = 1u32 << 6;
+    let unknown_bit2 = 1u32 << 7;
+    let unknown_bit3 = 1u32 << 10;
+    let known_bits = PoliciesBits::MaxFee.union(PoliciesBits::Expiration);
+    let raw_bits = known_bits.bits() | unknown_bit1 | unknown_bit2 | unknown_bit3;
+
+    // When - Manually serialize
+    let mut buffer = Vec::new();
+    raw_bits.encode(&mut buffer).expect("Should encode bits");
+    500u64.encode(&mut buffer).expect("Should encode max fee");
+    12345u64
+        .encode(&mut buffer)
+        .expect("Should encode expiration");
+
+    // Then - Strict should fail
+    assert!(Policies::from_bytes(&buffer).is_err());
+
+    // Forward compatibility should succeed
+    let (policies, metadata) =
+        Policies::from_bytes_forward_compatible(&buffer).expect("should succeed");
+
+    // All unknown bits should be tracked
+    assert!(metadata.has_unknown_policy);
+    assert_eq!(
+        metadata.unknown_bits,
+        unknown_bit1 | unknown_bit2 | unknown_bit3
+    );
+
+    // Known policies should be accessible
+    assert_eq!(policies.get(PolicyType::MaxFee), Some(500));
+    assert_eq!(policies.get(PolicyType::Expiration), Some(12345));
+}
+
+#[test]
+fn forward_compatible_deserialization_preserves_known_policies_only() {
+    use fuel_types::canonical::{DeserializeForwardCompatible, Serialize};
+
+    // Given - Mix of all known policies plus unknown bits
+    let unknown_bits = 0b1111_0000_0000u32; // High bits unknown
+    let all_known = PoliciesBits::all().bits();
+    let raw_bits = all_known | unknown_bits;
+
+    let mut buffer = Vec::new();
+    raw_bits.encode(&mut buffer).expect("Should encode bits");
+
+    // When - Encode values for all known policies
+    100u64.encode(&mut buffer).expect("Tip");
+    200u64.encode(&mut buffer).expect("WitnessLimit");
+    10u64.encode(&mut buffer).expect("Maturity");
+    500u64.encode(&mut buffer).expect("MaxFee");
+    12345u64.encode(&mut buffer).expect("Expiration");
+    0xABCDu64.encode(&mut buffer).expect("Owner");
+
+    let (policies, metadata) =
+        Policies::from_bytes_forward_compatible(&buffer).expect("Should deserialize");
+
+    // Then - All known policies should be present
+    assert_eq!(policies.get(PolicyType::Tip), Some(100));
+    assert_eq!(policies.get(PolicyType::WitnessLimit), Some(200));
+    assert_eq!(policies.get(PolicyType::Maturity), Some(10));
+    assert_eq!(policies.get(PolicyType::MaxFee), Some(500));
+    assert_eq!(policies.get(PolicyType::Expiration), Some(12345));
+    assert_eq!(policies.get(PolicyType::Owner), Some(0xABCD));
+
+    // Unknown bits should be tracked
+    assert!(metadata.has_unknown_policy);
+    assert_eq!(metadata.unknown_bits, unknown_bits);
+}
+
+#[test]
+fn forward_compatible_deserialization_with_all_policies_unknown() {
+    use fuel_types::canonical::{DeserializeForwardCompatible, Serialize};
+
+    let future_bits = 0b1111_1111_1100_0000u32;
+
+    let mut buffer = Vec::new();
+    future_bits.encode(&mut buffer).unwrap();
+
+    let (policies, metadata) = Policies::from_bytes_forward_compatible(&buffer)
+        .expect("Should deserialize even with all unknown");
+
+    // Should have empty known policies
+    assert!(policies.is_empty());
+    assert_eq!(policies.bits(), 0);
+
+    // But should track all as unknown
+    assert!(metadata.has_unknown_policy);
+    assert_eq!(metadata.unknown_bits, future_bits);
+}
+
+#[test]
+fn forward_compatible_deserialization_empty_policies() {
+    use fuel_types::canonical::DeserializeForwardCompatible;
+
+    let empty_policies = Policies::new();
+    let bytes = empty_policies.to_bytes();
+
+    let (deserialized, metadata) = Policies::from_bytes_forward_compatible(&bytes)
+        .expect("Should deserialize empty policies");
+
+    assert_eq!(deserialized, empty_policies);
+    assert!(deserialized.is_empty());
+    assert!(!metadata.has_unknown_policy);
+    assert_eq!(metadata.unknown_bits, 0);
 }

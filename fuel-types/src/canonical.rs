@@ -6,17 +6,11 @@
 #![allow(unsafe_code)]
 
 #[cfg(feature = "alloc")]
-use alloc::{
-    vec,
-    vec::Vec,
-};
+use alloc::{vec, vec::Vec};
 use core::fmt;
 
 use core::mem::MaybeUninit;
-pub use fuel_derive::{
-    Deserialize,
-    Serialize,
-};
+pub use fuel_derive::{Deserialize, Serialize};
 
 /// Error when serializing or deserializing.
 #[derive(Debug, Eq, PartialEq)]
@@ -182,6 +176,90 @@ pub trait Deserialize: Sized {
     }
 }
 
+/// Allows deserializing types while gracefully handling unknown fields for forward
+/// compatibility. Returns both the deserialized object and metadata about what was
+/// skipped.
+///
+/// This trait enables forward-compatible deserialization where older code can deserialize
+/// data containing newer, unknown fields. This is particularly useful for:
+/// - Protocol versioning (e.g., transaction policies with new policy types)
+/// - Backward-compatible clients that need to handle future data formats
+/// - Distributed systems where different nodes may use different versions
+///
+/// Each type can define its own metadata structure via the associated type,
+/// allowing flexibility in what information is tracked during deserialization.
+///
+/// # Example
+///
+/// ```
+/// use fuel_types::canonical::{Deserialize, DeserializeForwardCompatible, Serialize, Error, Input};
+///
+/// #[derive(Debug, PartialEq)]
+/// struct MyStruct {
+///     known_field: u32,
+/// }
+///
+/// #[derive(Debug, Default)]
+/// struct MyMetadata {
+///     had_unknown_data: bool,
+/// }
+///
+/// impl DeserializeForwardCompatible for MyStruct {
+///     type Metadata = MyMetadata;
+///
+///     fn decode_static_forward_compatible<I: Input + ?Sized>(
+///         buffer: &mut I,
+///     ) -> Result<(Self, Self::Metadata), Error> {
+///         let known_field = u32::decode(buffer)?;
+///         let metadata = MyMetadata { had_unknown_data: false };
+///         Ok((Self { known_field }, metadata))
+///     }
+/// }
+/// ```
+pub trait DeserializeForwardCompatible: Sized {
+    /// Metadata type that tracks information about unknown/skipped fields
+    /// during forward-compatible deserialization.
+    type Metadata: Default;
+
+    /// !INTERNAL USAGE ONLY!
+    #[doc(hidden)]
+    const UNALIGNED_BYTES: bool = false;
+
+    /// Decodes `Self` from the buffer, gracefully handling unknown data.
+    /// Returns the decoded object and metadata about what was skipped/unknown.
+    fn decode_forward_compatible<I: Input + ?Sized>(
+        buffer: &mut I,
+    ) -> Result<(Self, Self::Metadata), Error> {
+        let (mut object, mut metadata) = Self::decode_static_forward_compatible(buffer)?;
+        object.decode_dynamic_forward_compatible(buffer, &mut metadata)?;
+        Ok((object, metadata))
+    }
+
+    /// Decodes static part with forward compatibility, returning the object and initial
+    /// metadata.
+    fn decode_static_forward_compatible<I: Input + ?Sized>(
+        buffer: &mut I,
+    ) -> Result<(Self, Self::Metadata), Error>;
+
+    /// Decodes dynamic part with forward compatibility, potentially updating the
+    /// metadata. The default implementation does nothing. Dynamically-sized
+    /// containers should override this.
+    fn decode_dynamic_forward_compatible<I: Input + ?Sized>(
+        &mut self,
+        _buffer: &mut I,
+        _metadata: &mut Self::Metadata,
+    ) -> Result<(), Error> {
+        Ok(())
+    }
+
+    /// Helper method for forward-compatible deserialization from bytes.
+    fn from_bytes_forward_compatible(
+        mut buffer: &[u8],
+    ) -> Result<(Self, Self::Metadata), Error> {
+        Self::decode_forward_compatible(&mut buffer)
+    }
+}
+
 /// The data of each field should be aligned to 64 bits.
 pub const ALIGN: usize = 8;
 
@@ -300,7 +378,7 @@ impl<T: Serialize> Serialize for Vec<T> {
     // `encode_dynamic` method.
     fn encode_static<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
         if self.len() > VEC_DECODE_LIMIT {
-            return Err(Error::AllocationLimit)
+            return Err(Error::AllocationLimit);
         }
         let len: u64 = self.len().try_into().expect("msg.len() > u64::MAX");
         len.encode(buffer)
@@ -333,7 +411,7 @@ impl<T: Deserialize> Deserialize for Vec<T> {
         let cap = u64::decode(buffer)?;
         let cap: usize = cap.try_into().map_err(|_| Error::AllocationLimit)?;
         if cap > VEC_DECODE_LIMIT {
-            return Err(Error::AllocationLimit)
+            return Err(Error::AllocationLimit);
         }
 
         if T::UNALIGNED_BYTES {
@@ -457,7 +535,7 @@ impl<const N: usize, T: Deserialize> Deserialize for [T; N] {
                                 item.assume_init_drop();
                             }
                         }
-                        return Err(e)
+                        return Err(e);
                     }
                     Ok(decoded) => {
                         // SAFETY: `uninit[i]` is a MaybeUninit which can be
@@ -498,7 +576,7 @@ impl Output for Vec<u8> {
 impl Output for &'_ mut [u8] {
     fn write(&mut self, from: &[u8]) -> Result<(), Error> {
         if from.len() > self.len() {
-            return Err(Error::BufferIsTooShort)
+            return Err(Error::BufferIsTooShort);
         }
         let len = from.len();
         self[..len].copy_from_slice(from);
@@ -519,7 +597,7 @@ impl Input for &'_ [u8] {
 
     fn peek(&self, into: &mut [u8]) -> Result<(), Error> {
         if into.len() > self.len() {
-            return Err(Error::BufferIsTooShort)
+            return Err(Error::BufferIsTooShort);
         }
 
         let len = into.len();
@@ -529,7 +607,7 @@ impl Input for &'_ [u8] {
 
     fn read(&mut self, into: &mut [u8]) -> Result<(), Error> {
         if into.len() > self.len() {
-            return Err(Error::BufferIsTooShort)
+            return Err(Error::BufferIsTooShort);
         }
 
         let len = into.len();
@@ -540,7 +618,7 @@ impl Input for &'_ [u8] {
 
     fn skip(&mut self, n: usize) -> Result<(), Error> {
         if n > self.len() {
-            return Err(Error::BufferIsTooShort)
+            return Err(Error::BufferIsTooShort);
         }
 
         *self = &self[n..];
@@ -703,5 +781,291 @@ mod tests {
             Prefixed2(u16::MAX).to_bytes(),
             [0u8, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0xff, 0xff]
         );
+    }
+
+    #[test]
+    fn test_forward_compatible_deserialization_with_simple_struct() {
+        // Given A simple struct that tracks how many unknown fields were encountered
+        #[derive(Debug, PartialEq, Eq)]
+        struct SimpleStruct {
+            known_value: u32,
+        }
+
+        #[derive(Debug, Default, PartialEq, Eq)]
+        struct SimpleMetadata {
+            unknown_count: usize,
+        }
+
+        impl DeserializeForwardCompatible for SimpleStruct {
+            type Metadata = SimpleMetadata;
+
+            fn decode_static_forward_compatible<I: Input + ?Sized>(
+                buffer: &mut I,
+            ) -> Result<(Self, Self::Metadata), Error> {
+                let known_value = u32::decode(buffer)?;
+                let metadata = SimpleMetadata { unknown_count: 0 };
+                Ok((Self { known_value }, metadata))
+            }
+        }
+
+        // When testing normal deserialization
+        let mut data = vec![0u8; 8];
+        data[4..8].copy_from_slice(&123u32.to_be_bytes());
+
+        let (obj, metadata) = SimpleStruct::from_bytes_forward_compatible(&data)
+            .expect("Forward-compatible deserialization should succeed");
+
+        // Then
+        assert_eq!(obj.known_value, 123);
+        assert_eq!(metadata.unknown_count, 0);
+    }
+
+    #[test]
+    fn test_forward_compatible_deserialization_with_bitflags() {
+        // Given - Simulates a bitflag-based struct like Policies
+        #[derive(Debug, PartialEq, Eq)]
+        struct BitflagStruct {
+            known_bits: u8,
+            values: [u32; 2],
+        }
+
+        #[derive(Debug, Default, PartialEq, Eq)]
+        struct BitflagMetadata {
+            raw_bits: u8,
+            unknown_bits: u8,
+        }
+
+        impl DeserializeForwardCompatible for BitflagStruct {
+            type Metadata = BitflagMetadata;
+
+            fn decode_static_forward_compatible<I: Input + ?Sized>(
+                buffer: &mut I,
+            ) -> Result<(Self, Self::Metadata), Error> {
+                let raw_bits = u8::decode(buffer)?;
+
+                // Only bits 0 and 1 are known
+                const KNOWN_BITS: u8 = 0b0000_0011;
+                let known_bits = raw_bits & KNOWN_BITS;
+                let unknown_bits = raw_bits & !KNOWN_BITS;
+
+                let metadata = BitflagMetadata {
+                    raw_bits,
+                    unknown_bits,
+                };
+
+                Ok((
+                    Self {
+                        known_bits,
+                        values: [0, 0],
+                    },
+                    metadata,
+                ))
+            }
+
+            fn decode_dynamic_forward_compatible<I: Input + ?Sized>(
+                &mut self,
+                _buffer: &mut I,
+                _metadata: &mut Self::Metadata,
+            ) -> Result<(), Error> {
+                // Decode only the values for known bits
+                for i in 0..2 {
+                    if (self.known_bits & (1 << i)) != 0 {
+                        self.values[i] = u32::decode(_buffer)?;
+                    }
+                }
+                Ok(())
+            }
+        }
+
+        // When - Test with unknown bits (bits 2 and 3 are unknown)
+        let mut data = Vec::new();
+        0b0000_1011u8.encode(&mut data).unwrap(); // bits 0, 1, and 3 set
+
+        // Add values for bit 0 and bit 1
+        let mut value_data = Vec::new();
+        100u32.encode(&mut value_data).unwrap();
+        200u32.encode(&mut value_data).unwrap();
+        data.extend_from_slice(&value_data);
+
+        let (obj, metadata) =
+            BitflagStruct::from_bytes_forward_compatible(&data).expect("Should decode");
+
+        // Then
+        assert_eq!(obj.known_bits, 0b0000_0011); // Only bits 0 and 1 are known
+        assert_eq!(obj.values[0], 100);
+        assert_eq!(obj.values[1], 200);
+        assert_eq!(metadata.raw_bits, 0b0000_1011);
+        assert_eq!(metadata.unknown_bits, 0b0000_1000); // Bit 3 is unknown
+    }
+
+    #[test]
+    fn test_forward_compatible_deserialization_with_dynamic_update() {
+        #[derive(Debug, PartialEq, Eq)]
+        struct DynamicStruct {
+            count: u8,
+            values: Vec<u16>,
+        }
+
+        #[derive(Debug, Default, PartialEq, Eq)]
+        struct DynamicMetadata {
+            static_unknown: bool,
+            dynamic_skipped: usize,
+        }
+
+        impl DeserializeForwardCompatible for DynamicStruct {
+            type Metadata = DynamicMetadata;
+
+            fn decode_static_forward_compatible<I: Input + ?Sized>(
+                buffer: &mut I,
+            ) -> Result<(Self, Self::Metadata), Error> {
+                let count = u8::decode(buffer)?;
+                let metadata = DynamicMetadata {
+                    static_unknown: false,
+                    dynamic_skipped: 0,
+                };
+                Ok((
+                    Self {
+                        count,
+                        values: Vec::new(),
+                    },
+                    metadata,
+                ))
+            }
+
+            fn decode_dynamic_forward_compatible<I: Input + ?Sized>(
+                &mut self,
+                buffer: &mut I,
+                metadata: &mut Self::Metadata,
+            ) -> Result<(), Error> {
+                // Decode only first 2 values, skip the rest
+                let max_decode = core::cmp::min(self.count as usize, 2);
+
+                for _ in 0..max_decode {
+                    self.values.push(u16::decode(buffer)?);
+                }
+
+                // Skip remaining values
+                let skipped = (self.count as usize).saturating_sub(max_decode);
+                for _ in 0..skipped {
+                    buffer.skip(aligned_size(core::mem::size_of::<u16>()))?;
+                }
+
+                metadata.dynamic_skipped = skipped;
+                Ok(())
+            }
+        }
+
+        // When - Test with 4 values but only decode 2
+        let mut data = Vec::new();
+        4u8.encode(&mut data).unwrap(); // count = 4
+
+        let mut value_data = Vec::new();
+        10u16.encode(&mut value_data).unwrap();
+        20u16.encode(&mut value_data).unwrap();
+        30u16.encode(&mut value_data).unwrap();
+        40u16.encode(&mut value_data).unwrap();
+        data.extend_from_slice(&value_data);
+
+        let (obj, metadata) = DynamicStruct::from_bytes_forward_compatible(&data)
+            .expect("Should decode with skipping");
+
+        // Then
+        assert_eq!(obj.count, 4);
+        assert_eq!(obj.values.len(), 2);
+        assert_eq!(obj.values, vec![10, 20]);
+        assert_eq!(metadata.dynamic_skipped, 2);
+    }
+
+    #[test]
+    fn test_forward_compatible_vs_strict_deserialization() {
+        // A type that implements both Deserialize (strict) and
+        // DeserializeForwardCompatible
+        #[derive(Debug, PartialEq, Eq)]
+        struct DualStruct {
+            value: u32,
+            flag: u8,
+        }
+
+        #[derive(Debug, Default, PartialEq, Eq)]
+        struct DualMetadata {
+            has_extra_data: bool,
+        }
+
+        impl Serialize for DualStruct {
+            fn size_static(&self) -> usize {
+                aligned_size(core::mem::size_of::<u32>())
+                    + aligned_size(core::mem::size_of::<u8>())
+            }
+
+            fn size_dynamic(&self) -> usize {
+                0
+            }
+
+            fn encode_static<O: Output + ?Sized>(
+                &self,
+                buffer: &mut O,
+            ) -> Result<(), Error> {
+                self.value.encode(buffer)?;
+                self.flag.encode(buffer)?;
+                Ok(())
+            }
+        }
+
+        impl Deserialize for DualStruct {
+            fn decode_static<I: Input + ?Sized>(buffer: &mut I) -> Result<Self, Error> {
+                let value = u32::decode(buffer)?;
+                let flag = u8::decode(buffer)?;
+
+                // Strict: reject if flag has unknown bits
+                if flag > 0b0000_0001 {
+                    return Err(Error::Unknown("Unknown flag bits"));
+                }
+
+                Ok(Self { value, flag })
+            }
+        }
+
+        impl DeserializeForwardCompatible for DualStruct {
+            type Metadata = DualMetadata;
+
+            fn decode_static_forward_compatible<I: Input + ?Sized>(
+                buffer: &mut I,
+            ) -> Result<(Self, Self::Metadata), Error> {
+                let value = u32::decode(buffer)?;
+                let flag = u8::decode(buffer)?;
+
+                let has_extra_data = flag > 0b0000_0001;
+                let masked_flag = flag & 0b0000_0001;
+
+                Ok((
+                    Self {
+                        value,
+                        flag: masked_flag,
+                    },
+                    DualMetadata { has_extra_data },
+                ))
+            }
+        }
+
+        // When - Create data with unknown flag bits
+        let mut data = Vec::new();
+        100u32.encode(&mut data).unwrap();
+        0b0000_1010u8.encode(&mut data).unwrap(); // Unknown bits set
+
+        // Then - Strict deserialization should fail
+        let strict_result = DualStruct::from_bytes(&data);
+        assert!(strict_result.is_err());
+        assert_eq!(
+            strict_result.unwrap_err(),
+            Error::Unknown("Unknown flag bits")
+        );
+
+        // Then - Forward-compatible deserialization should succeed
+        let (obj, metadata) =
+            DualStruct::from_bytes_forward_compatible(&data).expect("should succeed");
+
+        assert_eq!(obj.value, 100);
+        assert_eq!(obj.flag, 0); // Masked to known bits
+        assert!(metadata.has_extra_data);
     }
 }

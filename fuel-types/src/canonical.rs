@@ -6,11 +6,17 @@
 #![allow(unsafe_code)]
 
 #[cfg(feature = "alloc")]
-use alloc::{vec, vec::Vec};
+use alloc::{
+    vec,
+    vec::Vec,
+};
 use core::fmt;
 
 use core::mem::MaybeUninit;
-pub use fuel_derive::{Deserialize, Serialize};
+pub use fuel_derive::{
+    Deserialize,
+    Serialize,
+};
 
 /// Error when serializing or deserializing.
 #[derive(Debug, Eq, PartialEq)]

@@ -1,16 +1,29 @@
 use alloc::vec::Vec;
-use core::{fmt, marker::PhantomData, ops::Deref};
+use core::{
+    fmt,
+    marker::PhantomData,
+    ops::Deref,
+};
 use fuel_types::{
-    BlockHeight, Word,
+    BlockHeight,
+    Word,
     canonical::{
-        Deserialize, DeserializeForwardCompatible, Error, Input, Output, Serialize,
+        Deserialize,
+        DeserializeForwardCompatible,
+        Error,
+        Input,
+        Output,
+        Serialize,
     },
 };
 
 #[cfg(feature = "random")]
 use rand::{
     Rng,
-    distributions::{Distribution, Standard},
+    distributions::{
+        Distribution,
+        Standard,
+    },
 };
 use serde::ser::SerializeStruct;
 
@@ -696,7 +709,11 @@ pub mod typescript {
     use wasm_bindgen::prelude::*;
 
     use crate::transaction::Policies;
-    use alloc::{format, string::String, vec::Vec};
+    use alloc::{
+        format,
+        string::String,
+        vec::Vec,
+    };
 
     #[wasm_bindgen]
     impl Policies {
@@ -798,7 +815,11 @@ fn canonical_serialization_deserialization_for_any_combination_of_values_works()
 
 #[test]
 fn serde_de_serialization_is_backward_compatible() {
-    use serde_test::{Configure, Token, assert_tokens};
+    use serde_test::{
+        Configure,
+        Token,
+        assert_tokens,
+    };
 
     // Given
     let policies = Policies {
@@ -834,7 +855,11 @@ fn serde_de_serialization_is_backward_compatible() {
 
 #[test]
 fn serde_deserialization_empty_use_backward_compatibility() {
-    use serde_test::{Configure, Token, assert_tokens};
+    use serde_test::{
+        Configure,
+        Token,
+        assert_tokens,
+    };
 
     // Given
     let policies = Policies::new();
@@ -867,7 +892,11 @@ fn serde_deserialization_empty_use_backward_compatibility() {
 
 #[test]
 fn serde_deserialization_new_format() {
-    use serde_test::{Configure, Token, assert_tokens};
+    use serde_test::{
+        Configure,
+        Token,
+        assert_tokens,
+    };
 
     // Given
     let policies = Policies {
@@ -902,7 +931,11 @@ fn serde_deserialization_new_format() {
 
 #[test]
 fn forward_compatible_deserialization_with_unknown_policies() {
-    use fuel_types::canonical::{Deserialize, DeserializeForwardCompatible, Serialize};
+    use fuel_types::canonical::{
+        Deserialize,
+        DeserializeForwardCompatible,
+        Serialize,
+    };
 
     // Simulate a future policy bit (bit 6 doesn't exist yet)
     let unknown_bit = 1u32 << 6;
@@ -967,7 +1000,11 @@ fn forward_compatible_deserialization_without_unknown_policies() {
 
 #[test]
 fn forward_compatible_deserialization_with_multiple_unknown_policies() {
-    use fuel_types::canonical::{Deserialize, DeserializeForwardCompatible, Serialize};
+    use fuel_types::canonical::{
+        Deserialize,
+        DeserializeForwardCompatible,
+        Serialize,
+    };
 
     // Given - Simulate multiple unknown policy bits
     let unknown_bit1 = 1u32 << 6;
@@ -1005,7 +1042,10 @@ fn forward_compatible_deserialization_with_multiple_unknown_policies() {
 
 #[test]
 fn forward_compatible_deserialization_preserves_known_policies_only() {
-    use fuel_types::canonical::{DeserializeForwardCompatible, Serialize};
+    use fuel_types::canonical::{
+        DeserializeForwardCompatible,
+        Serialize,
+    };
 
     // Given - Mix of all known policies plus unknown bits
     let unknown_bits = 0b1111_0000_0000u32; // High bits unknown
@@ -1041,7 +1081,10 @@ fn forward_compatible_deserialization_preserves_known_policies_only() {
 
 #[test]
 fn forward_compatible_deserialization_with_all_policies_unknown() {
-    use fuel_types::canonical::{DeserializeForwardCompatible, Serialize};
+    use fuel_types::canonical::{
+        DeserializeForwardCompatible,
+        Serialize,
+    };
 
     let future_bits = 0b1111_1111_1100_0000u32;
 

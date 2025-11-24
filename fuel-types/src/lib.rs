@@ -21,12 +21,6 @@ extern crate alloc;
 extern crate core;
 
 pub mod canonical;
-pub use canonical::{
-    Deserialize,
-    DeserializeForwardCompatible,
-    Serialize,
-    SerializeForwardCompatible,
-};
 
 mod array_types;
 #[cfg(feature = "alloc")]

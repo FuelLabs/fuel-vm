@@ -116,6 +116,114 @@ pub trait Serialize {
     }
 }
 
+/// Allows serializing types with metadata from forward-compatible deserialization.
+/// This enables roundtrip serialization where unknown fields are preserved.
+///
+/// This trait mirrors `DeserializeForwardCompatible` and ensures that data
+/// deserialized with unknown fields can be re-serialized with those fields intact.
+/// This is critical for:
+/// - Transaction signing (hash must remain identical)
+/// - Data relay/forwarding (preserve unknown fields for newer nodes)
+/// - Protocol evolution (old nodes can handle new data gracefully)
+///
+/// # Example
+///
+/// ```
+/// use fuel_types::canonical::{SerializeForwardCompatible, Output, Error};
+///
+/// #[derive(Debug)]
+/// struct MyStruct {
+///     known_field: u32,
+/// }
+///
+/// #[derive(Debug, Default)]
+/// struct MyMetadata {
+///     unknown_data: Vec<u8>,
+/// }
+///
+/// impl SerializeForwardCompatible for MyStruct {
+///     type Metadata = MyMetadata;
+///
+///     fn size_static_forward_compatible(&self, _metadata: &Self::Metadata) -> usize {
+///         4 // u32 size
+///     }
+///
+///     fn size_dynamic_forward_compatible(&self, metadata: &Self::Metadata) -> usize {
+///         metadata.unknown_data.len()
+///     }
+///
+///     fn encode_static_forward_compatible<O: Output + ?Sized>(
+///         &self,
+///         buffer: &mut O,
+///         _metadata: &Self::Metadata,
+///     ) -> Result<(), Error> {
+///         self.known_field.encode(buffer)
+///     }
+///
+///     fn encode_dynamic_forward_compatible<O: Output + ?Sized>(
+///         &self,
+///         buffer: &mut O,
+///         metadata: &Self::Metadata,
+///     ) -> Result<(), Error> {
+///         buffer.write(&metadata.unknown_data)
+///     }
+/// }
+/// ```
+pub trait SerializeForwardCompatible {
+    /// Metadata type that contains information about unknown fields.
+    /// Should match the Metadata type from DeserializeForwardCompatible.
+    type Metadata;
+
+    /// Returns the size of the static part when encoded with forward compatibility.
+    /// This includes both known static fields and any static unknown fields.
+    fn size_static_forward_compatible(&self, metadata: &Self::Metadata) -> usize;
+
+    /// Returns the size of the dynamic part when encoded with forward compatibility.
+    /// This includes both known dynamic fields and any dynamic unknown fields.
+    fn size_dynamic_forward_compatible(&self, metadata: &Self::Metadata) -> usize;
+
+    /// Returns the total size when encoded with forward compatibility.
+    fn size_forward_compatible(&self, metadata: &Self::Metadata) -> usize {
+        self.size_static_forward_compatible(metadata)
+            .saturating_add(self.size_dynamic_forward_compatible(metadata))
+    }
+
+    /// Encodes the static part of `Self` with forward compatibility.
+    fn encode_static_forward_compatible<O: Output + ?Sized>(
+        &self,
+        buffer: &mut O,
+        metadata: &Self::Metadata,
+    ) -> Result<(), Error>;
+
+    /// Encodes the dynamic part of `Self` with forward compatibility.
+    /// Implementers must handle encoding of unknown fields from metadata here.
+    fn encode_dynamic_forward_compatible<O: Output + ?Sized>(
+        &self,
+        buffer: &mut O,
+        metadata: &Self::Metadata,
+    ) -> Result<(), Error>;
+
+    /// Encodes `Self` to the buffer with forward compatibility, including unknown
+    /// fields from metadata.
+    fn encode_forward_compatible<O: Output + ?Sized>(
+        &self,
+        buffer: &mut O,
+        metadata: &Self::Metadata,
+    ) -> Result<(), Error> {
+        self.encode_static_forward_compatible(buffer, metadata)?;
+        self.encode_dynamic_forward_compatible(buffer, metadata)?;
+        Ok(())
+    }
+
+    /// Helper method to serialize to bytes with forward compatibility.
+    fn to_bytes_forward_compatible(&self, metadata: &Self::Metadata) -> Vec<u8> {
+        let mut buffer = Vec::new();
+        self.encode_forward_compatible(&mut buffer, metadata)
+            .expect("Encoding to Vec should not fail");
+        buffer
+    }
+}
+
 /// Allows reading of data into a slice.
 pub trait Input {
     /// Returns the remaining length of the input data.
@@ -1073,5 +1181,317 @@ mod tests {
         assert_eq!(obj.value, 100);
         assert_eq!(obj.flag, 0); // Masked to known bits
         assert!(metadata.has_extra_data);
+    }
+
+    #[test]
+    fn test_serialize_forward_compatible_with_simple_struct() {
+        // Test that SerializeForwardCompatible can serialize with metadata
+        #[derive(Debug, PartialEq)]
+        struct SimpleStruct {
+            known_value: u32,
+        }
+
+        #[derive(Debug, Default)]
+        struct SimpleMetadata {
+            unknown_data: Vec<u8>,
+        }
+
+        impl Serialize for SimpleStruct {
+            fn size_static(&self) -> usize {
+                aligned_size(4) // u32 needs alignment
+            }
+
+            fn size_dynamic(&self) -> usize {
+                0
+            }
+
+            fn encode_static<O: Output + ?Sized>(
+                &self,
+                buffer: &mut O,
+            ) -> Result<(), Error> {
+                self.known_value.encode(buffer)
+            }
+        }
+
+        impl SerializeForwardCompatible for SimpleStruct {
+            type Metadata = SimpleMetadata;
+
+            fn size_static_forward_compatible(
+                &self,
+                _metadata: &Self::Metadata,
+            ) -> usize {
+                self.size_static()
+            }
+
+            fn size_dynamic_forward_compatible(
+                &self,
+                metadata: &Self::Metadata,
+            ) -> usize {
+                metadata.unknown_data.len()
+            }
+
+            fn encode_static_forward_compatible<O: Output + ?Sized>(
+                &self,
+                buffer: &mut O,
+                _metadata: &Self::Metadata,
+            ) -> Result<(), Error> {
+                self.encode_static(buffer)
+            }
+
+            fn encode_dynamic_forward_compatible<O: Output + ?Sized>(
+                &self,
+                buffer: &mut O,
+                metadata: &Self::Metadata,
+            ) -> Result<(), Error> {
+                buffer.write(&metadata.unknown_data)
+            }
+        }
+
+        // Given - A struct with known data and metadata with unknown data
+        let obj = SimpleStruct { known_value: 42 };
+        let metadata = SimpleMetadata {
+            unknown_data: vec![0xAA, 0xBB, 0xCC, 0xDD],
+        };
+
+        // When - Serialize with metadata
+        let bytes = obj.to_bytes_forward_compatible(&metadata);
+
+        // Then - Should contain both known and unknown data
+        // 8 bytes static (aligned u32 with left padding) + 4 bytes dynamic = 12 bytes
+        // total
+        assert_eq!(bytes.len(), 12);
+        // u32 is left-padded to 8 bytes: [0,0,0,0] + [0,0,0,42]
+        assert_eq!(&bytes[0..4], &[0, 0, 0, 0]); // Left padding
+        assert_eq!(&bytes[4..8], &42u32.to_be_bytes()); // Big-endian u32
+        assert_eq!(&bytes[8..12], &[0xAA, 0xBB, 0xCC, 0xDD]); // Unknown data
+    }
+
+    #[test]
+    fn test_serialize_forward_compatible_preserves_bit_order() {
+        // Test that values are serialized in bit order for bitflag-based structures
+        #[derive(Debug)]
+        struct BitflagStruct {
+            bits: u32,
+            values: [u64; 3], // Values for bits 0, 2, 4
+        }
+
+        #[derive(Debug, Default)]
+        struct BitflagMetadata {
+            unknown_bits: u32,
+            unknown_values: Vec<(u32, u64)>, // (bit_position, value)
+        }
+
+        impl SerializeForwardCompatible for BitflagStruct {
+            type Metadata = BitflagMetadata;
+
+            fn size_static_forward_compatible(
+                &self,
+                _metadata: &Self::Metadata,
+            ) -> usize {
+                aligned_size(4) // Size of bits field, aligned
+            }
+
+            fn size_dynamic_forward_compatible(
+                &self,
+                metadata: &Self::Metadata,
+            ) -> usize {
+                let total_bits =
+                    (self.bits | metadata.unknown_bits).count_ones() as usize;
+                total_bits * 8 // 8 bytes per u64 value (already aligned)
+            }
+
+            fn encode_static_forward_compatible<O: Output + ?Sized>(
+                &self,
+                buffer: &mut O,
+                metadata: &Self::Metadata,
+            ) -> Result<(), Error> {
+                let combined_bits = self.bits | metadata.unknown_bits;
+                combined_bits.encode(buffer)
+            }
+
+            fn encode_dynamic_forward_compatible<O: Output + ?Sized>(
+                &self,
+                buffer: &mut O,
+                metadata: &Self::Metadata,
+            ) -> Result<(), Error> {
+                // Encode values in bit order (critical for signing!)
+                const KNOWN_BITS: [u32; 3] = [1 << 0, 1 << 2, 1 << 4]; // bits 0, 2, 4
+
+                for bit_pos in 0..32 {
+                    let bit_mask = 1u32 << bit_pos;
+                    let combined = self.bits | metadata.unknown_bits;
+
+                    if combined & bit_mask != 0 {
+                        // Check if it's a known bit
+                        if let Some(idx) = KNOWN_BITS.iter().position(|&b| b == bit_mask)
+                        {
+                            self.values[idx].encode(buffer)?;
+                        } else {
+                            // Unknown bit - get from metadata
+                            let value = metadata
+                                .unknown_values
+                                .iter()
+                                .find(|(pos, _)| *pos == bit_pos)
+                                .map(|(_, val)| *val)
+                                .unwrap_or(0);
+                            value.encode(buffer)?;
+                        }
+                    }
+                }
+                Ok(())
+            }
+        }
+
+        // Given - Struct with bits 0, 2, 4 set (values 100, 200, 300)
+        //         and unknown bits 1, 3 (values 111, 333)
+        let obj = BitflagStruct {
+            bits: 0b10101, // bits 0, 2, 4
+            values: [100, 200, 300],
+        };
+        let metadata = BitflagMetadata {
+            unknown_bits: 0b01010, // bits 1, 3
+            unknown_values: vec![(1, 111), (3, 333)],
+        };
+
+        // When - Serialize with metadata
+        let bytes = obj.to_bytes_forward_compatible(&metadata);
+
+        // Then - Values should be in bit order: bit0=100, bit1=111, bit2=200, bit3=333,
+        // bit4=300
+        let mut cursor = &bytes[8..]; // Skip bits field (4 bytes + 4 bytes padding)
+        assert_eq!(u64::decode(&mut cursor).unwrap(), 100); // bit 0
+        assert_eq!(u64::decode(&mut cursor).unwrap(), 111); // bit 1 (unknown)
+        assert_eq!(u64::decode(&mut cursor).unwrap(), 200); // bit 2
+        assert_eq!(u64::decode(&mut cursor).unwrap(), 333); // bit 3 (unknown)
+        assert_eq!(u64::decode(&mut cursor).unwrap(), 300); // bit 4
+    }
+
+    #[test]
+    fn test_serialize_forward_compatible_roundtrip() {
+        // Test complete roundtrip: deserialize with unknown → modify → reserialize
+        #[derive(Debug, Clone, PartialEq)]
+        struct DataStruct {
+            version: u8,
+            value: u32,
+        }
+
+        #[derive(Debug, Default, Clone)]
+        struct DataMetadata {
+            extra_bytes: Vec<u8>,
+        }
+
+        impl Serialize for DataStruct {
+            fn size_static(&self) -> usize {
+                aligned_size(1 + 4) // version + value, aligned
+            }
+
+            fn size_dynamic(&self) -> usize {
+                0
+            }
+
+            fn encode_static<O: Output + ?Sized>(
+                &self,
+                buffer: &mut O,
+            ) -> Result<(), Error> {
+                self.version.encode(buffer)?;
+                self.value.encode(buffer)?;
+                Ok(())
+            }
+        }
+
+        impl Deserialize for DataStruct {
+            fn decode_static<I: Input + ?Sized>(buffer: &mut I) -> Result<Self, Error> {
+                Ok(Self {
+                    version: u8::decode(buffer)?,
+                    value: u32::decode(buffer)?,
+                })
+            }
+        }
+
+        impl DeserializeForwardCompatible for DataStruct {
+            type Metadata = DataMetadata;
+
+            fn decode_static_forward_compatible<I: Input + ?Sized>(
+                buffer: &mut I,
+            ) -> Result<(Self, Self::Metadata), Error> {
+                let obj = Self::decode_static(buffer)?;
+                Ok((obj, DataMetadata::default()))
+            }
+
+            fn decode_dynamic_forward_compatible<I: Input + ?Sized>(
+                &mut self,
+                buffer: &mut I,
+                metadata: &mut Self::Metadata,
+            ) -> Result<(), Error> {
+                // Read any remaining bytes as unknown data
+                let remaining = buffer.remaining();
+                metadata.extra_bytes = vec![0u8; remaining];
+                buffer.read(&mut metadata.extra_bytes)?;
+                Ok(())
+            }
+        }
+
+        impl SerializeForwardCompatible for DataStruct {
+            type Metadata = DataMetadata;
+
+            fn size_static_forward_compatible(
+                &self,
+                _metadata: &Self::Metadata,
+            ) -> usize {
+                self.size_static()
+            }
+
+            fn size_dynamic_forward_compatible(
+                &self,
+                metadata: &Self::Metadata,
+            ) -> usize {
+                metadata.extra_bytes.len()
+            }
+
+            fn encode_static_forward_compatible<O: Output + ?Sized>(
+                &self,
+                buffer: &mut O,
+                _metadata: &Self::Metadata,
+            ) -> Result<(), Error> {
+                self.encode_static(buffer)
+            }
+
+            fn encode_dynamic_forward_compatible<O: Output + ?Sized>(
+                &self,
+                buffer: &mut O,
+                metadata: &Self::Metadata,
+            ) -> Result<(), Error> {
+                buffer.write(&metadata.extra_bytes)
+            }
+        }
+
+        // Given - Original bytes with version=1, value=100, and extra unknown data
+        let mut original_bytes = vec![];
+        1u8.encode(&mut original_bytes).unwrap();
+        100u32.encode(&mut original_bytes).unwrap();
+        original_bytes.extend_from_slice(&[0xDE, 0xAD, 0xBE, 0xEF]);
+
+        // When - Deserialize with forward compatibility
+        let (mut obj, metadata) =
+            DataStruct::from_bytes_forward_compatible(&original_bytes).unwrap();
+
+        // Verify deserialization
+        assert_eq!(obj.version, 1);
+        assert_eq!(obj.value, 100);
+        assert_eq!(metadata.extra_bytes, vec![0xDE, 0xAD, 0xBE, 0xEF]);
+
+        // Modify known field
+        obj.value = 200;
+
+        // Reserialize with metadata
+        let new_bytes = obj.to_bytes_forward_compatible(&metadata);
+
+        // Then - New bytes should have updated value but preserved unknown data
+        assert_eq!(new_bytes.len(), original_bytes.len());
+        let (obj2, metadata2) =
+            DataStruct::from_bytes_forward_compatible(&new_bytes).unwrap();
+        assert_eq!(obj2.version, 1);
+        assert_eq!(obj2.value, 200); // Modified value
+        assert_eq!(metadata2.extra_bytes, vec![0xDE, 0xAD, 0xBE, 0xEF]); // Preserved unknown
     }
 }

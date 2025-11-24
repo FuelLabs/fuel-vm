@@ -216,6 +216,7 @@ pub trait SerializeForwardCompatible {
     }
 
     /// Helper method to serialize to bytes with forward compatibility.
+    #[cfg(feature = "alloc")]
     fn to_bytes_forward_compatible(&self, metadata: &Self::Metadata) -> Vec<u8> {
         let mut buffer = Vec::new();
         self.encode_forward_compatible(&mut buffer, metadata)

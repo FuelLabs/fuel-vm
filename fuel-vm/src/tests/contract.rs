@@ -1,6 +1,9 @@
+use core::panic;
+
 use crate::{
     prelude::*,
     script_with_data_offset,
+    tests::test_helpers::assert_success,
     util::test_helpers::TestBuilder,
 };
 use alloc::{
@@ -152,4 +155,66 @@ fn mint_consumes_gas_for_new_assets() {
     });
 
     assert!(new_asset > existing_asset);
+}
+
+#[test]
+fn mint_and_transfer_out() {
+    let mut test_context = TestBuilder::new(2322u64);
+
+    let program = vec![
+        // Allocate a buffer
+        op::movi(0x15, 64),
+        op::aloc(0x15),
+        // Mint one of the asset using zeroed sub_id
+        op::mint(RegId::ONE, RegId::HP),
+        // Compute full asset id
+        op::movi(0x11, SubAssetId::LEN as _),
+        op::add(0x10, RegId::HP, 0x11),
+        op::mcp(0x10, RegId::HP, 0x11),
+        op::mcp(RegId::HP, RegId::FP, 0x11),
+        op::s256(RegId::HP, RegId::HP, 0x15),
+        // Zero output address
+        op::addi(0x12, RegId::HP, 32),
+        op::mcli(0x12, 32),
+        // Transfer it out to zero address
+        op::tro(0x12, RegId::ONE, RegId::ONE, RegId::HP),
+        op::ret(RegId::ONE),
+    ];
+
+    let contract_id = test_context.setup_contract(program, None, None).contract_id;
+
+    let (script_call, _) = script_with_data_offset!(
+        data_offset,
+        vec![
+            op::movi(0x10, data_offset as Immediate18),
+            op::call(0x10, RegId::ZERO, 0x10, RegId::CGAS),
+            op::ret(RegId::ONE),
+        ],
+        test_context.get_tx_params().tx_offset()
+    );
+    let script_call_data = Call::new(contract_id, 0, 0).to_bytes();
+
+    let result = test_context
+        .start_script(script_call.clone(), script_call_data)
+        .script_gas_limit(1_000_000)
+        .contract_input(contract_id)
+        .fee_input()
+        .contract_output(&contract_id)
+        .variable_output(AssetId::zeroed())
+        .execute();
+
+    assert_success(result.receipts());
+
+    for r in result.receipts() {
+        let Receipt::TransferOut { to, amount, .. } = r else {
+            continue;
+        };
+
+        assert_eq!(*to, Address::zeroed());
+        assert_eq!(*amount, 1);
+
+        return;
+    }
+
+    panic!("Missing TransferOut receipt");
 }

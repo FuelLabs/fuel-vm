@@ -22,6 +22,7 @@ use crate::{
 use fuel_crypto::Hasher;
 use fuel_storage::{
     Mappable,
+    StorageAsMut,
     StorageAsRef,
     StorageInspect,
     StorageMutate,
@@ -637,6 +638,27 @@ impl StorageWrite<BlobData> for MemoryStorage {
     }
 }
 
+use anyhow::anyhow;
+
+/// The trait around the `U256` type allows increasing the key by one.
+pub trait IncreaseStorageKey {
+    /// Increases the key by one.
+    ///
+    /// Returns a `Result::Err` in the case of overflow.
+    fn increase(&mut self) -> anyhow::Result<()>;
+}
+
+use primitive_types::U256;
+
+impl IncreaseStorageKey for U256 {
+    fn increase(&mut self) -> anyhow::Result<()> {
+        *self = self
+            .checked_add(1.into())
+            .ok_or_else(|| anyhow!("range op exceeded available keyspace"))?;
+        Ok(())
+    }
+}
+
 impl ContractsAssetsStorage for MemoryStorage {}
 
 impl InterpreterStorage for MemoryStorage {
@@ -698,31 +720,19 @@ impl InterpreterStorage for MemoryStorage {
         start_key: &Bytes32,
         range: usize,
     ) -> Result<Vec<Option<Cow<'_, ContractsStateData>>>, Self::DataError> {
-        let start: ContractsStateKey = (id, start_key).into();
-        let end: ContractsStateKey = (id, &Bytes32::new([u8::MAX; 32])).into();
-        let mut iter = self.memory.contract_state.range(start..end);
+        let mut key = primitive_types::U256::from_big_endian(start_key.as_ref());
+        let mut state_key = Bytes32::zeroed();
 
-        let mut next_item = iter.next();
-        Ok(core::iter::successors(Some(**start_key), |n| {
-            let mut n = *n;
-            if add_one(&mut n) { None } else { Some(n) }
-        })
-        .map(|next_key: [u8; 32]| match next_item.take() {
-            Some((k, v)) => match next_key.cmp(k.state_key()) {
-                core::cmp::Ordering::Less => {
-                    next_item = Some((k, v));
-                    None
-                }
-                core::cmp::Ordering::Equal => {
-                    next_item = iter.next();
-                    Some(Cow::Borrowed(v))
-                }
-                core::cmp::Ordering::Greater => None,
-            },
-            None => None,
-        })
-        .take(range)
-        .collect())
+        let mut results = Vec::new();
+        for i in 0..range {
+            if i != 0 {
+                key.increase().unwrap();
+            }
+            key.to_big_endian(state_key.as_mut());
+            let multikey = ContractsStateKey::new(id, &state_key);
+            results.push(self.storage::<ContractsState>().get(&multikey)?);
+        }
+        Ok(results)
     }
 
     fn contract_state_insert_range<'a, I>(
@@ -734,25 +744,35 @@ impl InterpreterStorage for MemoryStorage {
     where
         I: Iterator<Item = &'a [u8]>,
     {
-        let storage: &mut dyn StorageWrite<ContractsState, Error = Self::DataError> =
-            self;
-        let mut unset_count = 0;
-        core::iter::successors(Some(**start_key), |n| {
-            let mut n = *n;
-            if add_one(&mut n) { None } else { Some(n) }
-        })
-        .zip(values)
-        .try_for_each(|(key, value)| {
-            let key: ContractsStateKey = (contract, &Bytes32::from(key)).into();
-            // Safety: we never have over usize::MAX items in one call
-            #[allow(clippy::arithmetic_side_effects)]
-            if !storage.contains_key(&key)? {
-                unset_count += 1;
+        let values: Vec<_> = values.collect();
+        let mut current_key = U256::from_big_endian(start_key.as_ref());
+
+        // verify key is in range
+        current_key
+            .checked_add(U256::from(values.len().saturating_sub(1)))
+            .ok_or_else(|| anyhow!("range op exceeded available keyspace"))
+            .unwrap();
+
+        let mut key_bytes = Bytes32::zeroed();
+        let mut found_unset = 0u32;
+        for (idx, value) in values.iter().enumerate() {
+            if idx != 0 {
+                current_key.increase().unwrap();
             }
-            storage.write_bytes(&key, value)?;
-            Ok::<_, Self::DataError>(())
-        })?;
-        Ok(unset_count)
+            current_key.to_big_endian(key_bytes.as_mut());
+
+            let option = self
+                .storage_as_mut::<ContractsState>()
+                .replace(&(contract, &key_bytes).into(), value)?;
+
+            if option.is_none() {
+                found_unset = found_unset
+                    .checked_add(1)
+                    .expect("We've checked it above via `values.len()`");
+            }
+        }
+
+        Ok(found_unset as usize)
     }
 
     fn contract_state_remove_range(
@@ -761,22 +781,25 @@ impl InterpreterStorage for MemoryStorage {
         start_key: &Bytes32,
         range: usize,
     ) -> Result<Option<()>, Self::DataError> {
-        let mut all_set_key = true;
-        let mut values: hashbrown::HashSet<_> =
-            core::iter::successors(Some(**start_key), |n| {
-                let mut n = *n;
-                if add_one(&mut n) { None } else { Some(n) }
-            })
-            .take(range)
-            .collect();
-        self.memory.contract_state.retain(|key, _| {
-            let c = key.contract_id();
-            let k = key.state_key();
-            let r = values.remove(&**k);
-            all_set_key &= c == contract && r;
-            c != contract || !r
-        });
-        Ok((all_set_key && values.is_empty()).then_some(()))
+        let mut found_unset = false;
+
+        let mut current_key = U256::from_big_endian(start_key.as_ref());
+
+        let mut key_bytes = Bytes32::zeroed();
+        for i in 0..range {
+            if i != 0 {
+                current_key.increase().unwrap();
+            }
+            current_key.to_big_endian(key_bytes.as_mut());
+
+            let option = self
+                .storage_as_mut::<ContractsState>()
+                .take(&(contract, &key_bytes).into())?;
+
+            found_unset |= option.is_none();
+        }
+
+        if found_unset { Ok(None) } else { Ok(Some(())) }
     }
 }
 
@@ -784,19 +807,6 @@ impl PredicateStorageRequirements for MemoryStorage {
     fn storage_error_to_string(error: Self::Error) -> alloc::string::String {
         alloc::format!("{:?}", error)
     }
-}
-
-fn add_one(a: &mut [u8; 32]) -> bool {
-    let right = u128::from_be_bytes(a[16..].try_into().unwrap());
-    let (right, of) = right.overflowing_add(1);
-    a[16..].copy_from_slice(&right.to_be_bytes()[..]);
-    if of {
-        let left = u128::from_be_bytes(a[..16].try_into().unwrap());
-        let (left, of) = left.overflowing_add(1);
-        a[..16].copy_from_slice(&left.to_be_bytes()[..]);
-        return of
-    }
-    false
 }
 
 #[cfg(test)]

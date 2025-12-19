@@ -15,6 +15,7 @@ use fuel_types::{
         Serialize,
     },
 };
+use hashbrown::HashMap;
 
 #[cfg(feature = "random")]
 use rand::{
@@ -122,21 +123,48 @@ impl PolicyType {
 pub const POLICIES_NUMBER: usize = PoliciesBits::all().bits().count_ones() as usize;
 
 /// Container for managing policies.
-#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct Policies {
     /// A bitmask that indicates what policies are set.
     bits: PoliciesBits,
     /// The array of policy values.
     values: [Word; POLICIES_NUMBER],
+    /// Storage for unknown policies to enable forward compatibility and round-trip serialization.
+    /// Maps from policy bit position (0-31) to policy value.
+    /// This allows newer clients to preserve unknown policies when deserializing and re-serializing.
+    #[cfg_attr(feature = "typescript", wasm_bindgen(skip))]
+    unknown_policies: HashMap<u8, Word>,
+    /// Raw bits value including unknown bits, stored during deserialization
+    #[cfg_attr(feature = "typescript", wasm_bindgen(skip))]
+    raw_bits: u32,
+}
+
+impl Default for Policies {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// Manual Hash implementation that only hashes known fields for semantic equality
+// Unknown policies are ignored for hashing to maintain backward compatibility
+impl core::hash::Hash for Policies {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.bits.hash(state);
+        self.values.hash(state);
+        // Intentionally not hashing unknown_policies and raw_bits
+        // to maintain semantic equality based on known policies only
+    }
 }
 
 impl Policies {
     /// Creates an empty `Self`.
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             bits: PoliciesBits::empty(),
             values: [0; POLICIES_NUMBER],
+            unknown_policies: HashMap::new(),
+            raw_bits: 0,
         }
     }
 
@@ -215,9 +243,11 @@ impl Policies {
         if let Some(value) = value {
             self.bits.insert(policy_type.bit());
             self.values[policy_type.index()] = value;
+            self.raw_bits |= policy_type.bit().bits();
         } else {
             self.bits.remove(policy_type.bit());
             self.values[policy_type.index()] = 0;
+            self.raw_bits &= !policy_type.bit().bits();
         }
     }
 
@@ -249,6 +279,13 @@ impl Policies {
             && owner > u32::MAX as u64
         {
             return false;
+        }
+
+        // Validate unknown policies don't have bit positions that conflict with known policies
+        for bit_position in self.unknown_policies.keys() {
+            if *bit_position < 32 && PoliciesBits::all().bits() & (1 << bit_position) != 0 {
+                return false;
+            }
         }
 
         true
@@ -414,7 +451,7 @@ impl<'de> serde::Deserialize<'de> for Policies {
                         };
                     let mut values: [Word; POLICIES_NUMBER] = [0; POLICIES_NUMBER];
                     values[..4].copy_from_slice(&decoded_values);
-                    Ok(Policies { bits, values })
+                    Ok(Policies { bits, values, unknown_policies: HashMap::new(), raw_bits: bits.bits() })
                 // New backward compatible behavior
                 } else {
                     let decoded_values = match seq.next_element::<Vec<Word>>()? {
@@ -447,7 +484,7 @@ impl<'de> serde::Deserialize<'de> for Policies {
                             "The values array isn't synchronized with the bits",
                         ));
                     }
-                    Ok(Policies { bits, values })
+                    Ok(Policies { bits, values, unknown_policies: HashMap::new(), raw_bits: bits.bits() })
                 }
             }
 
@@ -531,7 +568,7 @@ impl<'de> serde::Deserialize<'de> for Policies {
                 let bits = bits.ok_or_else(|| serde::de::Error::missing_field("bits"))?;
                 let values =
                     values.ok_or_else(|| serde::de::Error::missing_field("values"))?;
-                Ok(Policies { bits, values })
+                Ok(Policies { bits, values, unknown_policies: HashMap::new(), raw_bits: bits.bits() })
             }
         }
         const FIELDS: &[&str] = &["bits", "values"];
@@ -558,7 +595,7 @@ where
     Ctx: fuel_compression::ContextError,
 {
     async fn compress_with(&self, _: &mut Ctx) -> Result<Self::Compressed, Ctx::Error> {
-        Ok(*self)
+        Ok(self.clone())
     }
 }
 
@@ -574,22 +611,44 @@ where
 
 impl Serialize for Policies {
     fn size_static(&self) -> usize {
-        self.bits.bits().size_static()
+        // u32 gets aligned to 8 bytes in canonical serialization
+        self.raw_bits.size_static()
     }
 
     #[allow(clippy::arithmetic_side_effects)] // Bit count is not large enough to overflow.
     fn size_dynamic(&self) -> usize {
-        self.bits.bits().count_ones() as usize * Word::MIN.size()
+        // Count both known and unknown policies
+        let total_policies = self.bits.bits().count_ones() as usize + self.unknown_policies.len();
+        total_policies * Word::MIN.size()
     }
 
     fn encode_static<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
-        self.bits.bits().encode_static(buffer)
+        // Serialize the raw bits including unknown policies
+        self.raw_bits.encode_static(buffer)
     }
 
     fn encode_dynamic<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
-        for (value, bit) in self.values.iter().zip(PoliciesBits::all().iter()) {
-            if self.bits.contains(bit) {
-                value.encode(buffer)?;
+        // Encode values in bit position order (0 to 31) to maintain serialization order
+        for bit_position in 0..32u8 {
+            let bit_flag = 1u32 << bit_position;
+            
+            // Check if this bit is set in raw_bits
+            if self.raw_bits & bit_flag != 0 {
+                // Check if this is a known policy
+                if let Some(known_bit) = PoliciesBits::all().iter()
+                    .find(|b| b.bits() == bit_flag)
+                {
+                    // Encode known policy value
+                    let index = PoliciesBits::all().iter()
+                        .enumerate()
+                        .find(|(_, b)| *b == known_bit)
+                        .map(|(i, _)| i)
+                        .ok_or(Error::Unknown("Policy bit index not found"))?;
+                    self.values[index].encode(buffer)?;
+                } else if let Some(value) = self.unknown_policies.get(&bit_position) {
+                    // Encode unknown policy value
+                    value.encode(buffer)?;
+                }
             }
         }
         Ok(())
@@ -598,19 +657,42 @@ impl Serialize for Policies {
 
 impl Deserialize for Policies {
     fn decode_static<I: Input + ?Sized>(buffer: &mut I) -> Result<Self, Error> {
-        let bits = u32::decode(buffer)?;
-        let bits = PoliciesBits::from_bits(bits)
-            .ok_or(Error::Unknown("Invalid policies bits"))?;
+        let bits_raw = u32::decode(buffer)?;
+        // Use from_bits_truncate to ignore unknown bits instead of failing
+        // This enables forward compatibility with future policy versions
+        let bits = PoliciesBits::from_bits_truncate(bits_raw);
         Ok(Self {
             bits,
             values: Default::default(),
+            unknown_policies: HashMap::new(),
+            raw_bits: bits_raw,
         })
     }
 
     fn decode_dynamic<I: Input + ?Sized>(&mut self, buffer: &mut I) -> Result<(), Error> {
-        for (index, bit) in PoliciesBits::all().iter().enumerate() {
-            if self.bits.contains(bit) {
-                self.values[index] = Word::decode(buffer)?;
+        // Decode values for both known and unknown policies in order
+        // by iterating through bit positions from 0 to 31
+        for bit_position in 0..32u8 {
+            let bit_flag = 1u32 << bit_position;
+            
+            // Check if this bit is set in the raw bits
+            if self.raw_bits & bit_flag != 0 {
+                // Check if this is a known policy
+                if let Some(known_bit) = PoliciesBits::all().iter()
+                    .find(|b| b.bits() == bit_flag)
+                {
+                    // This is a known policy, decode into values array
+                    let index = PoliciesBits::all().iter()
+                        .enumerate()
+                        .find(|(_, b)| *b == known_bit)
+                        .map(|(i, _)| i)
+                        .ok_or(Error::Unknown("Policy bit index not found"))?;
+                    self.values[index] = Word::decode(buffer)?;
+                } else {
+                    // This is an unknown policy, decode and store in unknown_policies
+                    let value = Word::decode(buffer)?;
+                    self.unknown_policies.insert(bit_position, value);
+                }
             }
         }
 
@@ -640,6 +722,8 @@ impl Distribution<Policies> for Standard {
         let mut policies = Policies {
             bits,
             values: Policies::values_for_bitmask(bits, values),
+            unknown_policies: HashMap::new(),
+            raw_bits: bits.bits(),
         };
 
         if policies.is_set(PolicyType::Maturity) {
@@ -733,6 +817,8 @@ fn canonical_serialization_deserialization_for_any_combination_of_values_works()
         let policies = Policies {
             bits,
             values: Policies::values_for_bitmask(bits, VALUES),
+            unknown_policies: HashMap::new(),
+            raw_bits: bitmask,
         };
 
         let size = policies.size();
@@ -777,11 +863,13 @@ fn serde_de_serialization_is_backward_compatible() {
     let policies = Policies {
         bits: PoliciesBits::Maturity.union(PoliciesBits::MaxFee),
         values: [0, 0, 20, 10, 0, 0],
+        unknown_policies: HashMap::new(),
+        raw_bits: PoliciesBits::Maturity.union(PoliciesBits::MaxFee).bits(),
     };
 
     assert_tokens(
         // When
-        &policies.compact(),
+        &policies.clone().compact(),
         // Then
         &[
             Token::Struct {
@@ -818,7 +906,7 @@ fn serde_deserialization_empty_use_backward_compatibility() {
 
     assert_tokens(
         // When
-        &policies.compact(),
+        &policies.clone().compact(),
         // Then
         &[
             Token::Struct {
@@ -856,10 +944,14 @@ fn serde_deserialization_new_format() {
             .union(PoliciesBits::Expiration)
             .union(PoliciesBits::Owner),
         values: [0, 0, 20, 0, 10, 3],
+        unknown_policies: HashMap::new(),
+        raw_bits: PoliciesBits::Maturity
+            .union(PoliciesBits::Expiration)
+            .union(PoliciesBits::Owner).bits(),
     };
 
     assert_tokens(
-        &policies.compact(),
+        &policies.clone().compact(),
         &[
             Token::Struct {
                 name: "Policies",
@@ -879,4 +971,152 @@ fn serde_deserialization_new_format() {
             Token::StructEnd,
         ],
     );
+}
+#[test]
+fn unknown_policies_are_preserved_during_deserialization() {
+    use fuel_types::canonical::{Deserialize, Serialize};
+    
+    // Simulate a future version with bit 6 set (unknown to current version)
+    let future_bits: u32 = PoliciesBits::Tip.bits() | PoliciesBits::MaxFee.bits() | (1 << 6);
+    
+    // Manually construct serialized data with known and unknown policies
+    let mut buffer = Vec::new();
+    
+    // Encode bits
+    future_bits.encode(&mut buffer).unwrap();
+    
+    // Encode values for Tip (bit 0), MaxFee (bit 3), and unknown policy (bit 6)
+    let tip_value: u64 = 100;
+    let max_fee_value: u64 = 200;
+    let unknown_value: u64 = 999;
+    
+    tip_value.encode(&mut buffer).unwrap();
+    max_fee_value.encode(&mut buffer).unwrap();
+    unknown_value.encode(&mut buffer).unwrap();
+    
+    // Deserialize
+    let policies = Policies::decode(&mut buffer.as_slice()).unwrap();
+    
+    // Verify known policies are decoded correctly
+    assert_eq!(policies.get(PolicyType::Tip), Some(tip_value));
+    assert_eq!(policies.get(PolicyType::MaxFee), Some(max_fee_value));
+    
+    // Verify unknown policy is stored
+    assert_eq!(policies.unknown_policies.get(&6), Some(&unknown_value));
+    
+    // Verify raw bits include the unknown bit
+    assert_eq!(policies.raw_bits, future_bits);
+}
+
+#[test]
+fn unknown_policies_are_preserved_during_round_trip() {
+    use fuel_types::canonical::{Deserialize, Serialize};
+    
+    // Simulate a future version with bits 6 and 7 set (unknown to current version)
+    let future_bits: u32 = PoliciesBits::Maturity.bits() | (1 << 6) | (1 << 7);
+    
+    // Manually construct serialized data
+    let mut buffer = Vec::new();
+    future_bits.encode(&mut buffer).unwrap();
+    
+    let maturity_value: u64 = 42;
+    let unknown_6_value: u64 = 888;
+    let unknown_7_value: u64 = 777;
+    
+    maturity_value.encode(&mut buffer).unwrap();
+    unknown_6_value.encode(&mut buffer).unwrap();
+    unknown_7_value.encode(&mut buffer).unwrap();
+    
+    // Deserialize
+    let policies = Policies::decode(&mut buffer.as_slice()).unwrap();
+    
+    // Re-serialize
+    let mut reserialized = Vec::new();
+    policies.encode(&mut reserialized).unwrap();
+    
+    // Deserialize again
+    let policies2 = Policies::decode(&mut reserialized.as_slice()).unwrap();
+    
+    // Verify everything is preserved
+    assert_eq!(policies2.get(PolicyType::Maturity), Some(maturity_value));
+    assert_eq!(policies2.unknown_policies.get(&6), Some(&unknown_6_value));
+    assert_eq!(policies2.unknown_policies.get(&7), Some(&unknown_7_value));
+    assert_eq!(policies2.raw_bits, future_bits);
+}
+
+#[test]
+fn deserialization_with_all_unknown_bits_succeeds() {
+    use fuel_types::canonical::{Deserialize, Serialize};
+    
+    // All bits unknown (beyond current known policies)
+    let unknown_bits: u32 = (1 << 10) | (1 << 15) | (1 << 20);
+    
+    let mut buffer = Vec::new();
+    unknown_bits.encode(&mut buffer).unwrap();
+    
+    let val1: u64 = 111;
+    let val2: u64 = 222;
+    let val3: u64 = 333;
+    
+    val1.encode(&mut buffer).unwrap();
+    val2.encode(&mut buffer).unwrap();
+    val3.encode(&mut buffer).unwrap();
+    
+    // Should not fail
+    let policies = Policies::decode(&mut buffer.as_slice()).unwrap();
+    
+    // All should be stored as unknown
+    assert_eq!(policies.unknown_policies.get(&10), Some(&val1));
+    assert_eq!(policies.unknown_policies.get(&15), Some(&val2));
+    assert_eq!(policies.unknown_policies.get(&20), Some(&val3));
+    assert_eq!(policies.raw_bits, unknown_bits);
+}
+
+#[test]
+fn mixed_known_and_unknown_policies_maintain_serialization_order() {
+    use fuel_types::canonical::{Deserialize, Serialize};
+    
+    // Mix of known and unknown policies: bits 0 (Tip), 3 (MaxFee), 6 (unknown), 7 (unknown)
+    let mixed_bits: u32 = (1 << 0) | (1 << 3) | (1 << 6) | (1 << 7);
+    
+    let mut buffer = Vec::new();
+    mixed_bits.encode(&mut buffer).unwrap();
+    
+    // Values must be in bit order
+    let tip_val: u64 = 10;
+    let max_fee_val: u64 = 30;
+    let unknown_6_val: u64 = 60;
+    let unknown_7_val: u64 = 70;
+    
+    tip_val.encode(&mut buffer).unwrap();
+    max_fee_val.encode(&mut buffer).unwrap();
+    unknown_6_val.encode(&mut buffer).unwrap();
+    unknown_7_val.encode(&mut buffer).unwrap();
+    
+    let policies = Policies::decode(&mut buffer.as_slice()).unwrap();
+    
+    // Re-serialize and verify order is maintained
+    let mut reserialized = Vec::new();
+    policies.encode(&mut reserialized).unwrap();
+    
+    assert_eq!(buffer, reserialized, "Serialization order must be preserved");
+}
+
+#[test]
+fn size_calculation_includes_unknown_policies() {
+    use fuel_types::canonical::{Deserialize, Serialize};
+    
+    let mixed_bits: u32 = PoliciesBits::Tip.bits() | (1 << 10);
+    
+    let mut buffer = Vec::new();
+    mixed_bits.encode(&mut buffer).unwrap();
+    100u64.encode(&mut buffer).unwrap();
+    200u64.encode(&mut buffer).unwrap();
+    
+    let policies = Policies::decode(&mut buffer.as_slice()).unwrap();
+    
+    // Size should account for both known and unknown policies
+    // Note: u32 is aligned to 8 bytes in canonical serialization
+    let expected_size = 8 + (2 * 8); // 8 bytes for aligned u32 bits, 2 * 8 bytes for two u64 values
+    assert_eq!(policies.size(), expected_size);
 }

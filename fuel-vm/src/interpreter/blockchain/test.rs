@@ -49,19 +49,20 @@ impl OwnershipRegisters {
     }
 }
 
-#[test_case(false, 0, None, 32 => Ok((0, 0)); "Nothing set")]
-#[test_case(false, 0, 29, 32 => Ok((29, 1)); "29 set")]
-#[test_case(false, 0, 0, 32 => Ok((0, 1)); "zero set")]
-#[test_case(true, 0, None, 32 => Err(RuntimeError::Recoverable(PanicReason::ExpectedInternalContext)); "Can't read state from external context")]
-#[test_case(false, 1, 29, 32 => Ok((0, 0)); "Wrong contract id")]
-#[test_case(false, 0, 29, 33 => Ok((0, 0)); "Wrong key")]
-#[test_case(true, 0, None, Word::MAX => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Overflowing key")]
-#[test_case(true, 0, None, VM_MAX_RAM => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Overflowing key ram")]
+#[test_case(false, 0, None, 32, 0 => Ok((0, 0)); "Nothing set")]
+#[test_case(false, 0, 29, 32, 0 => Ok((29, 1)); "29 set")]
+#[test_case(false, 0, 0, 32, 0 => Ok((0, 1)); "zero set")]
+#[test_case(true, 0, None, 32, 0 => Err(RuntimeError::Recoverable(PanicReason::ExpectedInternalContext)); "Can't read state from external context")]
+#[test_case(false, 1, 29, 32, 0 => Ok((0, 0)); "Wrong contract id")]
+#[test_case(false, 0, 29, 33, 0 => Ok((0, 0)); "Wrong key")]
+#[test_case(true, 0, None, Word::MAX, 0 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Overflowing key")]
+#[test_case(true, 0, None, VM_MAX_RAM, 0 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Overflowing key ram")]
 fn test_state_read_word(
     external: bool,
     fp: Word,
     insert: impl Into<Option<Word>>,
     key: Word,
+    offset: u8,
 ) -> Result<(Word, Word), RuntimeError<MemoryStorageError>> {
     let mut storage = MemoryStorage::default();
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
@@ -107,6 +108,7 @@ fn test_state_read_word(
         context: &context,
         fp: Reg::new(&fp),
         pc: RegMut::new(&mut pc),
+        offset: Imm06::new_checked(offset).unwrap(),
     };
     state_read_word(input, &mut result, &mut got_result, key)?;
 

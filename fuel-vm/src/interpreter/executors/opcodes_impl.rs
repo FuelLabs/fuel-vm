@@ -1,6 +1,6 @@
 use crate::{
     constraints::reg_key::ProgramRegistersSegment,
-    error::IoResult,
+    error::{IoResult, RuntimeError},
     interpreter::{
         EcalHandler,
         ExecutableTransaction,
@@ -32,6 +32,8 @@ use fuel_asm::{
     },
     wideint,
 };
+use fuel_storage::StorageAsMut;
+use fuel_tx::Bytes32;
 use fuel_types::Word;
 
 impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for ADD
@@ -2249,8 +2251,8 @@ where
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().srw())?;
-        let (a, b, c) = self.unpack();
-        interpreter.state_read_word(a, b, interpreter.registers[c])?;
+        let (a, b, c, d) = self.unpack();
+        interpreter.state_read_word(a, b, interpreter.registers[c], d)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2685,3 +2687,183 @@ where
         Ok(ExecuteState::Proceed)
     }
 }
+
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SCLR
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute(
+        self,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+    ) -> IoResult<ExecuteState, S::DataError> {
+        let (a, b) = self.unpack();
+
+        interpreter.dependent_gas_charge(
+            interpreter.gas_costs().sclr().map_err(PanicReason::from)?,
+            interpreter.registers[b],
+        )?;
+
+        let start_key = Bytes32::from(interpreter.memory().read_bytes(interpreter.registers[a])?);
+        let num_slots = crate::convert::to_usize(interpreter.registers[b]).ok_or(PanicReason::TooManySlots)?;
+
+        let contract_id = interpreter.internal_contract()?;
+
+        interpreter.storage.contract_state_remove_range_nostatus(
+            &contract_id,
+            &start_key,
+            num_slots,
+        ).map_err(|e| RuntimeError::Storage(e))?;
+
+        Ok(ExecuteState::Proceed)
+    }
+}
+
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SRDD
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute(
+        self,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+    ) -> IoResult<ExecuteState, S::DataError> {
+        let (a, b, c, d) = self.unpack();
+
+        let key = Bytes32::from(interpreter.memory().read_bytes(interpreter.registers[b])?);
+        
+        interpreter.storage_read_to_memory(
+            interpreter.registers[a],
+            &key,
+            interpreter.registers[c],
+            interpreter.registers[d],
+        )?;
+        Ok(ExecuteState::Proceed)
+    }
+}
+
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SRDI
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute(
+        self,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+    ) -> IoResult<ExecuteState, S::DataError> {
+        let (a, b, c, d) = self.unpack();
+        todo!();
+    }
+}
+
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SWRD
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute(
+        self,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+    ) -> IoResult<ExecuteState, S::DataError> {
+        let (a, b, c) = self.unpack();
+        todo!();
+    }
+}
+
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SWRI
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute(
+        self,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+    ) -> IoResult<ExecuteState, S::DataError> {
+        let (a, b, c) = self.unpack();
+        todo!();
+    }
+}
+
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SUPD
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute(
+        self,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+    ) -> IoResult<ExecuteState, S::DataError> {
+        let (a, b, c, d) = self.unpack();
+        todo!();
+    }
+}
+
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SUPI
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute(
+        self,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+    ) -> IoResult<ExecuteState, S::DataError> {
+        let (a, b, c, d) = self.unpack();
+        todo!();
+    }
+}
+
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SPLD
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute(
+        self,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+    ) -> IoResult<ExecuteState, S::DataError> {
+        let (a, b) = self.unpack();
+        todo!();
+    }
+}
+
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SPCP
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute(
+        self,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+    ) -> IoResult<ExecuteState, S::DataError> {
+        let (a, b, c, d) = self.unpack();
+        todo!();
+    }
+}
+

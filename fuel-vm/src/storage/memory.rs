@@ -138,18 +138,6 @@ impl MemoryStorage {
         self.memory.contract_state.iter()
     }
 
-    /// Fetch a mapping from the contract state.
-    pub fn contract_state(
-        &self,
-        contract: &ContractId,
-        key: &Bytes32,
-    ) -> Cow<'_, ContractsStateData> {
-        self.storage::<ContractsState>()
-            .get(&(contract, key).into())
-            .expect("Infallible")
-            .unwrap_or(Cow::Owned(ContractsStateData::default()))
-    }
-
     /// Set the transacted state to the memory state.
     pub fn commit(&mut self) {
         self.transacted = self.memory.clone();
@@ -822,13 +810,13 @@ mod tests {
         ]
     }
 
-    #[test_case(&[&[0u8; 32]], &[0u8; 32], 1 => vec![Some(Default::default())])]
+    #[test_case(&[&[0u8; 32]], &[0u8; 32], 1 => vec![Some([0; 32].to_vec().into())])]
     #[test_case(&[&[0u8; 32]], &[0u8; 32], 0 => Vec::<Option<ContractsStateData>>::with_capacity(0))]
     #[test_case(&[], &[0u8; 32], 1 => vec![None])]
     #[test_case(&[], &[1u8; 32], 1 => vec![None])]
     #[test_case(&[&[0u8; 32]], &key(1), 2 => vec![None, None])]
-    #[test_case(&[&key(1), &key(3)], &[0u8; 32], 4 => vec![None, Some(Default::default()), None, Some(Default::default())])]
-    #[test_case(&[&[0u8; 32], &key(1)], &[0u8; 32], 1 => vec![Some(Default::default())])]
+    #[test_case(&[&key(1), &key(3)], &[0u8; 32], 4 => vec![None, Some([0; 32].to_vec().into()), None, Some([0; 32].to_vec().into())])]
+    #[test_case(&[&[0u8; 32], &key(1)], &[0u8; 32], 1 => vec![Some([0; 32].to_vec().into())])]
     fn test_contract_state_range(
         store: &[&[u8; 32]],
         start: &[u8; 32],
@@ -838,7 +826,7 @@ mod tests {
         for k in store {
             mem.memory.contract_state.insert(
                 (&ContractId::default(), &(**k).into()).into(),
-                Default::default(),
+                [0; 32].to_vec().into()
             );
         }
         mem.contract_state_range(&ContractId::default(), &(*start).into(), range)

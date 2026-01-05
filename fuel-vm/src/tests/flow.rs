@@ -406,11 +406,11 @@ fn revert() {
 
     #[rustfmt::skip]
     let routine_add_word_to_state = vec![
-        op::jnei(0x10, 0x30, 13),            // (0, b) Add word to state
-        op::lw(0x20, 0x11, 4),               // r[0x20]      := m[b+32, 8]
-        op::srw(0x21, SET_STATUS_REG, 0x11), // r[0x21]      := s[m[b, 32], 8]
-        op::add(0x20, 0x20, 0x21),           // r[0x20]      += r[0x21]
-        op::sww(0x11, SET_STATUS_REG, 0x20), // s[m[b,32]]   := r[0x20]
+        op::jnei(0x10, 0x30, 13),               // (0, b) Add word to state
+        op::lw(0x20, 0x11, 4),                  // r[0x20]      := m[b+32, 8]
+        op::srw(0x21, SET_STATUS_REG, 0x11, 0), // r[0x21]      := s[m[b, 32], 8]
+        op::add(0x20, 0x20, 0x21),              // r[0x20]      += r[0x21]
+        op::sww(0x11, SET_STATUS_REG, 0x20),    // s[m[b,32]]   := r[0x20]
         op::log(0x20, 0x21, 0x00, 0x00),
         op::ret(RegId::ONE),
     ];
@@ -463,7 +463,8 @@ fn revert() {
     let receipts = result.receipts();
     let state = test_context
         .get_storage()
-        .contract_state(&contract_id, &key);
+        .contract_state(&contract_id, &key)
+        .unwrap().expect("missing slot");
 
     // Assert the state of `key` is mutated to `val`
     assert_eq!(
@@ -503,7 +504,8 @@ fn revert() {
         .execute();
     let state = test_context
         .get_storage()
-        .contract_state(&contract_id, &key);
+        .contract_state(&contract_id, &key)
+        .unwrap().expect("missing slot");
 
     assert_eq!(
         &val.to_be_bytes()[..],

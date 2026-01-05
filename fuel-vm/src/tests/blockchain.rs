@@ -140,7 +140,7 @@ fn state_read_write() {
     let routine_add_word_to_state = vec![
         op::jnei(0x10, 0x30, 13),               // (0, b) Add word to state
         op::lw(0x20, 0x11, 4),                  // r[0x20]      := m[b+32, 8]
-        op::srw(0x21, SET_STATUS_REG, 0x11),    // r[0x21]      := s[m[b, 32], 8]
+        op::srw(0x21, SET_STATUS_REG, 0x11, 0), // r[0x21]      := s[m[b, 32], 8]
         op::add(0x20, 0x20, 0x21),              // r[0x20]      += r[0x21]
         op::sww(0x11, SET_STATUS_REG, 0x20),    // s[m[b,32]]   := r[0x20]
         op::log(0x20, 0x21, 0x00, 0x00),
@@ -231,8 +231,8 @@ fn state_read_write() {
     // Assert the initial state of `key` is empty
     let state = test_context
         .get_storage()
-        .contract_state(&contract_id, &key);
-    assert_eq!(ContractsStateData::default(), state.into_owned());
+        .contract_state(&contract_id, &key).unwrap();
+    assert!(state.is_none(), "Expected empty initial state for key");
 
     let result = test_context
         .start_script(script.clone(), script_data)
@@ -245,7 +245,8 @@ fn state_read_write() {
     let receipts = result.receipts();
     let state = test_context
         .get_storage()
-        .contract_state(&contract_id, &key);
+        .contract_state(&contract_id, &key)
+        .unwrap().expect("Missing slot");
 
     // Assert the state of `key` is mutated to `val`
     assert_eq!(
@@ -317,7 +318,8 @@ fn state_read_write() {
     let data = ContractsStateData::from(bytes.as_ref().to_vec());
     let state = test_context
         .get_storage()
-        .contract_state(&contract_id, &key);
+        .contract_state(&contract_id, &key)
+        .unwrap().expect("Missing slot");
     assert_eq!(data, state.into_owned());
 }
 
@@ -1305,7 +1307,7 @@ fn sww_sets_status() {
     #[rustfmt::skip]
     let program = vec![
         op::sww(0x30, SET_STATUS_REG, RegId::ZERO),
-        op::srw(0x31, SET_STATUS_REG + 1, RegId::ZERO),
+        op::srw(0x31, SET_STATUS_REG + 1, RegId::ZERO, 0),
         op::log(SET_STATUS_REG, SET_STATUS_REG + 1, 0x00, 0x00),
         op::ret(RegId::ONE),
     ];
@@ -1319,7 +1321,7 @@ fn scwq_clears_status() {
     let program = vec![
         op::sww(0x30, SET_STATUS_REG, RegId::ZERO),
         op::scwq(0x30, SET_STATUS_REG + 1, RegId::ONE),
-        op::srw(0x30, SET_STATUS_REG + 2, RegId::ZERO),
+        op::srw(0x30, SET_STATUS_REG + 2, RegId::ZERO, 0),
         op::log(SET_STATUS_REG, SET_STATUS_REG + 1, SET_STATUS_REG + 2, 0x00),
         op::ret(RegId::ONE),
     ];
@@ -1351,9 +1353,9 @@ fn scwq_clears_status_for_range() {
 fn srw_reads_status() {
     let program = vec![
         op::sww(0x30, SET_STATUS_REG, RegId::ZERO),
-        op::srw(0x30, SET_STATUS_REG + 1, RegId::ZERO),
-        op::srw(0x30, SET_STATUS_REG + 2, RegId::ZERO),
-        op::srw(0x30, SET_STATUS_REG + 3, RegId::ONE),
+        op::srw(0x30, SET_STATUS_REG + 1, RegId::ZERO, 0),
+        op::srw(0x30, SET_STATUS_REG + 2, RegId::ZERO, 0),
+        op::srw(0x30, SET_STATUS_REG + 3, RegId::ONE, 0),
         op::log(
             SET_STATUS_REG,
             SET_STATUS_REG + 1,
@@ -1374,7 +1376,7 @@ fn srwq_reads_status() {
         op::addi(0x31, RegId::HP, 0x5),
         op::sww(0x31, SET_STATUS_REG, RegId::ZERO),
         op::srwq(0x31, SET_STATUS_REG + 1, 0x31, RegId::ONE),
-        op::srw(0x31, SET_STATUS_REG + 2, 0x31),
+        op::srw(0x31, SET_STATUS_REG + 2, 0x31, 0),
         op::log(SET_STATUS_REG, SET_STATUS_REG + 1, SET_STATUS_REG + 2, 0x00),
         op::ret(RegId::ONE),
     ];
@@ -1408,9 +1410,9 @@ fn swwq_sets_status() {
     let program = vec![
         op::aloc(0x10),
         op::addi(0x31, RegId::HP, 0x5),
-        op::srw(0x31, SET_STATUS_REG, 0x31),
+        op::srw(0x31, SET_STATUS_REG, 0x31, 0),
         op::swwq(0x31, SET_STATUS_REG + 1, 0x31, RegId::ONE),
-        op::srw(0x31, SET_STATUS_REG + 2, 0x31),
+        op::srw(0x31, SET_STATUS_REG + 2, 0x31, 0),
         op::log(SET_STATUS_REG, SET_STATUS_REG + 1, SET_STATUS_REG + 2, 0x00),
         op::ret(RegId::ONE),
     ];
@@ -1474,10 +1476,11 @@ fn check_receipts_for_program_call(
     script_data.extend(val.to_be_bytes());
 
     // Assert the initial state of `key` is empty
-    let state = test_context
+    let slot = test_context
         .get_storage()
-        .contract_state(&contract_id, &key);
-    assert_eq!(ContractsStateData::default(), state.into_owned());
+        .contract_state(&contract_id, &key)
+        .unwrap();
+    assert!(slot.is_none(), "Expected empty initial state for key");
 
     let result = test_context
         .start_script(script, script_data)
@@ -1523,7 +1526,7 @@ fn state_r_word_b_plus_32_over() {
     let state_read_word = vec![
         op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 31 as Immediate12),
-        op::srw(reg_a, SET_STATUS_REG, reg_a),
+        op::srw(reg_a, SET_STATUS_REG, reg_a, 0),
     ];
 
     check_expected_reason_for_instructions(state_read_word, MemoryOverflow);
@@ -1538,7 +1541,7 @@ fn state_r_word_b_over_max_ram() {
     let state_read_word = vec![
         op::slli(reg_a, RegId::ONE, MAX_MEM_SHL),
         op::subi(reg_a, reg_a, 31 as Immediate12),
-        op::srw(reg_a, SET_STATUS_REG, reg_a),
+        op::srw(reg_a, SET_STATUS_REG, reg_a, 0),
     ];
 
     check_expected_reason_for_instructions(state_read_word, MemoryOverflow);

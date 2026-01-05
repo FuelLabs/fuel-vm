@@ -62,7 +62,7 @@ pub trait Memory: AsRef<MemoryInstance> + AsMut<MemoryInstance> {}
 
 impl<M> Memory for M where M: AsRef<MemoryInstance> + AsMut<MemoryInstance> {}
 
-/// The memory of the VM, represented as stack and heap.
+/// The memory of the VM, represented as stack, heap, and storage preload area.
 #[derive(Clone, Eq)]
 pub struct MemoryInstance {
     /// Stack. Grows upwards.
@@ -72,6 +72,8 @@ pub struct MemoryInstance {
     /// Lowest allowed heap address, i.e. hp register value.
     /// This is needed since we can allocate extra heap for performance reasons.
     hp: usize,
+    /// Storage preload area.
+    storage_preload: Vec<u8>,
 }
 
 impl Default for MemoryInstance {
@@ -121,6 +123,7 @@ impl MemoryInstance {
             stack: Vec::new(),
             heap: Vec::new(),
             hp: MEM_SIZE,
+            storage_preload: Vec::new(),
         }
     }
 
@@ -128,6 +131,7 @@ impl MemoryInstance {
     pub fn reset(&mut self) {
         self.stack.truncate(0);
         self.hp = MEM_SIZE;
+        self.storage_preload.truncate(0);
     }
 
     /// Offset of the heap section
@@ -408,6 +412,16 @@ impl MemoryInstance {
         }
 
         Ok(())
+    }
+
+    /// Storage preload/staging area access.
+    pub fn storage_preload(&self) -> &[u8] {
+        &self.storage_preload
+    }
+
+    /// Mutable storage preload/staging area access.
+    pub fn storage_preload_mut(&mut self) -> &mut Vec<u8> {
+        &mut self.storage_preload
     }
 
     /// Memory access to the raw stack buffer.

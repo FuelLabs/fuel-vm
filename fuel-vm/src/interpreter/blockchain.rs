@@ -327,6 +327,7 @@ where
         ra: RegId,
         rb: RegId,
         c: Word,
+        offset: Imm06,
     ) -> IoResult<(), S::DataError> {
         let (SystemRegisters { fp, pc, .. }, mut w) =
             split_registers(&mut self.registers);
@@ -348,6 +349,7 @@ where
                 context,
                 fp: fp.as_ref(),
                 pc,
+                offset,
             },
             result,
             got_result,
@@ -1075,6 +1077,7 @@ pub(crate) struct StateReadWordCtx<'vm, S> {
     pub context: &'vm Context,
     pub fp: Reg<'vm, FP>,
     pub pc: RegMut<'vm, PC>,
+    pub offset: Imm06,
 }
 
 pub(crate) fn state_read_word<S: InterpreterStorage>(
@@ -1084,7 +1087,7 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
         context,
         fp,
         pc,
-        ..
+        offset,
     }: StateReadWordCtx<S>,
     result: &mut Word,
     got_result: &mut Word,
@@ -1093,16 +1096,23 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
     let key = Bytes32::new(memory.read_bytes(c)?);
     let contract = internal_contract(context, fp, memory)?;
 
-    let value = storage
+    let value: Option<Word> = storage
         .contract_state(&contract, &key)
         .map_err(RuntimeError::Storage)?
         .map(|bytes| {
-            Word::from_be_bytes(
-                bytes.as_ref().as_ref()[..8]
-                    .try_into()
-                    .expect("8 bytes can be converted to a Word"),
-            )
-        });
+            let offset = offset.to_u8() as usize;
+            let offset_bytes = offset.saturating_mul(WORD_SIZE);
+            let end_bytes = offset_bytes.saturating_add(WORD_SIZE);
+
+            let data = bytes.as_ref().as_ref();
+            if (data.len() as u64) < (end_bytes as u64) {
+                return Err(PanicReason::StorageOutOfBounds);
+            }
+
+            let mut buf = [0u8; WORD_SIZE];
+            buf.copy_from_slice(&data[offset_bytes as usize..end_bytes as usize]);
+            Ok(Word::from_be_bytes(buf))
+        }).transpose()?;
 
     *result = value.unwrap_or(0);
     *got_result = value.is_some() as Word;
@@ -1291,7 +1301,7 @@ fn state_read_qword<S: InterpreterStorage>(
             Some(bytes) => bytes.into_owned(),
             None => {
                 all_set = false;
-                ContractsStateData::default()
+                vec![0; 32].into()
             }
         })
         .collect();

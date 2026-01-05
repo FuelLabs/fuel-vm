@@ -74,6 +74,7 @@ mod receipts;
 
 mod debug;
 mod ecal;
+mod storage;
 
 pub use balances::RuntimeBalances;
 pub use ecal::EcalHandler;

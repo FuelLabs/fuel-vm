@@ -8,7 +8,6 @@ use fuel_types::{
 };
 
 use alloc::{
-    vec,
     vec::Vec,
 };
 use educe::Educe;
@@ -50,13 +49,6 @@ double_key!(
 #[educe(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ContractsStateData(pub Bytes);
-
-// TODO: Remove fixed size default when adding support for dynamic storage
-impl Default for ContractsStateData {
-    fn default() -> Self {
-        Self(vec![0u8; 32].into())
-    }
-}
 
 impl From<Vec<u8>> for ContractsStateData {
     fn from(c: Vec<u8>) -> Self {

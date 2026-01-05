@@ -135,7 +135,7 @@ where
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        match self {
+        match dbg!(self) {
             Instruction::ADD(op) => op.execute(interpreter),
             Instruction::AND(op) => op.execute(interpreter),
             Instruction::DIV(op) => op.execute(interpreter),
@@ -255,6 +255,15 @@ where
             Instruction::BLDD(op) => op.execute(interpreter),
             Instruction::ECOP(op) => op.execute(interpreter),
             Instruction::EPAR(op) => op.execute(interpreter),
+            Instruction::SCLR(op) => op.execute(interpreter),
+            Instruction::SRDD(op) => op.execute(interpreter),
+            Instruction::SRDI(op) => op.execute(interpreter),
+            Instruction::SWRD(op) => op.execute(interpreter),
+            Instruction::SWRI(op) => op.execute(interpreter),
+            Instruction::SUPD(op) => op.execute(interpreter),
+            Instruction::SUPI(op) => op.execute(interpreter),
+            Instruction::SPLD(op) => op.execute(interpreter),
+            Instruction::SPCP(op) => op.execute(interpreter),
         }
     }
 }

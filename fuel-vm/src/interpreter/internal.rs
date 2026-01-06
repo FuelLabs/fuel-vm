@@ -137,6 +137,25 @@ where
             .block_height()
             .ok_or(PanicReason::TransactionValidity)
     }
+
+    /// A standard method to write to user registers, enforcing the rules around
+    /// which registers are writable. Writes to the zero register are ignored.
+    pub(crate) fn write_user_register(
+        &mut self,
+        reg: RegId,
+        val: Word,
+    ) -> SimpleResult<()> {
+        if reg == RegId::ZERO {
+            return Ok(());
+        }
+
+        if reg < RegId::WRITABLE {
+            return Err(PanicReason::ReservedRegisterNotWritable.into());
+        }
+
+        self.registers[reg] = val;
+        Ok(())
+    }
 }
 
 pub(crate) fn clear_err(mut err: RegMut<ERR>) {

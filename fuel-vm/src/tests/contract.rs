@@ -219,7 +219,6 @@ fn mint_and_transfer_out() {
     panic!("Missing TransferOut receipt");
 }
 
-
 #[test]
 fn storage_sizing() {
     let mut test_context = TestBuilder::new(2322u64);
@@ -282,5 +281,5 @@ fn storage_sizing() {
         return;
     }
 
-    panic!("Missing LogData receipt");    
+    panic!("Missing LogData receipt");
 }

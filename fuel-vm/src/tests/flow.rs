@@ -464,7 +464,8 @@ fn revert() {
     let state = test_context
         .get_storage()
         .contract_state(&contract_id, &key)
-        .unwrap().expect("missing slot");
+        .unwrap()
+        .expect("missing slot");
 
     // Assert the state of `key` is mutated to `val`
     assert_eq!(
@@ -505,7 +506,8 @@ fn revert() {
     let state = test_context
         .get_storage()
         .contract_state(&contract_id, &key)
-        .unwrap().expect("missing slot");
+        .unwrap()
+        .expect("missing slot");
 
     assert_eq!(
         &val.to_be_bytes()[..],

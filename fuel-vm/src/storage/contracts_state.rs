@@ -7,9 +7,7 @@ use fuel_types::{
     ContractId,
 };
 
-use alloc::{
-    vec::Vec,
-};
+use alloc::vec::Vec;
 use educe::Educe;
 
 use fuel_types::bytes::Bytes;

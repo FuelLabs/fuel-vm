@@ -1,17 +1,32 @@
-use fuel_tx::{Bytes32, PanicReason};
+use fuel_asm::RegId;
+use fuel_tx::{
+    Bytes32,
+    PanicReason,
+};
 
-use crate::{convert, error::RuntimeError, prelude::{Interpreter, Memory}, storage::InterpreterStorage};
+use crate::{
+    convert,
+    error::RuntimeError,
+    prelude::{
+        Interpreter,
+        Memory,
+    },
+    storage::InterpreterStorage,
+};
 
 impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     S: InterpreterStorage,
 {
-
-    /// Returns `Ok(true)` if the storage slot identified by `key` was found, and `Ok(false)` otherwise.
-    /// Errors if the read goes out of bounds of the stored value.
-    pub(crate) fn storage_read_to_memory(&mut self, key: Bytes32, dst_ptr: u64, offset: u64, len: u64) -> Result<bool, RuntimeError<S::DataError>>
-    {
+    /// Returns length of the value, or 0 if the slot is not found.
+    pub(crate) fn storage_read_to_memory(
+        &mut self,
+        key: Bytes32,
+        dst_ptr: u64,
+        offset: u64,
+        len: u64,
+    ) -> Result<u64, RuntimeError<S::DataError>> {
         let offset = convert::to_usize(offset).ok_or(PanicReason::MemoryOverflow)?;
 
         let len = convert::to_usize(len).ok_or(PanicReason::MemoryOverflow)?;
@@ -20,13 +35,14 @@ where
         let owner = self.ownership_registers();
 
         let dst = self.memory.as_mut().write(owner, dst_ptr, len)?;
-        let value = self.storage.contract_state(
-            &contract_id,
-            &key
-        ).map_err(RuntimeError::Storage)?;
+        let value = self
+            .storage
+            .contract_state(&contract_id, &key)
+            .map_err(RuntimeError::Storage)?;
 
         let Some(value) = value else {
-            return Ok(false);
+            self.registers[RegId::ERR] = 1;
+            return Ok(0);
         };
 
         let value = value.as_ref().as_ref();
@@ -39,24 +55,85 @@ where
 
         dst.copy_from_slice(&value[offset..end]);
 
-        Ok(true)
+        self.registers[RegId::ERR] = 0;
+        Ok(value.len() as u64)
     }
 
-    /// Preloads the storage slot identified by `key` into a special memory area, returning its size.
-    /// Returns `Ok(None)` if the slot is not found.
-    pub(crate) fn storage_preload(&mut self, key: Bytes32) -> Result<Option<u64>, RuntimeError<S::DataError>> {
+    pub(crate) fn storage_write_from_memory(
+        &mut self,
+        key: Bytes32,
+        src_ptr: u64,
+        len: u64,
+    ) -> Result<(), RuntimeError<S::DataError>> {
+        let len = convert::to_usize(len).ok_or(PanicReason::MemoryOverflow)?;
         let contract_id = self.internal_contract()?;
-        let value = self.storage.contract_state(
-            &contract_id,
-            &key
-        ).map_err(RuntimeError::Storage)?;
+        let src = self.memory.as_mut().read(src_ptr, len)?;
+        self.storage
+            .contract_state_insert(&contract_id, &key, src)
+            .map_err(RuntimeError::Storage)
+    }
+
+    /// Storage read, subslice update and write back.
+    /// Returns the resulting slot length.
+    pub(crate) fn storage_update_from_memory(
+        &mut self,
+        key: Bytes32,
+        src_ptr: u64,
+        offset: u64,
+        len: u64,
+    ) -> Result<u64, RuntimeError<S::DataError>> {
+        let contract_id = self.internal_contract()?;
+        let mut value = self
+            .storage
+            .contract_state(&contract_id, &key)
+            .map_err(RuntimeError::Storage)?
+            .map(|v| v.as_ref().as_ref().to_vec())
+            .unwrap_or_default();
+
+        let offset = if offset == u64::MAX {
+            value.len()
+        } else {
+            convert::to_usize(offset).ok_or(PanicReason::MemoryOverflow)?
+        };
+
+        let len = convert::to_usize(len).ok_or(PanicReason::MemoryOverflow)?;
+        let end = offset.saturating_add(len);
+        if offset > value.len() {
+            return Err(RuntimeError::Recoverable(PanicReason::StorageOutOfBounds));
+        }
+
+        if end > value.len() {
+            value.resize(end, 0);
+        }
+
+        value[offset..end].copy_from_slice(&self.memory.as_mut().read(src_ptr, len)?);
+
+        self.storage
+            .contract_state_insert(&contract_id, &key, &value)
+            .map_err(RuntimeError::Storage)?;
+        Ok(end as u64)
+    }
+
+    /// Preloads the storage slot identified by `key` into a special memory area,
+    /// returning its size. Returns length of the slot, or 0 if the slot is not found.
+    pub(crate) fn storage_preload(
+        &mut self,
+        key: Bytes32,
+    ) -> Result<u64, RuntimeError<S::DataError>> {
+        let contract_id = self.internal_contract()?;
+        let value = self
+            .storage
+            .contract_state(&contract_id, &key)
+            .map_err(RuntimeError::Storage)?;
 
         let Some(value) = value else {
-            return Ok(None);
+            self.registers[RegId::ERR] = 1;
+            return Ok(0);
         };
 
         let dst = self.memory.as_mut().storage_preload_mut();
         *dst = value.as_ref().as_ref().to_vec();
-        Ok(Some(dst.len() as u64))
+        self.registers[RegId::ERR] = 0;
+        return Ok(dst.len() as u64);
     }
 }

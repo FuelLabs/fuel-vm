@@ -373,11 +373,11 @@ impl_instructions! {
     "Write to a storage slot (full overwrite) (register length)"
     0xc3 SWRD swrd [key_ptr: RegId value_ptr: RegId len: RegId]
     "Write to a storage slot (full overwrite) (immedidate length)"
-    0xc4 SWRI swri [key_ptr: RegId value_ptr: RegId len: Imm12] 
+    0xc4 SWRI swri [key_ptr: RegId value_ptr: RegId len: Imm12]
     "Update a storage slot (read+write) (register length)"
     0xc5 SUPD supd [key_ptr: RegId value_ptr: RegId offset: RegId len: RegId]
     "Update a storage slot (read+write) (immedidate length)"
-    0xc6 SUPI supi [key_ptr: RegId value_ptr: RegId offset: RegId len: Imm06] 
+    0xc6 SUPI supi [key_ptr: RegId value_ptr: RegId offset: RegId len: Imm06]
     "Storage preload"
     0xc7 SPLD spld [dst: RegId status: RegId]
     "Copy from preloaded storage slot"

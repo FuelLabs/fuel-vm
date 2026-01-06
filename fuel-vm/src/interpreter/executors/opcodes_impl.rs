@@ -1,6 +1,13 @@
 use crate::{
-    constraints::reg_key::ProgramRegistersSegment,
-    error::{IoResult, RuntimeError},
+    constraints::reg_key::{
+        ProgramRegistersSegment,
+        SystemRegisters,
+        split_registers,
+    },
+    error::{
+        IoResult,
+        RuntimeError,
+    },
     interpreter::{
         EcalHandler,
         ExecutableTransaction,
@@ -15,6 +22,7 @@ use crate::{
             JumpArgs,
             JumpMode,
         },
+        internal::inc_pc,
     },
     prelude::InterpreterStorage,
     state::ExecuteState,
@@ -32,7 +40,6 @@ use fuel_asm::{
     },
     wideint,
 };
-use fuel_storage::StorageAsMut;
 use fuel_tx::Bytes32;
 use fuel_types::Word;
 
@@ -2701,23 +2708,21 @@ where
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b) = self.unpack();
-
         interpreter.dependent_gas_charge(
             interpreter.gas_costs().sclr().map_err(PanicReason::from)?,
             interpreter.registers[b],
         )?;
-
-        let start_key = Bytes32::from(interpreter.memory().read_bytes(interpreter.registers[a])?);
-        let num_slots = crate::convert::to_usize(interpreter.registers[b]).ok_or(PanicReason::TooManySlots)?;
-
+        let start_key =
+            Bytes32::from(interpreter.memory().read_bytes(interpreter.registers[a])?);
+        let num_slots = crate::convert::to_usize(interpreter.registers[b])
+            .ok_or(PanicReason::TooManySlots)?;
         let contract_id = interpreter.internal_contract()?;
-
-        interpreter.storage.contract_state_remove_range_nostatus(
-            &contract_id,
-            &start_key,
-            num_slots,
-        ).map_err(|e| RuntimeError::Storage(e))?;
-
+        interpreter
+            .storage
+            .contract_state_remove_range_nostatus(&contract_id, &start_key, num_slots)
+            .map_err(|e| RuntimeError::Storage(e))?;
+        let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
+        inc_pc(pc)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2735,15 +2740,20 @@ where
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c, d) = self.unpack();
-
-        let key = Bytes32::from(interpreter.memory().read_bytes(interpreter.registers[b])?);
-        
-        interpreter.storage_read_to_memory(
+        let key =
+            Bytes32::from(interpreter.memory().read_bytes(interpreter.registers[b])?);
+        let len = interpreter.storage_read_to_memory(
+            key,
             interpreter.registers[a],
-            &key,
             interpreter.registers[c],
             interpreter.registers[d],
         )?;
+        interpreter.dependent_gas_charge(
+            interpreter.gas_costs().srdd().map_err(PanicReason::from)?,
+            len,
+        )?;
+        let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
+        inc_pc(pc)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2761,7 +2771,21 @@ where
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c, d) = self.unpack();
-        todo!();
+        let key =
+            Bytes32::from(interpreter.memory().read_bytes(interpreter.registers[b])?);
+        let len = interpreter.storage_read_to_memory(
+            key,
+            interpreter.registers[a],
+            interpreter.registers[c],
+            d.to_u8().into(),
+        )?;
+        interpreter.dependent_gas_charge(
+            interpreter.gas_costs().srdd().map_err(PanicReason::from)?,
+            len,
+        )?;
+        let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
+        inc_pc(pc)?;
+        Ok(ExecuteState::Proceed)
     }
 }
 
@@ -2778,7 +2802,17 @@ where
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c) = self.unpack();
-        todo!();
+        let key =
+            Bytes32::from(interpreter.memory().read_bytes(interpreter.registers[a])?);
+        let len = interpreter.registers[c];
+        interpreter.dependent_gas_charge(
+            interpreter.gas_costs().swrd().map_err(PanicReason::from)?,
+            len,
+        )?;
+        interpreter.storage_write_from_memory(key, interpreter.registers[b], len)?;
+        let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
+        inc_pc(pc)?;
+        Ok(ExecuteState::Proceed)
     }
 }
 
@@ -2795,7 +2829,17 @@ where
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c) = self.unpack();
-        todo!();
+        let key =
+            Bytes32::from(interpreter.memory().read_bytes(interpreter.registers[a])?);
+        let len: u64 = c.to_u16().into();
+        interpreter.dependent_gas_charge(
+            interpreter.gas_costs().swrd().map_err(PanicReason::from)?,
+            len,
+        )?;
+        interpreter.storage_write_from_memory(key, interpreter.registers[b], len)?;
+        let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
+        inc_pc(pc)?;
+        Ok(ExecuteState::Proceed)
     }
 }
 
@@ -2812,7 +2856,21 @@ where
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c, d) = self.unpack();
-        todo!();
+        let key =
+            Bytes32::from(interpreter.memory().read_bytes(interpreter.registers[a])?);
+        let len = interpreter.storage_update_from_memory(
+            key,
+            interpreter.registers[b],
+            interpreter.registers[c],
+            interpreter.registers[d],
+        )?;
+        interpreter.dependent_gas_charge(
+            interpreter.gas_costs().supd().map_err(PanicReason::from)?,
+            len,
+        )?;
+        let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
+        inc_pc(pc)?;
+        Ok(ExecuteState::Proceed)
     }
 }
 
@@ -2829,7 +2887,21 @@ where
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c, d) = self.unpack();
-        todo!();
+        let key =
+            Bytes32::from(interpreter.memory().read_bytes(interpreter.registers[a])?);
+        let len = interpreter.storage_update_from_memory(
+            key,
+            interpreter.registers[b],
+            interpreter.registers[c],
+            d.to_u8().into(),
+        )?;
+        interpreter.dependent_gas_charge(
+            interpreter.gas_costs().supd().map_err(PanicReason::from)?,
+            len,
+        )?;
+        let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
+        inc_pc(pc)?;
+        Ok(ExecuteState::Proceed)
     }
 }
 
@@ -2846,7 +2918,17 @@ where
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b) = self.unpack();
-        todo!();
+        let key =
+            Bytes32::from(interpreter.memory().read_bytes(interpreter.registers[b])?);
+        let len = interpreter.storage_preload(key)?;
+        interpreter.write_user_register(a, len)?;
+        interpreter.dependent_gas_charge(
+            interpreter.gas_costs().spld().map_err(PanicReason::from)?,
+            len,
+        )?;
+        let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
+        inc_pc(pc)?;
+        Ok(ExecuteState::Proceed)
     }
 }
 
@@ -2863,7 +2945,19 @@ where
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c, d) = self.unpack();
-        todo!();
+        let ptr = interpreter.registers[a];
+        let offset = interpreter.registers[b];
+        let len = interpreter.registers[c].saturating_add(d.to_u8() as u64);
+        interpreter.dependent_gas_charge(
+            interpreter.gas_costs().spcp().map_err(PanicReason::from)?,
+            len,
+        )?;
+        let owner = interpreter.ownership_registers();
+        interpreter
+            .memory_mut()
+            .memcopy_from_preload(ptr, offset, len, owner)?;
+        let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
+        inc_pc(pc)?;
+        Ok(ExecuteState::Proceed)
     }
 }
-

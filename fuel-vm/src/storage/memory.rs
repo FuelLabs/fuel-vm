@@ -826,7 +826,7 @@ mod tests {
         for k in store {
             mem.memory.contract_state.insert(
                 (&ContractId::default(), &(**k).into()).into(),
-                [0; 32].to_vec().into()
+                [0; 32].to_vec().into(),
             );
         }
         mem.contract_state_range(&ContractId::default(), &(*start).into(), range)

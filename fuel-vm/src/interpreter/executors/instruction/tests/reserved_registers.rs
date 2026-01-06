@@ -268,7 +268,7 @@ fn writes_to_ra(opcode: Opcode) -> bool {
         Opcode::SUPI => false,
         Opcode::SPLD => true,
         Opcode::SPCP => false,
-            }
+    }
 }
 
 // determines whether a given opcode stores a value into $rB
@@ -402,5 +402,5 @@ fn writes_to_rb(opcode: Opcode) -> bool {
         Opcode::SUPI => false,
         Opcode::SPLD => false,
         Opcode::SPCP => false,
-            }
+    }
 }

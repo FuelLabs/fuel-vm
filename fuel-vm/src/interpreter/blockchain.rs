@@ -41,7 +41,6 @@ use crate::{
         BlobData,
         ContractsAssetsStorage,
         ContractsRawCode,
-        ContractsStateData,
         InterpreterStorage,
     },
     verification::Verifier,
@@ -1112,7 +1111,8 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
             let mut buf = [0u8; WORD_SIZE];
             buf.copy_from_slice(&data[offset_bytes as usize..end_bytes as usize]);
             Ok(Word::from_be_bytes(buf))
-        }).transpose()?;
+        })
+        .transpose()?;
 
     *result = value.unwrap_or(0);
     *got_result = value.is_some() as Word;

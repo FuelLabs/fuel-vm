@@ -7,6 +7,7 @@ use super::{
 use crate::{
     constraints::reg_key::*,
     consts::*,
+    convert,
     error::SimpleResult,
 };
 
@@ -340,6 +341,41 @@ impl MemoryInstance {
         data: [u8; C],
     ) -> Result<(), PanicReason> {
         self.write(owner, addr, data.len())?.copy_from_slice(&data);
+        Ok(())
+    }
+
+    /// Copies from preload area to main memory, verifying ownership.
+    #[inline]
+    pub fn memcopy_from_preload(
+        &mut self,
+        dst: Word,
+        offset: Word,
+        length: Word,
+        owner: OwnershipRegisters,
+    ) -> Result<(), PanicReason> {
+        let dst_range = self.verify(dst, length)?;
+        owner.verify_ownership(&dst_range)?;
+
+        let offset = convert::to_usize(offset).ok_or(PanicReason::MemoryOverflow)?;
+        let length = convert::to_usize(length).ok_or(PanicReason::MemoryOverflow)?;
+
+        let end = offset.saturating_add(length);
+        if end >= self.storage_preload.len() {
+            return Err(PanicReason::StorageOutOfBounds);
+        }
+
+        let dst = if dst_range.end() <= self.stack.len() {
+            &mut self.stack[dst_range.usizes()]
+        } else if dst_range.start() >= self.heap_offset() {
+            let start = dst_range.start() - self.heap_offset();
+            let end = dst_range.end() - self.heap_offset();
+            &mut self.heap[start..end]
+        } else {
+            unreachable!("Range was verified to be valid")
+        };
+
+        dst.copy_from_slice(&self.storage_preload[offset..end]);
+
         Ok(())
     }
 

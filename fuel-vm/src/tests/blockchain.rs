@@ -231,7 +231,8 @@ fn state_read_write() {
     // Assert the initial state of `key` is empty
     let state = test_context
         .get_storage()
-        .contract_state(&contract_id, &key).unwrap();
+        .contract_state(&contract_id, &key)
+        .unwrap();
     assert!(state.is_none(), "Expected empty initial state for key");
 
     let result = test_context
@@ -246,7 +247,8 @@ fn state_read_write() {
     let state = test_context
         .get_storage()
         .contract_state(&contract_id, &key)
-        .unwrap().expect("Missing slot");
+        .unwrap()
+        .expect("Missing slot");
 
     // Assert the state of `key` is mutated to `val`
     assert_eq!(
@@ -319,7 +321,8 @@ fn state_read_write() {
     let state = test_context
         .get_storage()
         .contract_state(&contract_id, &key)
-        .unwrap().expect("Missing slot");
+        .unwrap()
+        .expect("Missing slot");
     assert_eq!(data, state.into_owned());
 }
 

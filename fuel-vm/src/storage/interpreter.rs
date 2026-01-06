@@ -257,7 +257,8 @@ pub trait InterpreterStorage:
         range: usize,
     ) -> Result<(), Self::DataError> {
         // Default impl that just calls the possibly less efficient version
-        self.contract_state_remove_range(contract, start_key, range).map(|_| ())
+        self.contract_state_remove_range(contract, start_key, range)
+            .map(|_| ())
     }
 }
 

@@ -818,39 +818,66 @@ impl Default for TxParametersV1 {
 )]
 pub enum ScriptParameters {
     V1(ScriptParametersV1),
+    V2(ScriptParametersV2),
 }
 
 impl ScriptParameters {
     #[cfg(feature = "test-helpers")]
     /// Default parameters just for testing.
-    pub const DEFAULT: Self = Self::V1(ScriptParametersV1::DEFAULT);
+    pub const DEFAULT: Self = Self::V2(ScriptParametersV2::DEFAULT);
 
     /// Replace the max script length with the given argument
+    #[cfg(feature = "test-helpers")]
     pub const fn with_max_script_length(self, max_script_length: u64) -> Self {
         match self {
             Self::V1(mut params) => {
                 params.max_script_length = max_script_length;
                 Self::V1(params)
             }
+            Self::V2(mut params) => {
+                params.max_script_length = max_script_length;
+                Self::V2(params)
+            }
         }
     }
 
     /// Replace the max script data length with the given argument
+    #[cfg(feature = "test-helpers")]
     pub const fn with_max_script_data_length(self, max_script_data_length: u64) -> Self {
         match self {
             Self::V1(mut params) => {
                 params.max_script_data_length = max_script_data_length;
                 Self::V1(params)
             }
+            Self::V2(mut params) => {
+                params.max_script_data_length = max_script_data_length;
+                Self::V2(params)
+            }
         }
     }
-}
 
-impl ScriptParameters {
+    /// Replace the max
+    #[cfg(feature = "test-helpers")]
+    pub const fn with_max_storage_slot_length(
+        self,
+        max_storage_slot_length: u64,
+    ) -> Self {
+        match self {
+            Self::V1(_) => {
+                panic!("ScriptParametersV1 does not support max_storage_slot_length");
+            }
+            Self::V2(mut params) => {
+                params.max_storage_slot_length = max_storage_slot_length;
+                Self::V2(params)
+            }
+        }
+    }
+
     /// Get the maximum script length
     pub const fn max_script_length(&self) -> u64 {
         match self {
             Self::V1(params) => params.max_script_length,
+            Self::V2(params) => params.max_script_length,
         }
     }
 
@@ -858,13 +885,16 @@ impl ScriptParameters {
     pub const fn max_script_data_length(&self) -> u64 {
         match self {
             Self::V1(params) => params.max_script_data_length,
+            Self::V2(params) => params.max_script_data_length,
         }
     }
-}
 
-impl From<ScriptParametersV1> for ScriptParameters {
-    fn from(params: ScriptParametersV1) -> Self {
-        Self::V1(params)
+    /// Get the maximum script data length
+    pub const fn max_storage_slot_length(&self) -> u64 {
+        match self {
+            Self::V1(_) => 32, // Legacy slots are 32 bytes
+            Self::V2(params) => params.max_storage_slot_length,
+        }
     }
 }
 
@@ -885,6 +915,12 @@ pub struct ScriptParametersV1 {
     pub max_script_data_length: u64,
 }
 
+impl From<ScriptParametersV1> for ScriptParameters {
+    fn from(params: ScriptParametersV1) -> Self {
+        Self::V1(params)
+    }
+}
+
 #[cfg(feature = "test-helpers")]
 impl ScriptParametersV1 {
     /// Default parameters just for testing.
@@ -896,6 +932,41 @@ impl ScriptParametersV1 {
 
 #[cfg(feature = "test-helpers")]
 impl Default for ScriptParametersV1 {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
+pub struct ScriptParametersV2 {
+    /// Maximum length of script, in instructions.
+    pub max_script_length: u64,
+    /// Maximum length of script data, in bytes.
+    pub max_script_data_length: u64,
+    /// Maximum length of a storage slot value, in bytes.
+    pub max_storage_slot_length: u64,
+}
+
+impl From<ScriptParametersV2> for ScriptParameters {
+    fn from(params: ScriptParametersV2) -> Self {
+        Self::V2(params)
+    }
+}
+
+#[cfg(feature = "test-helpers")]
+impl ScriptParametersV2 {
+    /// Default parameters just for testing.
+    pub const DEFAULT: Self = Self {
+        max_script_length: 1024 * 1024,
+        max_script_data_length: 1024 * 1024,
+        max_storage_slot_length: 1024 * 1024,
+    };
+}
+
+#[cfg(feature = "test-helpers")]
+impl Default for ScriptParametersV2 {
     fn default() -> Self {
         Self::DEFAULT
     }

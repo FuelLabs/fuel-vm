@@ -19,6 +19,17 @@ where
     M: Memory,
     S: InterpreterStorage,
 {
+    pub(crate) fn verify_storage_size(
+        &self,
+        size: usize,
+    ) -> Result<(), RuntimeError<S::DataError>> {
+        let max_size = self.interpreter_params.max_storage_slot_length;
+        if (size as u64) > max_size {
+            return Err(RuntimeError::Recoverable(PanicReason::StorageOutOfBounds));
+        }
+        Ok(())
+    }
+
     /// Returns length of the value, or 0 if the slot is not found.
     pub(crate) fn storage_read_to_memory(
         &mut self,
@@ -65,8 +76,9 @@ where
         src_ptr: u64,
         len: u64,
     ) -> Result<(), RuntimeError<S::DataError>> {
-        let len = convert::to_usize(len).ok_or(PanicReason::MemoryOverflow)?;
         let contract_id = self.internal_contract()?;
+        let len = convert::to_usize(len).ok_or(PanicReason::MemoryOverflow)?;
+        self.verify_storage_size(len)?;
         let src = self.memory.as_mut().read(src_ptr, len)?;
         self.storage
             .contract_state_insert(&contract_id, &key, src)
@@ -105,6 +117,8 @@ where
         if end > value.len() {
             value.resize(end, 0);
         }
+
+        self.verify_storage_size(end)?;
 
         value[offset..end].copy_from_slice(&self.memory.as_mut().read(src_ptr, len)?);
 

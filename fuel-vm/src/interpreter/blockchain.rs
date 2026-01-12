@@ -47,6 +47,7 @@ use crate::{
 };
 use alloc::{
     collections::BTreeSet,
+    vec,
     vec::Vec,
 };
 use fuel_asm::{

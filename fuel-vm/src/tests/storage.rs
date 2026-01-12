@@ -1,5 +1,7 @@
-use core::panic;
-use std::array;
+use core::{
+    array,
+    panic,
+};
 
 use crate::{
     consts::VM_MAX_RAM,
@@ -150,6 +152,24 @@ fn srw_offset_works() {
     }
 }
 
+enum MemoryOverflowCase {
+    /// Offset is exactly one byte past the end of memory.
+    OffByOne,
+    /// Offset is completely outside of memory.
+    Outside,
+    /// Offset calculation overflows.
+    Overflow,
+}
+
+enum StorageOverflowCase {
+    /// length alone (with offset zero) exceeds slot limit
+    Length,
+    /// offset alone (with length zero) exceeds slot limit
+    Offset,
+    /// offset + length exceeds slot limit
+    OffsetPlusLength,
+}
+
 #[rstest::rstest]
 fn storage_op_storage_key_read_past_boudnds_panics(
     #[values(
@@ -163,7 +183,12 @@ fn storage_op_storage_key_read_past_boudnds_panics(
         op::spld(0x11, 0x10)
     )]
     instr: Instruction,
-    #[values("offbyone", "outside", "overflow")] case: &str,
+    #[values(
+        MemoryOverflowCase::OffByOne,
+        MemoryOverflowCase::Outside,
+        MemoryOverflowCase::Overflow
+    )]
+    case: MemoryOverflowCase,
 ) {
     let mut program = vec![
         // Allocate slot key (all zeroes)
@@ -172,10 +197,9 @@ fn storage_op_storage_key_read_past_boudnds_panics(
     ];
     // Set up the case
     program.push(match case {
-        "offbyone" => op::addi(0x10, RegId::HP, 1),
-        "outside" => op::addi(0x10, RegId::HP, 32),
-        "overflow" => op::not(0x10, RegId::ZERO),
-        _ => unreachable!(),
+        MemoryOverflowCase::OffByOne => op::addi(0x10, RegId::HP, 1),
+        MemoryOverflowCase::Outside => op::addi(0x10, RegId::HP, 32),
+        MemoryOverflowCase::Overflow => op::not(0x10, RegId::ZERO),
     });
     // Perform the storage operation
     program.push(instr);
@@ -367,14 +391,18 @@ fn srdd_srdi_reading_nonexistent_slot_sets_err(
 
 #[rstest::rstest]
 fn srdd_srdi_read_past_the_end_panics(
-    #[values("len", "offset", "len+offset")] case: &str,
+    #[values(
+        StorageOverflowCase::Length,
+        StorageOverflowCase::Offset,
+        StorageOverflowCase::OffsetPlusLength
+    )]
+    case: StorageOverflowCase,
     #[values(true, false)] imm: bool, // use immediate instruction variant
 ) {
     let (len, offset): (u16, u16) = match case {
-        "len" => (257, 0),
-        "offset" => (0, 257),
-        "len+offset" => (128, 129),
-        _ => unreachable!(),
+        StorageOverflowCase::Length => (257, 0),
+        StorageOverflowCase::Offset => (0, 257),
+        StorageOverflowCase::OffsetPlusLength => (128, 129),
     };
 
     const SLOT_KEY: RegId = RegId::new(0x38);
@@ -416,7 +444,12 @@ fn srdd_srdi_read_past_the_end_panics(
 
 #[rstest::rstest]
 fn srdd_srdi_dst_buffer_outside_memory_panics(
-    #[values("offbyone", "outside", "overflow")] case: &str,
+    #[values(
+        MemoryOverflowCase::OffByOne,
+        MemoryOverflowCase::Outside,
+        MemoryOverflowCase::Overflow
+    )]
+    case: MemoryOverflowCase,
     #[values(true, false)] imm: bool, // use immediate instruction variant
 ) {
     const SLOT_KEY: RegId = RegId::new(0x38);
@@ -435,10 +468,9 @@ fn srdd_srdi_dst_buffer_outside_memory_panics(
     ]);
     program.extend(set_full_word(0x11, VM_MAX_RAM));
     program.push(match case {
-        "offbyone" => op::addi(0x10, 0x11, 0),
-        "outside" => op::addi(0x10, 0x11, 1),
-        "overflow" => op::not(0x10, RegId::ZERO),
-        _ => unreachable!(),
+        MemoryOverflowCase::OffByOne => op::addi(0x10, 0x11, 0),
+        MemoryOverflowCase::Outside => op::addi(0x10, 0x11, 1),
+        MemoryOverflowCase::Overflow => op::not(0x10, RegId::ZERO),
     });
 
     program.push(if imm {
@@ -503,7 +535,12 @@ fn swrd_swri_writes_storage_slot(
 
 #[rstest::rstest]
 fn swrd_swri_src_buffer_outside_memory_panics(
-    #[values("offbyone", "outside", "overflow")] case: &str,
+    #[values(
+        MemoryOverflowCase::OffByOne,
+        MemoryOverflowCase::Outside,
+        MemoryOverflowCase::Overflow
+    )]
+    case: MemoryOverflowCase,
     #[values(true, false)] imm: bool, // use immediate instruction variant
 ) {
     const SLOT_KEY: RegId = RegId::new(0x38);
@@ -515,10 +552,9 @@ fn swrd_swri_src_buffer_outside_memory_panics(
     ];
     program.extend(set_full_word(0x11, VM_MAX_RAM));
     program.push(match case {
-        "offbyone" => op::addi(0x10, 0x11, 0),
-        "outside" => op::addi(0x10, 0x11, 1),
-        "overflow" => op::not(0x10, RegId::ZERO),
-        _ => unreachable!(),
+        MemoryOverflowCase::OffByOne => op::addi(0x10, 0x11, 0),
+        MemoryOverflowCase::Outside => op::addi(0x10, 0x11, 1),
+        MemoryOverflowCase::Overflow => op::not(0x10, RegId::ZERO),
     });
 
     program.push(if imm {
@@ -850,7 +886,12 @@ fn supd_supi_offset_past_existing_value_panics(
 
 #[rstest::rstest]
 fn supd_supi_src_buffer_outside_memory_panics(
-    #[values("offbyone", "outside", "overflow")] case: &str,
+    #[values(
+        MemoryOverflowCase::OffByOne,
+        MemoryOverflowCase::Outside,
+        MemoryOverflowCase::Overflow
+    )]
+    case: MemoryOverflowCase,
     #[values(true, false)] imm: bool, // use immediate instruction variant
 ) {
     const SLOT_KEY: RegId = RegId::new(0x38);
@@ -862,10 +903,9 @@ fn supd_supi_src_buffer_outside_memory_panics(
     ];
     program.extend(set_full_word(0x11, VM_MAX_RAM));
     program.push(match case {
-        "offbyone" => op::addi(0x10, 0x11, 0),
-        "outside" => op::addi(0x10, 0x11, 1),
-        "overflow" => op::not(0x10, RegId::ZERO),
-        _ => unreachable!(),
+        MemoryOverflowCase::OffByOne => op::addi(0x10, 0x11, 0),
+        MemoryOverflowCase::Outside => op::addi(0x10, 0x11, 1),
+        MemoryOverflowCase::Overflow => op::not(0x10, RegId::ZERO),
     });
 
     program.push(if imm {
@@ -986,17 +1026,21 @@ fn spcp_copies_correct_subslice(
 
 #[rstest::rstest]
 fn spcp_panics_if_preloaded_data_range_is_invalid(
-    #[values("len", "offset", "len+offset")] case: &str,
+    #[values(
+        StorageOverflowCase::Length,
+        StorageOverflowCase::Offset,
+        StorageOverflowCase::OffsetPlusLength
+    )]
+    case: StorageOverflowCase,
 ) {
     const DISCARD: RegId = RegId::new(0x39);
     const SLOT_KEY: RegId = RegId::new(0x38);
     const BUFFER: RegId = RegId::new(0x37);
 
     let (offset, len): (u16, u16) = match case {
-        "len" => (0, 33),
-        "offset" => (33, 0),
-        "len+offset" => (16, 17),
-        _ => unreachable!(),
+        StorageOverflowCase::Length => (0, 33),
+        StorageOverflowCase::Offset => (33, 0),
+        StorageOverflowCase::OffsetPlusLength => (16, 17),
     };
 
     let receipts = call_contract_once(vec![
@@ -1018,7 +1062,12 @@ fn spcp_panics_if_preloaded_data_range_is_invalid(
 
 #[rstest::rstest]
 fn spcp_panics_if_dst_range_is_invalid(
-    #[values("offbyone", "outside", "overflow")] case: &str,
+    #[values(
+        MemoryOverflowCase::OffByOne,
+        MemoryOverflowCase::Outside,
+        MemoryOverflowCase::Overflow
+    )]
+    case: MemoryOverflowCase,
 ) {
     const DISCARD: RegId = RegId::new(0x39);
     const SLOT_KEY: RegId = RegId::new(0x38);
@@ -1026,10 +1075,9 @@ fn spcp_panics_if_dst_range_is_invalid(
 
     let mut program = set_full_word(0x20, VM_MAX_RAM);
     program.push(match case {
-        "offbyone" => op::addi(0x10, 0x20, 0),
-        "outside" => op::addi(0x10, 0x20, 1),
-        "overflow" => op::not(0x10, RegId::ZERO),
-        _ => unreachable!(),
+        MemoryOverflowCase::OffByOne => op::addi(0x10, 0x20, 0),
+        MemoryOverflowCase::Outside => op::addi(0x10, 0x20, 1),
+        MemoryOverflowCase::Overflow => op::not(0x10, RegId::ZERO),
     });
     program.extend([
         op::movi(0x15, 32),

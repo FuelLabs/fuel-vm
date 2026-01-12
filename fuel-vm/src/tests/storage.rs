@@ -881,3 +881,187 @@ fn supd_supi_src_buffer_outside_memory_panics(
     let receipts = call_contract_once(program);
     assert_panics(&receipts, PanicReason::MemoryOverflow);
 }
+
+#[rstest::rstest]
+fn spld_returns_correct_len(#[values(0, 1, 2, 3, 4, 5, 100)] len: u8) {
+    const SLOT_KEY: RegId = RegId::new(0x38);
+    const BUFFER: RegId = RegId::new(0x37);
+
+    let receipts = call_contract_once(vec![
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+        op::movi(0x15, len as _),
+        op::aloc(0x15),
+        op::move_(BUFFER, RegId::HP),
+        op::swri(SLOT_KEY, BUFFER, len as _),
+        op::spld(0x10, SLOT_KEY),
+        op::log(0x10, RegId::ERR, RegId::ZERO, RegId::ZERO),
+        op::ret(RegId::ONE),
+    ]);
+    assert_success(&receipts);
+
+    for r in receipts {
+        let Receipt::Log { ra, rb, .. } = r else {
+            continue;
+        };
+        assert_eq!(ra, len as u64, "Logged length should match slot length");
+        assert_eq!(rb, 0, "$err should clear when reading existing slot");
+        return;
+    }
+
+    panic!("Missing Log receipt");
+}
+
+#[test]
+fn spld_reports_nonexisting_slots_in_err() {
+    let receipts = call_contract_once(vec![
+        op::movi(0x10, 1234),      // dummy value to make sure it's overwritten
+        op::spld(0x10, RegId::FP), // nonexistent slot
+        op::log(0x10, RegId::ERR, RegId::ZERO, RegId::ZERO),
+        op::ret(RegId::ONE),
+    ]);
+    assert_success(&receipts);
+
+    for r in receipts {
+        let Receipt::Log { ra, rb, .. } = r else {
+            continue;
+        };
+        assert_eq!(ra, 0, "Logged length should be zero for nonexistent slot");
+        assert_eq!(rb, 1, "$err should set when reading nonexistent slot");
+        return;
+    }
+
+    panic!("Missing Log receipt");
+}
+
+#[rstest::rstest]
+fn spcp_copies_correct_subslice(
+    #[values(0, 1, 2, 63, 100)] offset: u8,
+    #[values(0, 1, 2, 63, 100)] len: u8,
+) {
+    const DISCARD: RegId = RegId::new(0x39);
+    const SLOT_KEY: RegId = RegId::new(0x38);
+    const BUFFER: RegId = RegId::new(0x37);
+
+    let mut program = vec![
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+    ];
+    program.extend(create_example_buffer());
+    program.extend([
+        op::move_(BUFFER, RegId::HP),
+        op::swri(SLOT_KEY, BUFFER, 256),
+        op::spld(DISCARD, SLOT_KEY),
+        op::mcli(RegId::HP, 256),
+        op::movi(0x10, offset as _),
+        op::movi(0x11, len as _),
+        op::spcp(BUFFER, 0x10, 0x11, 0),
+        op::movi(0x10, 256),
+        op::logd(RegId::ZERO, RegId::ZERO, BUFFER, 0x10),
+        op::ret(RegId::ONE),
+    ]);
+
+    let receipts = call_contract_once(program);
+    assert_success(&receipts);
+
+    let example_data: [u8; 256] = array::from_fn(|i| i as u8);
+    let mut expected = [0u8; 256];
+    expected[..(len as usize)].copy_from_slice(
+        &example_data[(offset as usize)..(offset as usize + len as usize)],
+    );
+
+    for r in receipts {
+        let Receipt::LogData { data, .. } = r else {
+            continue;
+        };
+        let data = data.as_ref().unwrap();
+        assert_eq!(**data, expected);
+        return;
+    }
+
+    panic!("Missing LogData receipt");
+}
+
+#[rstest::rstest]
+fn spcp_panics_if_preloaded_data_range_is_invalid(
+    #[values("len", "offset", "len+offset")] case: &str,
+) {
+    const DISCARD: RegId = RegId::new(0x39);
+    const SLOT_KEY: RegId = RegId::new(0x38);
+    const BUFFER: RegId = RegId::new(0x37);
+
+    let (offset, len): (u16, u16) = match case {
+        "len" => (0, 33),
+        "offset" => (33, 0),
+        "len+offset" => (16, 17),
+        _ => unreachable!(),
+    };
+
+    let receipts = call_contract_once(vec![
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+        op::movi(0x15, 64),
+        op::aloc(0x15),
+        op::move_(BUFFER, RegId::HP),
+        op::swri(SLOT_KEY, BUFFER, 32),
+        op::spld(DISCARD, SLOT_KEY),
+        op::movi(0x10, offset as _),
+        op::movi(0x11, len as _),
+        op::spcp(BUFFER, 0x10, 0x11, 0),
+        op::ret(RegId::ONE),
+    ]);
+    assert_panics(&receipts, PanicReason::StorageOutOfBounds);
+}
+
+#[rstest::rstest]
+fn spcp_panics_if_dst_range_is_invalid(
+    #[values("offbyone", "outside", "overflow")] case: &str,
+) {
+    const DISCARD: RegId = RegId::new(0x39);
+    const SLOT_KEY: RegId = RegId::new(0x38);
+    const BUFFER: RegId = RegId::new(0x37);
+
+    let mut program = set_full_word(0x20, VM_MAX_RAM);
+    program.push(match case {
+        "offbyone" => op::addi(0x10, 0x20, 0),
+        "outside" => op::addi(0x10, 0x20, 1),
+        "overflow" => op::not(0x10, RegId::ZERO),
+        _ => unreachable!(),
+    });
+    program.extend([
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+        op::move_(BUFFER, RegId::HP),
+        op::swri(SLOT_KEY, BUFFER, 32),
+        op::spld(DISCARD, SLOT_KEY),
+        op::spcp(0x10, RegId::ZERO, RegId::ONE, 0),
+        op::ret(RegId::ONE),
+    ]);
+
+    let receipts = call_contract_once(program);
+    assert_panics(&receipts, PanicReason::MemoryOverflow);
+}
+
+#[test]
+fn spcp_panics_if_length_field_sum_overflows() {
+    const DISCARD: RegId = RegId::new(0x39);
+    const SLOT_KEY: RegId = RegId::new(0x38);
+    const BUFFER: RegId = RegId::new(0x37);
+
+    let receipts = call_contract_once(vec![
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+        op::move_(BUFFER, RegId::HP),
+        op::swri(SLOT_KEY, BUFFER, 32),
+        op::spld(DISCARD, SLOT_KEY),
+        op::not(0x10, RegId::ZERO),
+        op::spcp(BUFFER, RegId::ZERO, 0x10, 1),
+        op::ret(RegId::ONE),
+    ]);
+    assert_panics(&receipts, PanicReason::MemoryOverflow);
+}

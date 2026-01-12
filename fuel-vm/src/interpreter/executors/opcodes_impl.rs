@@ -2948,14 +2948,14 @@ where
         let ptr = interpreter.registers[a];
         let offset = interpreter.registers[b];
         let len = interpreter.registers[c].saturating_add(d.to_u8() as u64);
-        interpreter.dependent_gas_charge(
-            interpreter.gas_costs().spcp().map_err(PanicReason::from)?,
-            len,
-        )?;
         let owner = interpreter.ownership_registers();
         interpreter
             .memory_mut()
             .memcopy_from_preload(ptr, offset, len, owner)?;
+        interpreter.dependent_gas_charge(
+            interpreter.gas_costs().spcp().map_err(PanicReason::from)?,
+            len,
+        )?;
         let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
         inc_pc(pc)?;
         Ok(ExecuteState::Proceed)

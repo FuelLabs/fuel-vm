@@ -946,6 +946,8 @@ pub struct ScriptParametersV2 {
     /// Maximum length of script data, in bytes.
     pub max_script_data_length: u64,
     /// Maximum length of a storage slot value, in bytes.
+    /// Note that if this is set to less than 32, the legacy storage operations will
+    /// still allow using 32-byte slots.
     pub max_storage_slot_length: u64,
 }
 

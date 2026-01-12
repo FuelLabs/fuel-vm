@@ -33,6 +33,7 @@ mod outputs;
 mod predicate;
 mod receipts;
 mod spec;
+mod storage;
 mod upgrade;
 mod upload;
 mod validation;

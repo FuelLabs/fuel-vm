@@ -59,7 +59,7 @@ where
         let value = value.as_ref().as_ref();
 
         let end = offset.saturating_add(len);
-        if end >= value.len() {
+        if end > value.len() {
             // attempting to read past the end of the stored value
             return Err(RuntimeError::Recoverable(PanicReason::StorageOutOfBounds));
         }
@@ -92,7 +92,7 @@ where
         key: Bytes32,
         src_ptr: u64,
         offset: u64,
-        len: u64,
+        write_len: u64,
     ) -> Result<u64, RuntimeError<S::DataError>> {
         let contract_id = self.internal_contract()?;
         let mut value = self
@@ -108,24 +108,27 @@ where
             convert::to_usize(offset).ok_or(PanicReason::MemoryOverflow)?
         };
 
-        let len = convert::to_usize(len).ok_or(PanicReason::MemoryOverflow)?;
-        let end = offset.saturating_add(len);
         if offset > value.len() {
             return Err(RuntimeError::Recoverable(PanicReason::StorageOutOfBounds));
         }
 
-        if end > value.len() {
-            value.resize(end, 0);
+        let write_len =
+            convert::to_usize(write_len).ok_or(PanicReason::MemoryOverflow)?;
+        let len_after = offset.saturating_add(write_len);
+
+        if len_after > value.len() {
+            value.resize(len_after, 0);
         }
 
-        self.verify_storage_size(end)?;
+        self.verify_storage_size(len_after)?;
 
-        value[offset..end].copy_from_slice(&self.memory.as_mut().read(src_ptr, len)?);
+        value[offset..len_after]
+            .copy_from_slice(&self.memory.as_mut().read(src_ptr, write_len)?);
 
         self.storage
             .contract_state_insert(&contract_id, &key, &value)
             .map_err(RuntimeError::Storage)?;
-        Ok(end as u64)
+        Ok(len_after as u64)
     }
 
     /// Preloads the storage slot identified by `key` into a special memory area,

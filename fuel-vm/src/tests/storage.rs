@@ -5,13 +5,10 @@ use crate::{
     consts::VM_MAX_RAM,
     prelude::*,
     script_with_data_offset,
-    tests::{
-        receipts,
-        test_helpers::{
-            assert_panics,
-            assert_success,
-            set_full_word,
-        },
+    tests::test_helpers::{
+        assert_panics,
+        assert_success,
+        set_full_word,
     },
     util::test_helpers::TestBuilder,
 };
@@ -25,19 +22,10 @@ use fuel_asm::{
     RegId,
     op,
 };
-use fuel_tx::{
-    ConsensusParameters,
-    Witness,
-    policies::Policies,
-};
+use fuel_tx::ConsensusParameters;
 use fuel_types::{
     bytes::WORD_SIZE,
     canonical::Serialize,
-};
-use rand::{
-    Rng,
-    SeedableRng,
-    rngs::StdRng,
 };
 
 /// Helper to deploy and call a contract once.
@@ -568,6 +556,292 @@ fn swrd_exceeding_slot_max_length_panics() {
         op::swrd(SLOT_KEY, RegId::HP, 0x11),
         op::ret(RegId::ONE),
     ]);
+
+    // Check
+    let receipts = call_contract_once(program);
+    assert_panics(&receipts, PanicReason::StorageOutOfBounds);
+}
+
+#[rstest::rstest]
+fn supd_supi_exceeding_slot_max_length_panics(
+    #[values(true, false)] imm: bool, // use immediate instruction variant
+) {
+    const SLOT_KEY: RegId = RegId::new(0x38);
+
+    let limit = ConsensusParameters::default()
+        .script_params()
+        .max_storage_slot_length();
+
+    let mut program = vec![
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+    ];
+    program.extend(set_full_word(0x11, limit));
+    program.extend([
+        op::aloc(0x11),
+        op::swrd(SLOT_KEY, RegId::HP, 0x11),
+        // Log here to prove that setup succeeded
+        op::log(RegId::ONE, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::not(0x10, RegId::ZERO),
+    ]);
+
+    // Write beyond limit by extending by 1 byte
+    program.push(if imm {
+        op::supi(SLOT_KEY, RegId::HP, 0x10, 1)
+    } else {
+        op::supd(SLOT_KEY, RegId::HP, 0x10, RegId::ONE)
+    });
+
+    // Unreachable
+    program.push(op::ret(RegId::ONE));
+
+    // Check
+    let receipts = call_contract_once(program);
+    assert!(
+        receipts
+            .iter()
+            .any(|r| matches!(r, Receipt::Log { ra, .. } if *ra == 1)),
+        "Setup failed"
+    );
+    assert_panics(&receipts, PanicReason::StorageOutOfBounds);
+}
+
+#[rstest::rstest]
+fn supd_supi_treat_nonexisting_slot_as_empty(
+    #[values(true, false)] imm: bool, // use immediate instruction variant
+) {
+    const SLOT_KEY: RegId = RegId::new(0x38);
+    const BUFFER: RegId = RegId::new(0x37);
+
+    let mut program = vec![
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+        op::move_(BUFFER, RegId::HP),
+    ];
+
+    program.push(if imm {
+        op::supi(SLOT_KEY, BUFFER, RegId::ZERO, 32)
+    } else {
+        op::supd(SLOT_KEY, BUFFER, RegId::ZERO, 0x15)
+    });
+
+    // Log results
+    program.extend([
+        op::spld(0x10, SLOT_KEY),
+        op::aloc(0x10),
+        op::srdd(RegId::HP, SLOT_KEY, RegId::ZERO, 0x10),
+        op::logd(RegId::ERR, RegId::ZERO, RegId::HP, 0x10),
+        op::ret(RegId::ONE),
+    ]);
+
+    // Check
+    let receipts = call_contract_once(program);
+    assert_success(&receipts);
+
+    for r in receipts {
+        let Receipt::LogData { ra, data, .. } = r else {
+            continue;
+        };
+        assert_eq!(ra, 0, "$err should be clear when read is successful");
+        let data = data.as_ref().unwrap();
+        let expected = [0u8; 32];
+        assert_eq!(&**data, &expected);
+        return;
+    }
+
+    panic!("Missing LogData receipt");
+}
+
+#[rstest::rstest]
+fn supd_supi_write_subrange_works(
+    #[values(true, false)] imm: bool, // use immediate instruction variant
+) {
+    const SLOT_KEY: RegId = RegId::new(0x38);
+    const BUFFER: RegId = RegId::new(0x37);
+
+    const W_LEN: u8 = 8;
+    const W_OFFSET: u8 = 4;
+
+    let mut program = vec![
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+        // Prepare slot with some initial data (zeroes)
+        op::swri(SLOT_KEY, SLOT_KEY, 32),
+        // Prepare data to be written (8 bytes of all bits set)
+        op::movi(0x15, 8),
+        op::aloc(0x15),
+        op::move_(BUFFER, RegId::HP),
+        op::not(0x10, RegId::ZERO),
+        op::sw(BUFFER, 0x10, 0),
+        // Prepare subrange write
+        op::movi(0x10, W_OFFSET as _),
+        op::movi(0x11, W_LEN as _),
+    ];
+
+    program.push(if imm {
+        op::supi(SLOT_KEY, BUFFER, 0x10, W_LEN as _)
+    } else {
+        op::supd(SLOT_KEY, BUFFER, 0x10, 0x11)
+    });
+
+    // Log results
+    program.extend([
+        op::spld(0x10, SLOT_KEY),
+        op::aloc(0x10),
+        op::srdd(RegId::HP, SLOT_KEY, RegId::ZERO, 0x10),
+        op::logd(RegId::ERR, RegId::ZERO, RegId::HP, 0x10),
+        op::ret(RegId::ONE),
+    ]);
+
+    // Check
+    let receipts = call_contract_once(program);
+    assert_success(&receipts);
+
+    for r in receipts {
+        let Receipt::LogData { ra, data, .. } = r else {
+            continue;
+        };
+        assert_eq!(ra, 0, "$err should be clear when read is successful");
+        let data = data.as_ref().unwrap();
+        let mut expected = [0u8; 32];
+        expected[W_OFFSET as usize..(W_OFFSET as usize + W_LEN as usize)].fill(0xff);
+        assert_eq!(&**data, &expected);
+        return;
+    }
+
+    panic!("Missing LogData receipt");
+}
+
+#[rstest::rstest]
+fn supd_supi_writing_past_end_extends_value(
+    #[values(true, false)] imm: bool, // use immediate instruction variant
+) {
+    const SLOT_KEY: RegId = RegId::new(0x38);
+    const BUFFER: RegId = RegId::new(0x37);
+
+    const W_LEN: u8 = 8;
+    const W_OFFSET: u8 = 4;
+
+    let mut program = vec![
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+        op::move_(BUFFER, RegId::HP),
+        // Prepare slot with some initial data
+        op::swri(SLOT_KEY, BUFFER, 8),
+        op::movi(0x10, W_OFFSET as _),
+        op::movi(0x11, W_LEN as _),
+    ];
+
+    program.push(if imm {
+        op::supi(SLOT_KEY, BUFFER, 0x10, W_LEN as _)
+    } else {
+        op::supd(SLOT_KEY, BUFFER, 0x10, 0x11)
+    });
+
+    // Log results
+    program.extend([
+        op::spld(0x10, SLOT_KEY),
+        op::log(0x10, RegId::ERR, RegId::ZERO, RegId::ZERO),
+        op::ret(RegId::ONE),
+    ]);
+
+    // Check
+    let receipts = call_contract_once(program);
+    assert_success(&receipts);
+
+    for r in receipts {
+        let Receipt::Log { ra, rb, .. } = r else {
+            continue;
+        };
+        assert_eq!(ra, (W_OFFSET + W_LEN) as u64, "Final length incorrect");
+        assert_eq!(rb, 0, "$err should be clear when read is successful");
+        return;
+    }
+
+    panic!("Missing Log receipt");
+}
+
+#[rstest::rstest]
+fn supd_supi_extending_using_u64_MAX_works(
+    #[values(true, false)] imm: bool, // use immediate instruction variant
+) {
+    const SLOT_KEY: RegId = RegId::new(0x38);
+    const BUFFER: RegId = RegId::new(0x37);
+    const REPETITIONS: usize = 8; // 8 * 8 = 64 bytes
+
+    let mut program = vec![
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+        op::movi(0x15, 8),
+        op::aloc(0x15),
+        op::move_(BUFFER, RegId::HP),
+        op::sw(BUFFER, RegId::ONE, 0),
+        op::not(0x10, RegId::ZERO),
+        op::movi(0x11, 8),
+    ];
+
+    for _ in 0..REPETITIONS {
+        program.push(if imm {
+            op::supi(SLOT_KEY, BUFFER, 0x10, 8)
+        } else {
+            op::supd(SLOT_KEY, BUFFER, 0x10, 0x11)
+        });
+    }
+    // Log results
+    program.extend([
+        op::spld(0x10, SLOT_KEY),
+        op::aloc(0x10),
+        op::srdd(RegId::HP, SLOT_KEY, RegId::ZERO, 0x10),
+        op::logd(RegId::ERR, RegId::ZERO, RegId::HP, 0x10),
+        op::ret(RegId::ONE),
+    ]);
+
+    // Check
+    let receipts = call_contract_once(program);
+    assert_success(&receipts);
+
+    for r in receipts {
+        let Receipt::LogData { ra, data, .. } = r else {
+            continue;
+        };
+        assert_eq!(ra, 0, "$err should be clear when read is successful");
+        let data = data.as_ref().unwrap();
+        let expected = 1u64.to_be_bytes().repeat(8);
+        assert_eq!(&**data, &expected);
+        return;
+    }
+
+    panic!("Missing LogData receipt");
+}
+
+#[rstest::rstest]
+fn supd_supi_offset_past_existing_value_panics(
+    #[values(true, false)] imm: bool, // use immediate instruction variant
+) {
+    const SLOT_KEY: RegId = RegId::new(0x38);
+    const BUFFER: RegId = RegId::new(0x37);
+
+    let mut program = vec![
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+        op::move_(BUFFER, RegId::HP),
+        op::movi(0x11, 33),
+    ];
+
+    program.push(if imm {
+        op::supi(SLOT_KEY, BUFFER, 0x11, 1)
+    } else {
+        op::supd(SLOT_KEY, BUFFER, 0x11, RegId::ONE)
+    });
+
+    // Unreachable
+    program.push(op::ret(RegId::ONE));
 
     // Check
     let receipts = call_contract_once(program);

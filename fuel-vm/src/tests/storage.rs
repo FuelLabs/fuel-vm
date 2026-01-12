@@ -1,6 +1,8 @@
 use core::panic;
+use std::array;
 
 use crate::{
+    consts::VM_MAX_RAM,
     prelude::*,
     script_with_data_offset,
     tests::{
@@ -8,6 +10,7 @@ use crate::{
         test_helpers::{
             assert_panics,
             assert_success,
+            set_full_word,
         },
     },
     util::test_helpers::TestBuilder,
@@ -260,4 +263,205 @@ fn sclr_clears_correct_number_of_slots(
     expected[..(num_clear as usize)].fill(false);
 
     assert_eq!(slots_after, expected);
+}
+
+/// Allocates and initalizes a 256 byte array with elements from 0 to 255.
+fn create_example_buffer() -> Vec<Instruction> {
+    let mut ops = vec![op::movi(0x39, 256), op::aloc(0x39)];
+    for i in 0..256 {
+        ops.push(op::movi(0x39, i as u8 as _));
+        ops.push(op::sb(RegId::HP, 0x39, i as _));
+    }
+    ops
+}
+
+#[rstest::rstest]
+fn srdd_srdi_reads_slot_contents(
+    #[values(0, 1, 2, 63, 100)] offset: u8,
+    #[values(0, 1, 2, 63, 100)] len: u8,
+    #[values(true, false)] imm: bool, // use immediate instruction variant
+) {
+    const SLOT_KEY: RegId = RegId::new(0x38);
+    const BUFFER: RegId = RegId::new(0x37);
+
+    let mut program = vec![
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+    ];
+    program.extend(create_example_buffer());
+    program.extend([
+        op::move_(BUFFER, RegId::HP),
+        op::swri(SLOT_KEY, BUFFER, 256),
+        op::mcli(RegId::HP, 256),
+        op::movi(0x10, offset as _),
+        op::movi(0x11, len as _),
+    ]);
+
+    // Invoke the storage read instruction
+    program.push(if imm {
+        if len > Imm06::MAX.to_u8() {
+            return; // skip inconstructible test case
+        }
+        op::srdi(BUFFER, SLOT_KEY, 0x10, len)
+    } else {
+        op::srdd(BUFFER, SLOT_KEY, 0x10, 0x11)
+    });
+
+    // Log results
+    program.extend([
+        op::move_(0x11, RegId::ERR),
+        op::movi(0x10, 256),
+        op::logd(0x11, RegId::ZERO, BUFFER, 0x10),
+        op::ret(RegId::ONE),
+    ]);
+    let receipts = call_contract_once(program);
+    assert_success(&receipts);
+
+    let example_data: [u8; 256] = array::from_fn(|i| i as u8);
+    let mut expected = [0u8; 256];
+    expected[..(len as usize)].copy_from_slice(
+        &example_data[(offset as usize)..(offset as usize + len as usize)],
+    );
+
+    for r in receipts {
+        let Receipt::LogData { ra, data, .. } = r else {
+            continue;
+        };
+        assert_eq!(ra, 0, "$err should be cleared when read is successful");
+        let data = data.as_ref().unwrap();
+        assert_eq!(**data, expected);
+        return;
+    }
+
+    panic!("Missing LogData receipt");
+}
+
+#[rstest::rstest]
+fn srdd_srdi_reading_nonexistent_slot_sets_err(
+    #[values(true, false)] imm: bool, // use immediate instruction variant
+) {
+    const SLOT_KEY: RegId = RegId::new(0x38);
+
+    // Allocate slot key (all zeroes)
+    let mut program = vec![
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+    ];
+
+    // Invoke the storage read instruction
+    program.push(if imm {
+        op::srdi(RegId::HP, SLOT_KEY, RegId::ZERO, 0)
+    } else {
+        op::srdd(RegId::HP, SLOT_KEY, RegId::ZERO, RegId::ZERO)
+    });
+
+    // Log results
+    program.extend([
+        op::log(RegId::ERR, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::ret(RegId::ONE),
+    ]);
+    let receipts = call_contract_once(program);
+    assert_success(&receipts);
+
+    for r in receipts {
+        let Receipt::Log { ra, .. } = r else {
+            continue;
+        };
+        assert_eq!(ra, 1, "$err should set when reading nonexistent slot");
+        return;
+    }
+
+    panic!("Missing Log receipt");
+}
+
+#[rstest::rstest]
+fn srdd_srdi_read_past_the_end_panics(
+    #[values("len", "offset", "len+offset")] case: &str,
+    #[values(true, false)] imm: bool, // use immediate instruction variant
+) {
+    let (len, offset): (u16, u16) = match case {
+        "len" => (257, 0),
+        "offset" => (0, 257),
+        "len+offset" => (128, 129),
+        _ => unreachable!(),
+    };
+
+    const SLOT_KEY: RegId = RegId::new(0x38);
+    const BUFFER: RegId = RegId::new(0x37);
+
+    let mut program = vec![
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+    ];
+    program.extend(create_example_buffer());
+    program.extend([
+        op::move_(BUFFER, RegId::HP),
+        op::swri(SLOT_KEY, BUFFER, 256),
+        op::mcli(RegId::HP, 256),
+        op::movi(0x10, offset as _),
+        op::movi(0x11, len as _),
+    ]);
+
+    // Invoke the storage read instruction
+    program.push(if imm {
+        if len > Imm06::MAX.to_u8() as _ {
+            return; // skip inconstructible test case
+        }
+        op::srdi(BUFFER, SLOT_KEY, 0x10, len as _)
+    } else {
+        op::srdd(BUFFER, SLOT_KEY, 0x10, 0x11)
+    });
+
+    // Log results
+    program.extend([
+        op::movi(0x10, 256),
+        op::logd(RegId::ZERO, RegId::ZERO, BUFFER, 0x10),
+        op::ret(RegId::ONE),
+    ]);
+    let receipts = call_contract_once(program);
+    assert_panics(&receipts, PanicReason::StorageOutOfBounds);
+}
+
+#[rstest::rstest]
+fn srdd_srdi_dst_buffer_outside_memory_panics(
+    #[values("offbyone", "outside", "overflow")] case: &str,
+    #[values(true, false)] imm: bool, // use immediate instruction variant
+) {
+    const SLOT_KEY: RegId = RegId::new(0x38);
+    const BUFFER: RegId = RegId::new(0x37);
+
+    let mut program = vec![
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+    ];
+    program.extend(create_example_buffer());
+    program.extend([
+        op::move_(BUFFER, RegId::HP),
+        op::swri(SLOT_KEY, BUFFER, 256),
+        op::mcli(RegId::HP, 256),
+    ]);
+    program.extend(set_full_word(0x11, VM_MAX_RAM));
+    program.push(match case {
+        "offbyone" => op::addi(0x10, 0x11, 0),
+        "outside" => op::addi(0x10, 0x11, 1),
+        "overflow" => op::not(0x10, RegId::ZERO),
+        _ => unreachable!(),
+    });
+
+    program.push(if imm {
+        op::srdi(0x10, SLOT_KEY, RegId::ZERO, 1)
+    } else {
+        op::srdd(0x10, SLOT_KEY, RegId::ZERO, RegId::ONE)
+    });
+
+    // Unreachable
+    program.push(op::ret(RegId::ONE));
+
+    // Check
+    let receipts = call_contract_once(program);
+    assert_panics(&receipts, PanicReason::MemoryOverflow);
 }

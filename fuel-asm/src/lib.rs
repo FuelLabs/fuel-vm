@@ -379,7 +379,7 @@ impl_instructions! {
     "Update a storage slot (read+write) (immedidate length)"
     0xc6 SUPI supi [key_ptr: RegId value_ptr: RegId offset: RegId len: Imm06]
     "Storage preload"
-    0xc7 SPLD spld [dst: RegId status: RegId]
+    0xc7 SPLD spld [len_dst: RegId key_ptr: RegId]
     "Copy from preloaded storage slot"
     0xc8 SPCP spcp [dst: RegId offset: RegId len_reg: RegId len_imm: Imm06]
 }

@@ -169,3 +169,125 @@ fn srw_offset_works() {
         assert_eq!(logged_values[i as usize], i as u64);
     }
 }
+
+#[rstest::rstest]
+fn storage_op_storage_key_read_past_boudnds_panics(
+    #[values(
+        op::sclr(0x10, RegId::ONE),
+        op::srdd(RegId::HP, 0x10, RegId::ZERO, RegId::ZERO),
+        op::srdi(RegId::HP, 0x10, RegId::ZERO, 0),
+        op::swrd(0x10, RegId::HP, RegId::ZERO),
+        op::swri(0x10, RegId::HP, 0),
+        op::supd(0x10, RegId::HP, RegId::ZERO, RegId::ZERO),
+        op::supi(0x10, RegId::HP, RegId::ZERO, 0),
+        op::spld(0x11, 0x10)
+    )]
+    instr: Instruction,
+    #[values("offbyone", "outside", "overflow")] case: &str,
+) {
+    use crate::tests::test_helpers::assert_panics;
+
+    let mut test_context = TestBuilder::new(2322u64);
+
+    let mut program = vec![
+        // Allocate slot key (all zeroes)
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+    ];
+    // Set up the case
+    program.push(match case {
+        "offbyone" => op::addi(0x10, RegId::HP, 1),
+        "outside" => op::addi(0x10, RegId::HP, 32),
+        "overflow" => op::not(0x10, RegId::ZERO),
+        _ => unreachable!(),
+    });
+    // Perform the storage operation
+    program.push(instr);
+    // The instruction above should panic, so we never reach this
+    program.push(op::ret(RegId::ONE));
+
+    let contract_id = test_context.setup_contract(program, None, None).contract_id;
+
+    let (script_call, _) = script_with_data_offset!(
+        data_offset,
+        vec![
+            op::movi(0x10, data_offset as Immediate18),
+            op::call(0x10, RegId::ZERO, 0x10, RegId::CGAS),
+            op::ret(RegId::ONE),
+        ],
+        test_context.get_tx_params().tx_offset()
+    );
+    let script_call_data = Call::new(contract_id, 0, 0).to_bytes();
+
+    let result = test_context
+        .start_script(script_call.clone(), script_call_data)
+        .script_gas_limit(1_000_000)
+        .contract_input(contract_id)
+        .fee_input()
+        .contract_output(&contract_id)
+        .variable_output(AssetId::zeroed())
+        .execute();
+
+    assert_panics(result.receipts(), PanicReason::MemoryOverflow);
+}
+
+#[rstest::rstest]
+fn storage_op_buffer_access_past_boudnds_panics(
+    #[values(
+        op::sclr(0x10, RegId::ONE),
+        op::srdd(RegId::HP, 0x10, RegId::ZERO, RegId::ZERO),
+        op::srdi(RegId::HP, 0x10, RegId::ZERO, 0),
+        op::swrd(0x10, RegId::HP, RegId::ZERO),
+        op::swri(0x10, RegId::HP, 0),
+        op::supd(0x10, RegId::HP, RegId::ZERO, RegId::ZERO),
+        op::supi(0x10, RegId::HP, RegId::ZERO, 0),
+        op::spld(0x11, 0x10)
+    )]
+    instr: Instruction,
+    #[values("offbyone", "outside", "overflow")] case: &str,
+) {
+    use crate::tests::test_helpers::assert_panics;
+
+    let mut test_context = TestBuilder::new(2322u64);
+
+    let mut program = vec![
+        // Allocate slot key (all zeroes)
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+    ];
+    // Set up the case
+    program.push(match case {
+        "offbyone" => op::addi(0x10, RegId::HP, 1),
+        "outside" => op::addi(0x10, RegId::HP, 32),
+        "overflow" => op::not(0x10, RegId::ZERO),
+        _ => unreachable!(),
+    });
+    // Perform the storage operation
+    program.push(instr);
+    // The instruction above should panic, so we never reach this
+    program.push(op::ret(RegId::ONE));
+
+    let contract_id = test_context.setup_contract(program, None, None).contract_id;
+
+    let (script_call, _) = script_with_data_offset!(
+        data_offset,
+        vec![
+            op::movi(0x10, data_offset as Immediate18),
+            op::call(0x10, RegId::ZERO, 0x10, RegId::CGAS),
+            op::ret(RegId::ONE),
+        ],
+        test_context.get_tx_params().tx_offset()
+    );
+    let script_call_data = Call::new(contract_id, 0, 0).to_bytes();
+
+    let result = test_context
+        .start_script(script_call.clone(), script_call_data)
+        .script_gas_limit(1_000_000)
+        .contract_input(contract_id)
+        .fee_input()
+        .contract_output(&contract_id)
+        .variable_output(AssetId::zeroed())
+        .execute();
+
+    assert_panics(result.receipts(), PanicReason::MemoryOverflow);
+}

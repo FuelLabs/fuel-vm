@@ -1030,8 +1030,9 @@ fn check_predicate_allowed() {
         if let Ok(repr) = Opcode::try_from(byte) {
             let should_allow = match repr {
                 BAL | BHEI | BHSH | BURN | CALL | CB | CCP | CROO | CSIZ | LOG | LOGD
-                | MINT | RETD | RVRT | SMO | SCWQ | SRW | SRWQ | SWW | SWWQ | TIME
-                | TR | TRO => false,
+                | MINT | RETD | RVRT | SMO | SCWQ | SRW | SRWQ | SWW | SWWQ | SCLR
+                | SRDD | SRDI | SWRD | SWRI | SUPD | SUPI | SPLD | SPCP | TIME | TR
+                | TRO => false,
                 _ => true,
             };
             assert_eq!(should_allow, repr.is_predicate_allowed());

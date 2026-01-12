@@ -21,6 +21,7 @@ use alloc::{
 };
 use fuel_asm::{
     Imm06,
+    Imm12,
     RegId,
     op,
 };
@@ -456,6 +457,147 @@ fn srdd_srdi_dst_buffer_outside_memory_panics(
         op::srdi(0x10, SLOT_KEY, RegId::ZERO, 1)
     } else {
         op::srdd(0x10, SLOT_KEY, RegId::ZERO, RegId::ONE)
+    });
+
+    // Unreachable
+    program.push(op::ret(RegId::ONE));
+
+    // Check
+    let receipts = call_contract_once(program);
+    assert_panics(&receipts, PanicReason::MemoryOverflow);
+}
+
+#[rstest::rstest]
+fn swrd_swri_writes_storage_slot(
+    #[values(0, 1, 2, 63, 100)] len: usize,
+    #[values(true, false)] imm: bool, // use immediate instruction variant
+) {
+    const SLOT_KEY: RegId = RegId::new(0x38);
+
+    let mut program = vec![
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+        op::movi(0x10, len as _),
+        op::aloc(0x10),
+    ];
+
+    program.push(if imm {
+        if len > Imm12::MAX.to_u16() as _ {
+            return; // skip inconstructible test case
+        }
+        op::swri(SLOT_KEY, 0x10, len as _)
+    } else {
+        op::swrd(SLOT_KEY, 0x10, 0x10)
+    });
+
+    // Read slot len and log results
+    program.extend([
+        op::spld(0x10, SLOT_KEY),
+        op::log(0x10, RegId::ERR, RegId::ZERO, RegId::ZERO),
+        op::ret(RegId::ONE),
+    ]);
+
+    // Check
+    let receipts = call_contract_once(program);
+
+    for r in receipts {
+        let Receipt::Log { ra, rb, .. } = r else {
+            continue;
+        };
+        assert_eq!(ra, len as u64, "Logged length should match written length");
+        assert_eq!(rb, 0, "$err should be clear since slot exists");
+        return;
+    }
+
+    panic!("Missing Log receipt");
+}
+
+#[rstest::rstest]
+fn swrd_swri_src_buffer_outside_memory_panics(
+    #[values("offbyone", "outside", "overflow")] case: &str,
+    #[values(true, false)] imm: bool, // use immediate instruction variant
+) {
+    const SLOT_KEY: RegId = RegId::new(0x38);
+
+    let mut program = vec![
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+    ];
+    program.extend(set_full_word(0x11, VM_MAX_RAM));
+    program.push(match case {
+        "offbyone" => op::addi(0x10, 0x11, 0),
+        "outside" => op::addi(0x10, 0x11, 1),
+        "overflow" => op::not(0x10, RegId::ZERO),
+        _ => unreachable!(),
+    });
+
+    program.push(if imm {
+        op::swri(SLOT_KEY, 0x10, 1)
+    } else {
+        op::swrd(SLOT_KEY, 0x10, RegId::ONE)
+    });
+
+    // Unreachable
+    program.push(op::ret(RegId::ONE));
+
+    // Check
+    let receipts = call_contract_once(program);
+    assert_panics(&receipts, PanicReason::MemoryOverflow);
+}
+
+/// Note: swri cannot exceed max limit due to immediate size constraint,
+/// unless the limit is unreasonably small, so we wont bother testing it here
+#[rstest::rstest]
+fn swrd_exceeding_slot_max_length_panics() {
+    const SLOT_KEY: RegId = RegId::new(0x38);
+
+    let limit = ConsensusParameters::default()
+        .script_params()
+        .max_storage_slot_length();
+
+    let mut program = vec![
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+    ];
+    program.extend(set_full_word(0x11, limit + 1));
+    program.extend([
+        op::aloc(0x11),
+        op::swrd(SLOT_KEY, RegId::HP, 0x11),
+        op::ret(RegId::ONE),
+    ]);
+
+    // Check
+    let receipts = call_contract_once(program);
+    assert_panics(&receipts, PanicReason::StorageOutOfBounds);
+}
+
+#[rstest::rstest]
+fn supd_supi_src_buffer_outside_memory_panics(
+    #[values("offbyone", "outside", "overflow")] case: &str,
+    #[values(true, false)] imm: bool, // use immediate instruction variant
+) {
+    const SLOT_KEY: RegId = RegId::new(0x38);
+
+    let mut program = vec![
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+    ];
+    program.extend(set_full_word(0x11, VM_MAX_RAM));
+    program.push(match case {
+        "offbyone" => op::addi(0x10, 0x11, 0),
+        "outside" => op::addi(0x10, 0x11, 1),
+        "overflow" => op::not(0x10, RegId::ZERO),
+        _ => unreachable!(),
+    });
+
+    program.push(if imm {
+        op::supi(SLOT_KEY, 0x10, RegId::ZERO, 1)
+    } else {
+        op::supd(SLOT_KEY, 0x10, RegId::ZERO, RegId::ONE)
     });
 
     // Unreachable

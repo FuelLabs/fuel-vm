@@ -1109,7 +1109,7 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
             }
 
             let mut buf = [0u8; WORD_SIZE];
-            buf.copy_from_slice(&data[offset_bytes as usize..end_bytes as usize]);
+            buf.copy_from_slice(&data[offset_bytes..end_bytes]);
             Ok(Word::from_be_bytes(buf))
         })
         .transpose()?;

@@ -213,7 +213,7 @@ fn sclr_clears_correct_number_of_slots(
         op::sclr(RegId::HP, 0x10),
     ]);
     // Log the first 256 slots
-    for i in 0..256 {
+    for i in 0..256u32 {
         program.extend([
             op::movi(0x10, i as _),
             op::sb(RegId::HP, 0x10, 31),
@@ -257,7 +257,7 @@ fn sclr_clears_correct_number_of_slots(
 /// Allocates and initalizes a 256 byte array with elements from 0 to 255.
 fn create_example_buffer() -> Vec<Instruction> {
     let mut ops = vec![op::movi(0x39, 256), op::aloc(0x39)];
-    for i in 0..256 {
+    for i in 0..256u32 {
         ops.push(op::movi(0x39, i as u8 as _));
         ops.push(op::sb(RegId::HP, 0x39, i as _));
     }

@@ -123,7 +123,7 @@ where
         self.verify_storage_size(len_after)?;
 
         value[offset..len_after]
-            .copy_from_slice(&self.memory.as_mut().read(src_ptr, write_len)?);
+            .copy_from_slice(self.memory.as_mut().read(src_ptr, write_len)?);
 
         self.storage
             .contract_state_insert(&contract_id, &key, &value)
@@ -151,6 +151,6 @@ where
         let dst = self.memory.as_mut().storage_preload_mut();
         *dst = value.as_ref().as_ref().to_vec();
         self.registers[RegId::ERR] = 0;
-        return Ok(dst.len() as u64);
+        Ok(dst.len() as u64)
     }
 }

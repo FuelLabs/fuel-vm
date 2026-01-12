@@ -367,7 +367,11 @@ impl MemoryInstance {
         let dst = if dst_range.end() <= self.stack.len() {
             &mut self.stack[dst_range.usizes()]
         } else if dst_range.start() >= self.heap_offset() {
+            #[allow(clippy::arithmetic_side_effects)]
+            // Safety: subtractions are checked above
             let start = dst_range.start() - self.heap_offset();
+            #[allow(clippy::arithmetic_side_effects)]
+            // Safety: subtractions are checked above
             let end = dst_range.end() - self.heap_offset();
             &mut self.heap[start..end]
         } else {

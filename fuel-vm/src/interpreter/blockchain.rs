@@ -47,7 +47,6 @@ use crate::{
 };
 use alloc::{
     collections::BTreeSet,
-    vec,
     vec::Vec,
 };
 use fuel_asm::{
@@ -1294,18 +1293,22 @@ fn state_read_qword<S: InterpreterStorage>(
     let dst = memory.write(ownership_registers, destination_pointer, slots_len)?;
 
     let mut all_set = true;
-    let result: Vec<u8> = storage
+    let mut result: Vec<u8> = Vec::with_capacity(slots_len);
+
+    for slot in storage
         .contract_state_range(&contract_id, &origin_key, num_slots)
         .map_err(RuntimeError::Storage)?
-        .into_iter()
-        .flat_map(|bytes| match bytes {
-            Some(bytes) => bytes.into_owned(),
-            None => {
-                all_set = false;
-                vec![0; 32].into()
+    {
+        if let Some(bytes) = slot {
+            if bytes.0.len() != Bytes32::LEN {
+                return Err(PanicReason::StorageOutOfBounds.into());
             }
-        })
-        .collect();
+            result.extend(bytes.into_owned());
+        } else {
+            all_set = false;
+            result.extend([0; 32]);
+        }
+    }
 
     *result_register = all_set as Word;
 

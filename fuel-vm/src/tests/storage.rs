@@ -60,6 +60,103 @@ fn call_contract_once(program: Vec<Instruction>) -> Vec<Receipt> {
 }
 
 #[test]
+fn srwq_can_read_slots_when_created_with_dynamic_opcodes() {
+    const DISCARD: RegId = RegId::new(0x39);
+    const SLOT_KEY: RegId = RegId::new(0x38);
+    const BUFFER: RegId = RegId::new(0x37);
+
+    let receipts = call_contract_once(vec![
+        // Allocate buffers
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+        op::movi(0x15, 64),
+        op::aloc(0x15),
+        op::move_(BUFFER, RegId::HP),
+        // Store dummy zeroes data to both slots
+        op::swri(SLOT_KEY, BUFFER, 32),
+        op::sb(SLOT_KEY, RegId::ONE, 31),
+        op::swri(SLOT_KEY, BUFFER, 32),
+        op::sb(SLOT_KEY, RegId::ZERO, 31),
+        // Attempt read using SRWQ, should panic
+        op::movi(0x10, 2),
+        op::srwq(BUFFER, DISCARD, SLOT_KEY, 0x10),
+        op::logd(RegId::ZERO, RegId::ZERO, BUFFER, 0x15),
+        // Done
+        op::ret(RegId::ONE),
+    ]);
+
+    assert_success(&receipts);
+
+    for r in receipts {
+        let Receipt::LogData { data, .. } = r else {
+            continue;
+        };
+        let data = data.as_ref().unwrap();
+        let expected = [0u8; 64];
+        assert_eq!(&**data, &expected);
+        return;
+    }
+
+    panic!("Missing LogData receipt");
+}
+
+#[test]
+fn srwq_allows_reading_zero_slots_even_if_the_first_would_have_wrong_size() {
+    const DISCARD: RegId = RegId::new(0x39);
+    const SLOT_KEY: RegId = RegId::new(0x38);
+    const BUFFER: RegId = RegId::new(0x37);
+
+    let receipts = call_contract_once(vec![
+        // Allocate buffers
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+        op::movi(0x15, 64),
+        op::aloc(0x15),
+        op::move_(BUFFER, RegId::HP),
+        // Store dummy data to the slot
+        op::swri(SLOT_KEY, BUFFER, 43),
+        // Attempt read using SRWQ, should succeed
+        op::srwq(BUFFER, DISCARD, SLOT_KEY, RegId::ZERO),
+        // Done
+        op::ret(RegId::ONE),
+    ]);
+    assert_success(&receipts);
+}
+
+#[test]
+fn srwq_panics_when_combined_slots_sum_to_multiple_of_32() {
+    const DISCARD: RegId = RegId::new(0x39);
+    const SLOT_KEY: RegId = RegId::new(0x38);
+    const BUFFER: RegId = RegId::new(0x37);
+
+    const LEN_FIRST: usize = 20;
+    const LEN_SECOND: usize = 64 - LEN_FIRST;
+
+    let receipts = call_contract_once(vec![
+        // Allocate buffers
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+        op::movi(0x15, 64),
+        op::aloc(0x15),
+        op::move_(BUFFER, RegId::HP),
+        // Store dummy data to both slots
+        op::swri(SLOT_KEY, BUFFER, LEN_FIRST as _),
+        op::sb(SLOT_KEY, RegId::ONE, 31),
+        op::swri(SLOT_KEY, BUFFER, LEN_SECOND as _),
+        op::sb(SLOT_KEY, RegId::ZERO, 31),
+        // Attempt read using SRWQ, should panic
+        op::movi(0x10, 2),
+        op::srwq(BUFFER, DISCARD, SLOT_KEY, 0x10),
+        // Done
+        op::ret(RegId::ONE),
+    ]);
+    assert_panics(&receipts, PanicReason::StorageOutOfBounds);
+}
+
+#[test]
 fn sww_writes_32_bytes() {
     const DISCARD: RegId = RegId::new(0x39);
 

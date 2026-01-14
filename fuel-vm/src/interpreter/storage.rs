@@ -116,11 +116,11 @@ where
             convert::to_usize(write_len).ok_or(PanicReason::MemoryOverflow)?;
         let len_after = offset.saturating_add(write_len);
 
+        self.verify_storage_size(len_after)?;
+
         if len_after > value.len() {
             value.resize(len_after, 0);
         }
-
-        self.verify_storage_size(len_after)?;
 
         value[offset..len_after]
             .copy_from_slice(self.memory.as_mut().read(src_ptr, write_len)?);

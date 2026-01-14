@@ -99,7 +99,7 @@ where
             .storage
             .contract_state(&contract_id, &key)
             .map_err(RuntimeError::Storage)?
-            .map(|v| v.as_ref().as_ref().to_vec())
+            .map(|v| v.as_ref().0.clone().into_inner())
             .unwrap_or_default();
 
         let offset = if offset == u64::MAX {

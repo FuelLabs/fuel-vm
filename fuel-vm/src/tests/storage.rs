@@ -1073,6 +1073,47 @@ fn spld_reports_nonexisting_slots_in_err() {
 }
 
 #[rstest::rstest]
+fn spcp_copies_whole_value(#[values(0, 1, 2, 63, 100)] len: u8) {
+    const SLOT_KEY: RegId = RegId::new(0x38);
+    const BUFFER: RegId = RegId::new(0x37);
+
+    let mut program = vec![
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+    ];
+    program.extend(create_example_buffer());
+    program.extend([
+        op::move_(BUFFER, RegId::HP),
+        op::swri(SLOT_KEY, BUFFER, len as _),
+        op::spld(0x11, SLOT_KEY),
+        op::mcli(BUFFER, 256),
+        op::spcp(BUFFER, RegId::ZERO, 0x11, 0),
+        op::movi(0x10, 256),
+        op::logd(RegId::ZERO, RegId::ZERO, BUFFER, 0x10),
+        op::ret(RegId::ONE),
+    ]);
+
+    let receipts = call_contract_once(program);
+    assert_success(&receipts);
+
+    let example_data: [u8; 256] = array::from_fn(|i| i as u8);
+    let mut expected = [0u8; 256];
+    expected[..(len as usize)].copy_from_slice(&example_data[..len as usize]);
+
+    for r in receipts {
+        let Receipt::LogData { data, .. } = r else {
+            continue;
+        };
+        let data = data.as_ref().unwrap();
+        assert_eq!(**data, expected);
+        return;
+    }
+
+    panic!("Missing LogData receipt");
+}
+
+#[rstest::rstest]
 fn spcp_copies_correct_subslice(
     #[values(0, 1, 2, 63, 100)] offset: u8,
     #[values(0, 1, 2, 63, 100)] len: u8,

@@ -360,7 +360,7 @@ impl MemoryInstance {
         let length = convert::to_usize(length).ok_or(PanicReason::MemoryOverflow)?;
 
         let end = offset.saturating_add(length);
-        if end >= self.storage_preload.len() {
+        if end > self.storage_preload.len() {
             return Err(PanicReason::StorageOutOfBounds);
         }
 

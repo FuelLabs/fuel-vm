@@ -1251,3 +1251,93 @@ fn spcp_panics_if_length_field_sum_overflows() {
     ]);
     assert_panics(&receipts, PanicReason::MemoryOverflow);
 }
+
+#[test]
+fn preload_is_cleared_on_contract_call() {
+    const SLOT_KEY: RegId = RegId::new(0x38);
+    const IS_NESTED: RegId = RegId::new(0x36);
+
+    let receipts = call_contract_once(vec![
+        // If in nested context, attempt to copy from the preloaded data
+        // which should now be empty and thus cause a panic.
+        // Just before panicing instruction, log something to make sure we
+        // got here.
+        op::jnef(IS_NESTED, RegId::ONE, RegId::ZERO, 5),
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::log(RegId::ONE, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::spcp(RegId::HP, RegId::ZERO, RegId::ONE, 0),
+        op::ret(RegId::ONE),
+        // Allocate zeroed slot key
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+        // Write dummy value
+        op::swri(SLOT_KEY, SLOT_KEY, 32),
+        // Call this contract recursively
+        op::movi(IS_NESTED, 1),
+        op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
+        op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
+        // Unreachable
+        op::divi(RegId::ZERO, RegId::ZERO, 0),
+    ]);
+    dbg!(&receipts);
+    assert_panics(&receipts, PanicReason::StorageOutOfBounds);
+
+    for r in receipts {
+        let Receipt::Log { ra, rb, .. } = r else {
+            continue;
+        };
+        assert!(ra == 1 && rb == 0, "Should have reached nested context");
+        return;
+    }
+
+    panic!("Missing Log receipt");
+}
+
+#[rstest::rstest]
+fn preload_is_cleared_on_contract_return(
+    #[values(true, false)] return_data: bool, // test retd instead of ret instruction
+) {
+    const SLOT_KEY: RegId = RegId::new(0x38);
+    const IS_NESTED: RegId = RegId::new(0x36);
+
+    let receipts = call_contract_once(vec![
+        // Allocate zeroed slot key
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+        // If in nested context, write the a dummy value and return immediately
+        op::jnef(IS_NESTED, RegId::ONE, RegId::ZERO, 2),
+        op::swri(SLOT_KEY, SLOT_KEY, 32),
+        if return_data {
+            op::retd(RegId::ZERO, RegId::ONE)
+        } else {
+            op::ret(RegId::ONE)
+        },
+        // Call this contract recursively
+        op::movi(IS_NESTED, 1),
+        op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
+        op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
+        // Now in the outer context, try to copy from preloaded data
+        // which should be empty and thus cause a panic.
+        // Just before panicing instruction, log something to make sure we
+        // got here.
+        op::log(RegId::ONE, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::spcp(RegId::HP, RegId::ZERO, RegId::ONE, 0),
+        // Unreachable
+        op::divi(RegId::ZERO, RegId::ZERO, 0),
+    ]);
+    dbg!(&receipts);
+    assert_panics(&receipts, PanicReason::StorageOutOfBounds);
+
+    for r in receipts {
+        let Receipt::Log { ra, rb, .. } = r else {
+            continue;
+        };
+        assert!(ra == 1 && rb == 0, "Should have reached nested context");
+        return;
+    }
+
+    panic!("Missing Log receipt");
+}

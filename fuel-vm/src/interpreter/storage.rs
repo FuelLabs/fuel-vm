@@ -19,7 +19,8 @@ where
     M: Memory,
     S: InterpreterStorage,
 {
-    /// Verifies that the given size does not exceed the maximum allowed storage slot length.
+    /// Verifies that the given size does not exceed the maximum allowed storage slot
+    /// length.
     pub(crate) fn verify_storage_size(
         &self,
         size: usize,

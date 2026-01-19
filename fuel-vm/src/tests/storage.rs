@@ -1281,7 +1281,6 @@ fn preload_is_cleared_on_contract_call() {
         // Unreachable
         op::divi(RegId::ZERO, RegId::ZERO, 0),
     ]);
-    dbg!(&receipts);
     assert_panics(&receipts, PanicReason::StorageOutOfBounds);
 
     for r in receipts {
@@ -1328,7 +1327,6 @@ fn preload_is_cleared_on_contract_return(
         // Unreachable
         op::divi(RegId::ZERO, RegId::ZERO, 0),
     ]);
-    dbg!(&receipts);
     assert_panics(&receipts, PanicReason::StorageOutOfBounds);
 
     for r in receipts {

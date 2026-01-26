@@ -60,6 +60,30 @@ fn call_contract_once(program: Vec<Instruction>) -> Vec<Receipt> {
 }
 
 #[test]
+fn srwq_panics_on_empty_slot() {
+    const DISCARD: RegId = RegId::new(0x39);
+    const SLOT_KEY: RegId = RegId::new(0x38);
+    const BUFFER: RegId = RegId::new(0x37);
+
+    let receipts = call_contract_once(vec![
+        // Allocate buffers
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+        op::move_(BUFFER, RegId::HP),
+        // Create empty slot
+        op::swri(SLOT_KEY, BUFFER, 0),
+        // Attempt read using SRWQ, should panic
+        op::movi(0x10, 1),
+        op::srwq(BUFFER, DISCARD, SLOT_KEY, 0x10),
+        // Unreachable
+        op::ret(RegId::ONE),
+    ]);
+
+    assert_panics(&receipts, PanicReason::StorageOutOfBounds);
+}
+
+#[test]
 fn srwq_can_read_slots_when_created_with_dynamic_opcodes() {
     const DISCARD: RegId = RegId::new(0x39);
     const SLOT_KEY: RegId = RegId::new(0x38);
@@ -78,7 +102,7 @@ fn srwq_can_read_slots_when_created_with_dynamic_opcodes() {
         op::sb(SLOT_KEY, RegId::ONE, 31),
         op::swri(SLOT_KEY, BUFFER, 32),
         op::sb(SLOT_KEY, RegId::ZERO, 31),
-        // Attempt read using SRWQ, should panic
+        // Attempt read using SRWQ, shouldn't panic
         op::movi(0x10, 2),
         op::srwq(BUFFER, DISCARD, SLOT_KEY, 0x10),
         op::logd(RegId::ZERO, RegId::ZERO, BUFFER, 0x15),

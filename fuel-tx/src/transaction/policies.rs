@@ -14,7 +14,6 @@ use fuel_types::{
         Input,
         Output,
         Serialize,
-        SerializeForwardCompatible,
     },
 };
 
@@ -598,35 +597,45 @@ impl Serialize for Policies {
     }
 }
 
-impl SerializeForwardCompatible for Policies {
-    type Metadata = PoliciesDeserializeMetadata;
-
-    fn size_static_forward_compatible(&self, _metadata: &Self::Metadata) -> usize {
-        self.bits.bits().size_static()
+impl Policies {
+    /// Serializes the policies preserving unknown policy bits and values from metadata.
+    #[cfg(feature = "alloc")]
+    pub fn to_bytes_forward_compatible(
+        &self,
+        metadata: &PoliciesDeserializeMetadata,
+    ) -> Vec<u8> {
+        let mut buffer = Vec::new();
+        self.encode_forward_compatible(&mut buffer, metadata)
+            .expect("Encoding to Vec should not fail");
+        buffer
     }
 
-    #[allow(clippy::arithmetic_side_effects)]
-    fn size_dynamic_forward_compatible(&self, metadata: &Self::Metadata) -> usize {
-        let known_count = self.bits.bits().count_ones() as usize;
-        let unknown_count = metadata.unknown_bits.count_ones() as usize;
-        let total_count = known_count + unknown_count;
-
-        total_count * Word::MIN.size()
-    }
-
-    fn encode_static_forward_compatible<O: Output + ?Sized>(
+    /// Encodes the policies preserving unknown policy bits and values from metadata.
+    pub fn encode_forward_compatible<O: Output + ?Sized>(
         &self,
         buffer: &mut O,
-        metadata: &Self::Metadata,
+        metadata: &PoliciesDeserializeMetadata,
+    ) -> Result<(), Error> {
+        self.encode_static_forward_compatible(buffer, metadata)?;
+        self.encode_dynamic_forward_compatible(buffer, metadata)?;
+        Ok(())
+    }
+
+    /// Encodes static part of policies preserving unknown bits from metadata.
+    pub fn encode_static_forward_compatible<O: Output + ?Sized>(
+        &self,
+        buffer: &mut O,
+        metadata: &PoliciesDeserializeMetadata,
     ) -> Result<(), Error> {
         let raw_bits = self.bits.bits() | metadata.unknown_bits;
         raw_bits.encode_static(buffer)
     }
 
-    fn encode_dynamic_forward_compatible<O: Output + ?Sized>(
+    /// Encodes dynamic part of policies preserving unknown values from metadata.
+    pub fn encode_dynamic_forward_compatible<O: Output + ?Sized>(
         &self,
         buffer: &mut O,
-        metadata: &Self::Metadata,
+        metadata: &PoliciesDeserializeMetadata,
     ) -> Result<(), Error> {
         let raw_bits = self.bits.bits() | metadata.unknown_bits;
 
@@ -687,14 +696,16 @@ impl Deserialize for Policies {
     }
 }
 
+/// Metadata returned from forward-compatible deserialization of `Policies`.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PoliciesDeserializeMetadata {
-    /// Which policy bits were unknown
+    /// Which policy bits were unknown (bitmask of unknown bits)
     pub unknown_bits: u32,
 
     /// Whether any unknown policy was encountered
     pub has_unknown_policy: bool,
 
+    /// The unknown policy values as (bit_position, value) pairs.
     pub unknown_policies: Vec<(usize, Word)>,
 }
 
@@ -743,6 +754,20 @@ impl DeserializeForwardCompatible for Policies {
                 }
             }
         }
+
+        // Validate that Maturity and Expiration do not exceed u32::MAX
+        if let Some(maturity) = self.get(PolicyType::Maturity)
+            && maturity > u32::MAX as u64
+        {
+            return Err(Error::Unknown("The maturity in more than `u32::MAX`"));
+        }
+
+        if let Some(expiration) = self.get(PolicyType::Expiration)
+            && expiration > u32::MAX as u64
+        {
+            return Err(Error::Unknown("The expiration in more than `u32::MAX`"));
+        }
+
         Ok(())
     }
 }
@@ -1362,4 +1387,38 @@ fn test_transaction_signing_with_unknown_policies() {
     assert_eq!(revalidated_meta.unknown_policies.len(), 2);
     assert_eq!(revalidated_meta.unknown_policies[0], (8, 777));
     assert_eq!(revalidated_meta.unknown_policies[1], (9, 888));
+}
+
+#[test]
+fn test_transaction_forward_compatible_roundtrip() {
+    use crate::{
+        Finalizable,
+        Transaction,
+        TransactionBuilder,
+    };
+    use fuel_types::canonical::DeserializeForwardCompatible;
+
+    // Create a script transaction with known policies
+    let tx: Transaction = TransactionBuilder::script(vec![0x24, 0x00, 0x00, 0x00], vec![])
+        .max_fee_limit(1000)
+        .tip(100)
+        .maturity(50u32.into())
+        .add_fee_input()
+        .finalize()
+        .into();
+
+    let original_bytes = tx.to_bytes();
+
+    // Forward-compatible deserialization should work for normal transactions
+    let (deserialized_tx, metadata) =
+        Transaction::from_bytes_forward_compatible(&original_bytes)
+            .expect("forward-compatible deserialization should succeed");
+
+    // Should not have any unknown policies
+    assert!(!metadata.policies_metadata.has_unknown_policy);
+    assert_eq!(metadata.policies_metadata.unknown_bits, 0);
+
+    // Roundtrip should produce identical bytes
+    let reserialized_bytes = deserialized_tx.to_bytes_forward_compatible(&metadata);
+    assert_eq!(original_bytes, reserialized_bytes);
 }

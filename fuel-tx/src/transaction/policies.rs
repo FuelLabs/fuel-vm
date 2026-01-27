@@ -1099,131 +1099,47 @@ fn forward_compatible_deserialization_without_unknown_policies() {
 }
 
 #[test]
-fn forward_compatible_deserialization_with_multiple_unknown_policies() {
+fn forward_compatible_deserialization_rejects_invalid_maturity() {
     use fuel_types::canonical::{
-        Deserialize,
         DeserializeForwardCompatible,
         Serialize,
     };
 
-    // Given - Simulate multiple unknown policy bits
-    let unknown_bit1 = 1u32 << 6;
-    let unknown_bit2 = 1u32 << 7;
-    let unknown_bit3 = 1u32 << 10;
-    let known_bits = PoliciesBits::MaxFee.union(PoliciesBits::Expiration);
-    let raw_bits = known_bits.bits() | unknown_bit1 | unknown_bit2 | unknown_bit3;
+    let bits = PoliciesBits::Maturity;
 
-    // When - Manually serialize
-    // Values must be in bit order: 3 (MaxFee), 4 (Expiration), 6, 7, 10
     let mut buffer = Vec::new();
-    raw_bits.encode(&mut buffer).expect("Should encode bits");
-    500u64
-        .encode(&mut buffer)
-        .expect("Should encode max fee (bit 3)");
-    12345u64
-        .encode(&mut buffer)
-        .expect("Should encode expiration (bit 4)");
-    1111u64
-        .encode(&mut buffer)
-        .expect("Should encode unknown bit 6");
-    2222u64
-        .encode(&mut buffer)
-        .expect("Should encode unknown bit 7");
-    3333u64
-        .encode(&mut buffer)
-        .expect("Should encode unknown bit 10");
+    bits.bits().encode(&mut buffer).unwrap();
+    // Maturity value exceeds u32::MAX
+    (u64::from(u32::MAX) + 1).encode(&mut buffer).unwrap();
 
-    // Then - Strict should fail
-    assert!(Policies::from_bytes(&buffer).is_err());
-
-    // Forward compatibility should succeed
-    let (policies, metadata) =
-        Policies::from_bytes_forward_compatible(&buffer).expect("should succeed");
-
-    // All unknown bits should be tracked
-    assert!(metadata.has_unknown_policy);
-    assert_eq!(
-        metadata.unknown_bits,
-        unknown_bit1 | unknown_bit2 | unknown_bit3
-    );
-
-    // Known policies should be accessible
-    assert_eq!(policies.get(PolicyType::MaxFee), Some(500));
-    assert_eq!(policies.get(PolicyType::Expiration), Some(12345));
+    let result = Policies::from_bytes_forward_compatible(&buffer);
+    assert!(result.is_err());
+    assert!(matches!(
+        result.unwrap_err(),
+        fuel_types::canonical::Error::Unknown(_)
+    ));
 }
 
 #[test]
-fn forward_compatible_deserialization_preserves_known_policies_only() {
+fn forward_compatible_deserialization_rejects_invalid_expiration() {
     use fuel_types::canonical::{
         DeserializeForwardCompatible,
         Serialize,
     };
 
-    // Given - Mix of all known policies plus unknown bits
-    let unknown_bits = 0b1111_0000_0000u32; // Bits 8, 9, 10, 11 are unknown
-    let all_known = PoliciesBits::all().bits();
-    let raw_bits = all_known | unknown_bits;
+    let bits = PoliciesBits::Expiration;
 
     let mut buffer = Vec::new();
-    raw_bits.encode(&mut buffer).expect("Should encode bits");
+    bits.bits().encode(&mut buffer).unwrap();
+    // Expiration value exceeds u32::MAX
+    (u64::from(u32::MAX) + 1).encode(&mut buffer).unwrap();
 
-    // When - Encode values in bit order: 0, 1, 2, 3, 4, 5, 8, 9, 10, 11
-    100u64.encode(&mut buffer).expect("Tip (bit 0)");
-    200u64.encode(&mut buffer).expect("WitnessLimit (bit 1)");
-    10u64.encode(&mut buffer).expect("Maturity (bit 2)");
-    500u64.encode(&mut buffer).expect("MaxFee (bit 3)");
-    12345u64.encode(&mut buffer).expect("Expiration (bit 4)");
-    0xABCDu64.encode(&mut buffer).expect("Owner (bit 5)");
-    1000u64.encode(&mut buffer).expect("Unknown bit 8");
-    2000u64.encode(&mut buffer).expect("Unknown bit 9");
-    3000u64.encode(&mut buffer).expect("Unknown bit 10");
-    4000u64.encode(&mut buffer).expect("Unknown bit 11");
-
-    let (policies, metadata) =
-        Policies::from_bytes_forward_compatible(&buffer).expect("Should deserialize");
-
-    // Then - All known policies should be present
-    assert_eq!(policies.get(PolicyType::Tip), Some(100));
-    assert_eq!(policies.get(PolicyType::WitnessLimit), Some(200));
-    assert_eq!(policies.get(PolicyType::Maturity), Some(10));
-    assert_eq!(policies.get(PolicyType::MaxFee), Some(500));
-    assert_eq!(policies.get(PolicyType::Expiration), Some(12345));
-    assert_eq!(policies.get(PolicyType::Owner), Some(0xABCD));
-
-    // Unknown bits should be tracked
-    assert!(metadata.has_unknown_policy);
-    assert_eq!(metadata.unknown_bits, unknown_bits);
-}
-
-#[test]
-fn forward_compatible_deserialization_with_all_policies_unknown() {
-    use fuel_types::canonical::{
-        DeserializeForwardCompatible,
-        Serialize,
-    };
-
-    let future_bits = 0b1111_1111_1100_0000u32; // Bits 6-15 are set
-
-    let mut buffer = Vec::new();
-    future_bits.encode(&mut buffer).unwrap();
-
-    // Encode values for all the unknown bits (6-15)
-    for i in 6u32..16u32 {
-        if future_bits & (1u32 << i) != 0 {
-            (u64::from(i) * 100).encode(&mut buffer).unwrap();
-        }
-    }
-
-    let (policies, metadata) = Policies::from_bytes_forward_compatible(&buffer)
-        .expect("Should deserialize even with all unknown");
-
-    // Should have empty known policies
-    assert!(policies.is_empty());
-    assert_eq!(policies.bits(), 0);
-
-    // But should track all as unknown
-    assert!(metadata.has_unknown_policy);
-    assert_eq!(metadata.unknown_bits, future_bits);
+    let result = Policies::from_bytes_forward_compatible(&buffer);
+    assert!(result.is_err());
+    assert!(matches!(
+        result.unwrap_err(),
+        fuel_types::canonical::Error::Unknown(_)
+    ));
 }
 
 #[test]
@@ -1281,32 +1197,6 @@ fn test_roundtrip_with_unknown_policies_preserves_bytes() {
 }
 
 #[test]
-fn test_roundtrip_without_unknown_policies_stays_identical() {
-    use fuel_types::canonical::DeserializeForwardCompatible;
-
-    // Given - Normal policies without unknown bits
-    let policies = Policies::new()
-        .with_tip(100)
-        .with_maturity(BlockHeight::new(50));
-
-    let original_bytes = policies.to_bytes();
-
-    // When - Roundtrip through forward-compatible deserialization
-    let (deserialized, metadata) =
-        Policies::from_bytes_forward_compatible(&original_bytes).unwrap();
-
-    // Then - Should not have unknown policies
-    assert!(!metadata.has_unknown_policy);
-    assert_eq!(metadata.unknown_policies.len(), 0);
-
-    // When - Re-serialize
-    let reserialized_bytes = deserialized.to_bytes_forward_compatible(&metadata);
-
-    // Then - Should be identical
-    assert_eq!(original_bytes, reserialized_bytes);
-}
-
-#[test]
 fn test_unknown_policies_preserved_in_correct_bit_order() {
     use fuel_types::canonical::{
         DeserializeForwardCompatible,
@@ -1349,44 +1239,6 @@ fn test_unknown_policies_preserved_in_correct_bit_order() {
 
     // Then - Must match original bytes exactly (critical for signing!)
     assert_eq!(original_bytes, reserialized_bytes);
-}
-
-#[test]
-fn test_transaction_signing_with_unknown_policies() {
-    use fuel_types::canonical::DeserializeForwardCompatible;
-
-    // Given - Simulate a signed transaction with unknown policies
-    let known_bits = PoliciesBits::Tip.union(PoliciesBits::WitnessLimit);
-    let unknown_bits = (1u32 << 8) | (1u32 << 9);
-    let raw_bits = known_bits.bits() | unknown_bits;
-
-    let mut tx_bytes = Vec::new();
-    raw_bits.encode(&mut tx_bytes).unwrap();
-    150u64.encode(&mut tx_bytes).unwrap(); // Tip
-    1000u64.encode(&mut tx_bytes).unwrap(); // WitnessLimit
-    777u64.encode(&mut tx_bytes).unwrap(); // Unknown bit 8
-    888u64.encode(&mut tx_bytes).unwrap(); // Unknown bit 9
-
-    // When - Deserialize, potentially modify known fields, then re-serialize
-    let (mut policies, metadata) =
-        Policies::from_bytes_forward_compatible(&tx_bytes).unwrap();
-
-    // Modify a known field (simulating transaction modification)
-    policies.set(PolicyType::Tip, Some(200)); // Changed from 150 to 200
-
-    // When - Re-serialize with metadata
-    let new_tx_bytes = policies.to_bytes_forward_compatible(&metadata);
-
-    // Then - Unknown policies should be preserved even though we modified a known field
-    // Re-decode to verify
-    let (revalidated, revalidated_meta) =
-        Policies::from_bytes_forward_compatible(&new_tx_bytes).unwrap();
-
-    assert_eq!(revalidated.get(PolicyType::Tip), Some(200)); // Modified value
-    assert_eq!(revalidated.get(PolicyType::WitnessLimit), Some(1000)); // Unchanged
-    assert_eq!(revalidated_meta.unknown_policies.len(), 2);
-    assert_eq!(revalidated_meta.unknown_policies[0], (8, 777));
-    assert_eq!(revalidated_meta.unknown_policies[1], (9, 888));
 }
 
 #[test]

@@ -118,6 +118,17 @@ pub trait StorageSize<Type: Mappable>: StorageInspect<Type> {
     fn size_of_value(&self, key: &Type::Key) -> Result<Option<usize>, Self::Error>;
 }
 
+/// Errors that can occur when reading from storage using `StorageRead` methods
+/// that write the result to a slice.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[must_use]
+pub enum StorageReadError {
+    /// The requested key was not found in storage.
+    KeyNotFound,
+    /// Attempted to read past the end of the stored value.
+    OutOfBounds,
+}
+
 /// Base storage trait for Fuel infrastructure.
 ///
 /// Allows reading the raw bytes of the value stored at a given key
@@ -131,13 +142,35 @@ pub trait StorageRead<Type: Mappable>: StorageInspect<Type> + StorageSize<Type> 
     ///
     /// Does not perform any deserialization.
     ///
-    /// Returns `Ok(true)` if the value does exist, and `Ok(false)` otherwise.
-    fn read(
+    /// Returns `Ok(Ok(length))` if the value does exist, where
+    /// the `length` is the total length of the value stored at the key.
+    ///
+    /// Note that inner error `Ok(Err(_))` is used to communicate errors that the
+    /// called should be able to handle, not ones caused by underlying IO.
+    fn read_exact(
         &self,
         key: &Type::Key,
         offset: usize,
         buf: &mut [u8],
-    ) -> Result<bool, Self::Error>;
+    ) -> Result<Result<usize, StorageReadError>, Self::Error>;
+
+    /// Read the value stored at the given key into the provided buffer if the value
+    /// exists. If the buffer cannot be filled completely, the remaining bytes
+    /// are filled with zeros.
+    ///
+    /// Does not perform any deserialization.
+    ///
+    /// Returns `Ok(Ok(length))` if the value does exist, where
+    /// the `length` is the total length of the value stored at the key.
+    ///
+    /// Note that inner error `Ok(Err(_))` is used to communicate errors that the
+    /// called should be able to handle, not ones caused by underlying IO.
+    fn read_zerofill(
+        &self,
+        key: &Type::Key,
+        offset: usize,
+        buf: &mut [u8],
+    ) -> Result<Result<usize, StorageReadError>, Self::Error>;
 
     /// Same as `read` but allocates a new buffer and returns it.
     ///

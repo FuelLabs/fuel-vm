@@ -59,6 +59,7 @@ use fuel_asm::{
 use fuel_storage::{
     StorageAsRef,
     StorageRead,
+    StorageReadError,
     StorageSize,
 };
 use fuel_tx::{
@@ -634,14 +635,19 @@ fn read_contract<S>(
 where
     S: StorageSize<ContractsRawCode> + StorageRead<ContractsRawCode> + StorageAsRef,
 {
-    if !storage
+    match storage
         .storage::<ContractsRawCode>()
-        .read(contract, 0, dst)
+        .read_zerofill(contract, 0, dst)
         .map_err(RuntimeError::Storage)?
     {
-        return Err(PanicReason::ContractNotFound.into());
+        Ok(_) => Ok(()),
+        Err(StorageReadError::KeyNotFound) => {
+            Err(RuntimeError::Recoverable(PanicReason::ContractNotFound))
+        }
+        Err(StorageReadError::OutOfBounds) => {
+            unreachable!("Zerofill read with zero offset cannot be out of bounds")
+        }
     }
-    Ok(())
 }
 
 impl<'a> From<&'a PrepareCallRegisters<'_>> for SystemRegistersRef<'a> {

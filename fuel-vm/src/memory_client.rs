@@ -1,5 +1,7 @@
 //! In-memory client implementation
 
+use std::convert::Infallible;
+
 use crate::{
     backtrace::Backtrace,
     checked_transaction::Checked,
@@ -11,10 +13,7 @@ use crate::{
         NotSupportedEcal,
     },
     state::StateTransitionRef,
-    storage::{
-        MemoryStorage,
-        MemoryStorageError,
-    },
+    storage::MemoryStorage,
     transactor::Transactor,
     verification::{
         Normal,
@@ -119,7 +118,7 @@ where
     pub fn deploy(
         &mut self,
         tx: Checked<Create>,
-    ) -> Result<Create, InterpreterError<MemoryStorageError>> {
+    ) -> Result<Create, InterpreterError<Infallible>> {
         self.transactor.deploy(tx)
     }
 
@@ -127,7 +126,7 @@ where
     pub fn upgrade(
         &mut self,
         tx: Checked<Upgrade>,
-    ) -> Result<Upgrade, InterpreterError<MemoryStorageError>> {
+    ) -> Result<Upgrade, InterpreterError<Infallible>> {
         self.transactor.upgrade(tx)
     }
 

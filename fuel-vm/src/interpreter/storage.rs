@@ -1,4 +1,8 @@
 use fuel_asm::RegId;
+use fuel_storage::{
+    StorageRead,
+    StorageReadError,
+};
 use fuel_tx::{
     Bytes32,
     PanicReason,
@@ -11,7 +15,11 @@ use crate::{
         Interpreter,
         Memory,
     },
-    storage::InterpreterStorage,
+    storage::{
+        ContractsState,
+        ContractsStateKey,
+        InterpreterStorage,
+    },
 };
 
 impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
@@ -48,28 +56,27 @@ where
         let owner = self.ownership_registers();
 
         let dst = self.memory.as_mut().write(owner, dst_ptr, len)?;
-        let value = self
-            .storage
-            .contract_state(&contract_id, &key)
-            .map_err(RuntimeError::Storage)?;
 
-        let Some(value) = value else {
-            self.registers[RegId::ERR] = 1;
-            return Ok(0);
-        };
-
-        let value = value.as_ref().as_ref();
-
-        let end = offset.saturating_add(len);
-        if end > value.len() {
-            // attempting to read past the end of the stored value
-            return Err(RuntimeError::Recoverable(PanicReason::StorageOutOfBounds));
+        match StorageRead::<ContractsState>::read_exact(
+            &self.storage,
+            &ContractsStateKey::new(&contract_id, &key),
+            offset,
+            dst,
+        )
+        .map_err(RuntimeError::Storage)?
+        {
+            Ok(total_len) => {
+                self.registers[RegId::ERR] = 0;
+                Ok(total_len as u64)
+            }
+            Err(StorageReadError::KeyNotFound) => {
+                self.registers[RegId::ERR] = 1;
+                Ok(0)
+            }
+            Err(StorageReadError::OutOfBounds) => {
+                Err(RuntimeError::Recoverable(PanicReason::StorageOutOfBounds))
+            }
         }
-
-        dst.copy_from_slice(&value[offset..end]);
-
-        self.registers[RegId::ERR] = 0;
-        Ok(value.len() as u64)
     }
 
     pub(crate) fn storage_write_from_memory(

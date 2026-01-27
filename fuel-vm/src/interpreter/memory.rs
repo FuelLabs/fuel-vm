@@ -43,6 +43,7 @@ use alloc::vec::Vec;
 use fuel_storage::{
     Mappable,
     StorageRead,
+    StorageReadError,
 };
 
 #[cfg(test)]
@@ -1191,11 +1192,15 @@ where
         let src_read_length = src_read_length.min(write_buffer.len());
 
         let (src_read_buffer, _) = write_buffer.split_at_mut(src_read_length);
-        let found = storage
-            .read(src_id, src_offset as usize, src_read_buffer)
-            .map_err(RuntimeError::Storage)?;
-        if !found {
-            return Err(not_found_error.into());
+        match storage
+            .read_zerofill(src_id, src_offset as usize, src_read_buffer)
+            .map_err(RuntimeError::Storage)?
+        {
+            Ok(_) => {}
+            Err(StorageReadError::KeyNotFound) => {
+                return Err(not_found_error.into());
+            }
+            Err(StorageReadError::OutOfBounds) => todo!(),
         }
 
         empty_offset = src_read_length;

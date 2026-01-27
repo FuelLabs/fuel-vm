@@ -4,13 +4,11 @@ use alloc::{
     vec,
     vec::Vec,
 };
+use core::convert::Infallible;
 
 use crate::{
     interpreter::contract::balance as contract_balance,
-    storage::{
-        MemoryStorage,
-        MemoryStorageError,
-    },
+    storage::MemoryStorage,
 };
 
 use super::*;
@@ -207,7 +205,7 @@ fn test_smo(
         max_message_data_length,
         initial_balance,
     }: Input,
-) -> Result<Output, RuntimeError<MemoryStorageError>> {
+) -> Result<Output, RuntimeError<Infallible>> {
     let mut rng = StdRng::seed_from_u64(100);
     let base_asset_id = rng.r#gen();
 

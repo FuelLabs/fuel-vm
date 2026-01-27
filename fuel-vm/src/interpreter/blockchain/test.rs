@@ -4,14 +4,16 @@ use alloc::{
     vec::Vec,
 };
 
-use core::ops::Range;
+use core::{
+    convert::Infallible,
+    ops::Range,
+};
 
 use crate::{
     context::Context,
     storage::{
         ContractsStateData,
         MemoryStorage,
-        MemoryStorageError,
     },
 };
 use test_case::test_case;
@@ -63,7 +65,7 @@ fn test_state_read_word(
     insert: impl Into<Option<Word>>,
     key: Word,
     offset: u8,
-) -> Result<(Word, Word), RuntimeError<MemoryStorageError>> {
+) -> Result<(Word, Word), RuntimeError<Infallible>> {
     let mut storage = MemoryStorage::default();
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
@@ -130,7 +132,7 @@ fn test_state_write_word(
     fp: Word,
     insert: bool,
     key: Word,
-) -> Result<Word, RuntimeError<MemoryStorageError>> {
+) -> Result<Word, RuntimeError<Infallible>> {
     let mut storage = MemoryStorage::default();
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);

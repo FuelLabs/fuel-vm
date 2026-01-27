@@ -1196,14 +1196,16 @@ where
             .read_zerofill(src_id, src_offset as usize, src_read_buffer)
             .map_err(RuntimeError::Storage)?
         {
-            Ok(_) => {}
+            Ok(_) => {
+                empty_offset = src_read_length;
+            }
             Err(StorageReadError::KeyNotFound) => {
                 return Err(not_found_error.into());
             }
-            Err(StorageReadError::OutOfBounds) => todo!(),
+            Err(StorageReadError::OutOfBounds) => {
+                empty_offset = 0; // zero fill whole range       
+            }
         }
-
-        empty_offset = src_read_length;
     }
 
     write_buffer[empty_offset..].fill(0);

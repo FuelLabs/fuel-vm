@@ -1251,13 +1251,14 @@ fn test_transaction_forward_compatible_roundtrip() {
     use fuel_types::canonical::DeserializeForwardCompatible;
 
     // Create a script transaction with known policies
-    let tx: Transaction = TransactionBuilder::script(vec![0x24, 0x00, 0x00, 0x00], vec![])
-        .max_fee_limit(1000)
-        .tip(100)
-        .maturity(50u32.into())
-        .add_fee_input()
-        .finalize()
-        .into();
+    let tx: Transaction =
+        TransactionBuilder::script(vec![0x24, 0x00, 0x00, 0x00], vec![])
+            .max_fee_limit(1000)
+            .tip(100)
+            .maturity(50u32.into())
+            .add_fee_input()
+            .finalize()
+            .into();
 
     let original_bytes = tx.to_bytes();
 

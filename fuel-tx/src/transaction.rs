@@ -771,9 +771,7 @@ impl Transaction {
             Self::Upload(tx) => {
                 tx.to_bytes_forward_compatible(&metadata.policies_metadata)
             }
-            Self::Blob(tx) => {
-                tx.to_bytes_forward_compatible(&metadata.policies_metadata)
-            }
+            Self::Blob(tx) => tx.to_bytes_forward_compatible(&metadata.policies_metadata),
         }
     }
 }
@@ -794,12 +792,22 @@ impl DeserializeForwardCompatible for Transaction {
             TransactionRepr::Script => {
                 let (tx, metadata) =
                     <Script as DeserializeForwardCompatible>::decode_static_forward_compatible(buffer)?;
-                Ok((tx.into(), TransactionDeserializeMetadata { policies_metadata: metadata }))
+                Ok((
+                    tx.into(),
+                    TransactionDeserializeMetadata {
+                        policies_metadata: metadata,
+                    },
+                ))
             }
             TransactionRepr::Create => {
                 let (tx, metadata) =
                     <Create as DeserializeForwardCompatible>::decode_static_forward_compatible(buffer)?;
-                Ok((tx.into(), TransactionDeserializeMetadata { policies_metadata: metadata }))
+                Ok((
+                    tx.into(),
+                    TransactionDeserializeMetadata {
+                        policies_metadata: metadata,
+                    },
+                ))
             }
             TransactionRepr::Mint => {
                 // Mint doesn't have policies, use standard deserialization
@@ -811,17 +819,32 @@ impl DeserializeForwardCompatible for Transaction {
             TransactionRepr::Upgrade => {
                 let (tx, metadata) =
                     <Upgrade as DeserializeForwardCompatible>::decode_static_forward_compatible(buffer)?;
-                Ok((tx.into(), TransactionDeserializeMetadata { policies_metadata: metadata }))
+                Ok((
+                    tx.into(),
+                    TransactionDeserializeMetadata {
+                        policies_metadata: metadata,
+                    },
+                ))
             }
             TransactionRepr::Upload => {
                 let (tx, metadata) =
                     <Upload as DeserializeForwardCompatible>::decode_static_forward_compatible(buffer)?;
-                Ok((tx.into(), TransactionDeserializeMetadata { policies_metadata: metadata }))
+                Ok((
+                    tx.into(),
+                    TransactionDeserializeMetadata {
+                        policies_metadata: metadata,
+                    },
+                ))
             }
             TransactionRepr::Blob => {
                 let (tx, metadata) =
                     <Blob as DeserializeForwardCompatible>::decode_static_forward_compatible(buffer)?;
-                Ok((tx.into(), TransactionDeserializeMetadata { policies_metadata: metadata }))
+                Ok((
+                    tx.into(),
+                    TransactionDeserializeMetadata {
+                        policies_metadata: metadata,
+                    },
+                ))
             }
         }
     }
@@ -832,25 +855,30 @@ impl DeserializeForwardCompatible for Transaction {
         metadata: &mut Self::Metadata,
     ) -> Result<(), Error> {
         match self {
-            Self::Script(tx) => {
-                tx.decode_dynamic_forward_compatible(buffer, &mut metadata.policies_metadata)
-            }
-            Self::Create(tx) => {
-                tx.decode_dynamic_forward_compatible(buffer, &mut metadata.policies_metadata)
-            }
+            Self::Script(tx) => tx.decode_dynamic_forward_compatible(
+                buffer,
+                &mut metadata.policies_metadata,
+            ),
+            Self::Create(tx) => tx.decode_dynamic_forward_compatible(
+                buffer,
+                &mut metadata.policies_metadata,
+            ),
             Self::Mint(tx) => {
                 // Mint doesn't have policies, use standard deserialization
                 tx.decode_dynamic(buffer)
             }
-            Self::Upgrade(tx) => {
-                tx.decode_dynamic_forward_compatible(buffer, &mut metadata.policies_metadata)
-            }
-            Self::Upload(tx) => {
-                tx.decode_dynamic_forward_compatible(buffer, &mut metadata.policies_metadata)
-            }
-            Self::Blob(tx) => {
-                tx.decode_dynamic_forward_compatible(buffer, &mut metadata.policies_metadata)
-            }
+            Self::Upgrade(tx) => tx.decode_dynamic_forward_compatible(
+                buffer,
+                &mut metadata.policies_metadata,
+            ),
+            Self::Upload(tx) => tx.decode_dynamic_forward_compatible(
+                buffer,
+                &mut metadata.policies_metadata,
+            ),
+            Self::Blob(tx) => tx.decode_dynamic_forward_compatible(
+                buffer,
+                &mut metadata.policies_metadata,
+            ),
         }
     }
 }

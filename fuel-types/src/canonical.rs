@@ -1037,5 +1037,4 @@ mod tests {
         assert_eq!(obj.flag, 0); // Masked to known bits
         assert!(metadata.has_extra_data);
     }
-
 }

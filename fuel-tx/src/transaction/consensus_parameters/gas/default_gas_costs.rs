@@ -4,6 +4,7 @@ use super::*;
 pub const GIT: &str = "98341e564b75d1157e61d7d5f38612f6224a5b30";
 /// Modified manually afterwards in https://github.com/FuelLabs/fuel-vm/pull/780
 /// and in https://github.com/FuelLabs/fuel-vm/pull/922
+/// and in https://github.com/FuelLabs/fuel-vm/pull/982
 pub fn default_gas_costs() -> GasCostsValues {
     GasCostsValuesV7 {
         add: 1,
@@ -186,29 +187,29 @@ pub fn default_gas_costs() -> GasCostsValues {
             units_per_gas: 5,
         },
 
-        sclr: DependentCost::LightOperation {
-            base: 50,
-            units_per_gas: 5,
+        sclr: DependentCost::HeavyOperation {
+            base: 7,
+            gas_per_unit: 20,
         },
         srdd: DependentCost::LightOperation {
-            base: 50,
-            units_per_gas: 5,
+            base: 2513,
+            units_per_gas: 39,
         },
         swrd: DependentCost::LightOperation {
-            base: 50,
-            units_per_gas: 5,
+            base: 10,
+            units_per_gas: 406,
         },
         supd: DependentCost::LightOperation {
-            base: 50,
-            units_per_gas: 5,
+            base: 2513,
+            units_per_gas: 35,
         },
         spld: DependentCost::LightOperation {
-            base: 50,
-            units_per_gas: 5,
+            base: 3427,
+            units_per_gas: 2,
         },
         spcp: DependentCost::LightOperation {
-            base: 50,
-            units_per_gas: 5,
+            base: 1,
+            units_per_gas: 3333,
         },
 
         bsiz: DependentCost::LightOperation {

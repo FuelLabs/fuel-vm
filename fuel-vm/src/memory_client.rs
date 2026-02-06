@@ -1,6 +1,6 @@
 //! In-memory client implementation
 
-use std::convert::Infallible;
+use core::convert::Infallible;
 
 use crate::{
     backtrace::Backtrace,

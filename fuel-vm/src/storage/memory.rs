@@ -1,6 +1,6 @@
 #![allow(clippy::cast_possible_truncation)]
 
-use std::convert::Infallible;
+use core::convert::Infallible;
 
 use crate::storage::{
     ContractsAssetKey,

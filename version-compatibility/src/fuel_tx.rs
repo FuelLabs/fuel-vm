@@ -98,7 +98,7 @@ fn latest_can_deserialize_previous_tx_pointer_in_tx() {
 
 #[cfg(feature = "da-compression")]
 mod da_compression {
-    use std::convert::Infallible;
+    use core::convert::Infallible;
 
     use fuel_compression_0_58_2::{
         CompressibleBy as CompressibleBy_0_58_2,

@@ -1278,6 +1278,7 @@ fn spcp_panics_if_length_field_sum_overflows() {
 
 #[test]
 fn preload_is_cleared_on_contract_call() {
+    const DISCARD: RegId = RegId::new(0x39);
     const SLOT_KEY: RegId = RegId::new(0x38);
     const IS_NESTED: RegId = RegId::new(0x36);
 
@@ -1296,8 +1297,9 @@ fn preload_is_cleared_on_contract_call() {
         op::movi(0x15, 32),
         op::aloc(0x15),
         op::move_(SLOT_KEY, RegId::HP),
-        // Write dummy value
+        // Write dummy value and preload it back
         op::swri(SLOT_KEY, SLOT_KEY, 32),
+        op::spld(DISCARD, SLOT_KEY),
         // Call this contract recursively
         op::movi(IS_NESTED, 1),
         op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
@@ -1322,6 +1324,7 @@ fn preload_is_cleared_on_contract_call() {
 fn preload_is_cleared_on_contract_return(
     #[values(true, false)] return_data: bool, // test retd instead of ret instruction
 ) {
+    const DISCARD: RegId = RegId::new(0x39);
     const SLOT_KEY: RegId = RegId::new(0x38);
     const IS_NESTED: RegId = RegId::new(0x36);
 
@@ -1330,9 +1333,11 @@ fn preload_is_cleared_on_contract_return(
         op::movi(0x15, 32),
         op::aloc(0x15),
         op::move_(SLOT_KEY, RegId::HP),
-        // If in nested context, write the a dummy value and return immediately
-        op::jnef(IS_NESTED, RegId::ONE, RegId::ZERO, 2),
+        // If in nested context, write the a dummy value, preload it and return
+        // immediately
+        op::jnef(IS_NESTED, RegId::ONE, RegId::ZERO, 3),
         op::swri(SLOT_KEY, SLOT_KEY, 32),
+        op::spld(DISCARD, SLOT_KEY),
         if return_data {
             op::retd(RegId::ZERO, RegId::ONE)
         } else {

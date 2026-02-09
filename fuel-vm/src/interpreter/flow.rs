@@ -58,9 +58,7 @@ use fuel_asm::{
 };
 use fuel_storage::{
     StorageAsRef,
-    StorageRead,
     StorageReadError,
-    StorageSize,
 };
 use fuel_tx::{
     DependentCost,

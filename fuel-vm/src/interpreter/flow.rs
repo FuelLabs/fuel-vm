@@ -591,8 +591,22 @@ impl<S, V> PrepareCallCtx<'_, S, V> {
         let (mem_frame, mem_code) = dst.split_at_mut(CallFrame::serialized_size());
         mem_frame.copy_from_slice(&frame.to_bytes());
         let (mem_code, mem_code_padding) = mem_code.split_at_mut(code_size);
-        read_contract(call.to(), self.storage, mem_code)?;
         mem_code_padding.fill(0);
+
+        let read_result = self
+            .storage
+            .storage::<ContractsRawCode>()
+            .read_exact(call.to(), 0, mem_code)
+            .map_err(RuntimeError::Storage)?;
+        match read_result {
+            Ok(read_len) => debug_assert_eq!(read_len, code_size),
+            Err(StorageReadError::KeyNotFound) => {
+                return Err(RuntimeError::Recoverable(PanicReason::ContractNotFound));
+            }
+            Err(StorageReadError::OutOfBounds) => {
+                unreachable!("The size is checked above using contract_size")
+            }
+        }
 
         #[allow(clippy::arithmetic_side_effects)] // Checked above
         let code_start =
@@ -624,29 +638,6 @@ impl<S, V> PrepareCallCtx<'_, S, V> {
         self.frames.push(frame);
 
         Ok(())
-    }
-}
-
-fn read_contract<S>(
-    contract: &ContractId,
-    storage: &S,
-    dst: &mut [u8],
-) -> IoResult<(), S::Error>
-where
-    S: StorageSize<ContractsRawCode> + StorageRead<ContractsRawCode> + StorageAsRef,
-{
-    match storage
-        .storage::<ContractsRawCode>()
-        .read_zerofill(contract, 0, dst)
-        .map_err(RuntimeError::Storage)?
-    {
-        Ok(_) => Ok(()),
-        Err(StorageReadError::KeyNotFound) => {
-            Err(RuntimeError::Recoverable(PanicReason::ContractNotFound))
-        }
-        Err(StorageReadError::OutOfBounds) => {
-            unreachable!("Zerofill read with zero offset cannot be out of bounds")
-        }
     }
 }
 

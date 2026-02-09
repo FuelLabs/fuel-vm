@@ -1192,10 +1192,10 @@ where
         let src_read_length = src_read_length.min(write_buffer.len());
 
         let (src_read_buffer, _) = write_buffer.split_at_mut(src_read_length);
-        match storage
+        let read_result = storage
             .read_zerofill(src_id, src_offset as usize, src_read_buffer)
-            .map_err(RuntimeError::Storage)?
-        {
+            .map_err(RuntimeError::Storage)?;
+        match read_result {
             Ok(_) => {
                 empty_offset = src_read_length;
             }

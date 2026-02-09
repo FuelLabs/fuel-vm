@@ -150,7 +150,8 @@ fn srwq_allows_reading_zero_slots_even_if_the_first_would_have_wrong_size() {
 }
 
 #[test]
-fn srwq_panics_when_combined_slots_sum_to_multiple_of_32() {
+fn srwq_panics_when_combined_slots_sum_to_multiple_of_32_but_individual_slots_are_not_32_bytes()
+ {
     const DISCARD: RegId = RegId::new(0x39);
     const SLOT_KEY: RegId = RegId::new(0x38);
     const BUFFER: RegId = RegId::new(0x37);
@@ -183,23 +184,34 @@ fn srwq_panics_when_combined_slots_sum_to_multiple_of_32() {
 #[test]
 fn sww_writes_32_bytes() {
     const DISCARD: RegId = RegId::new(0x39);
+    const BUFFER: RegId = RegId::new(0x38);
+    const SLOT_KEY1: RegId = RegId::new(0x37);
+    const SLOT_KEY2: RegId = RegId::new(0x36);
 
     let receipts = call_contract_once(vec![
-        // Allocate a buffer
+        // Allocate data buffer
         op::movi(0x15, 64),
         op::aloc(0x15),
-        // Store some data
+        op::move_(BUFFER, RegId::HP),
+        // Allocate slot key buffers
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY1, RegId::HP),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY2, RegId::HP),
+        op::sb(SLOT_KEY2, RegId::ONE, 31), // Make this the second global slot
+        // Write word 0x01 to slot 0x00.
         op::movi(0x10, 0x01),
-        op::sww(RegId::HP, DISCARD, 0x10),
-        op::addi(0x11, RegId::HP, 32),
-        op::sb(0x11, RegId::ONE, 31),
+        op::sww(SLOT_KEY1, DISCARD, 0x10),
+        // Write word 0x02 to slot 0x01.
         op::movi(0x10, 0x02),
-        op::sww(0x11, DISCARD, 0x10),
+        op::sww(SLOT_KEY2, DISCARD, 0x10),
         // Load it back in 32 byte groups
         op::movi(0x10, 0x02),
-        op::srwq(RegId::HP, DISCARD, RegId::HP, 0x10),
-        // Log it
-        op::logd(RegId::ZERO, RegId::ZERO, RegId::HP, 0x15),
+        op::srwq(BUFFER, DISCARD, SLOT_KEY1, 0x10),
+        // Log the buffer contents
+        op::movi(0x15, 64),
+        op::logd(RegId::ZERO, RegId::ZERO, BUFFER, 0x15),
         // Done
         op::ret(RegId::ONE),
     ]);
@@ -292,7 +304,7 @@ enum StorageOverflowCase {
 }
 
 #[rstest::rstest]
-fn storage_op_storage_key_read_past_boudnds_panics(
+fn storage_op_storage_key_read_past_bounds_panics(
     #[values(
         op::sclr(0x10, RegId::ONE),
         op::srdd(RegId::HP, 0x10, RegId::ZERO, RegId::ZERO),

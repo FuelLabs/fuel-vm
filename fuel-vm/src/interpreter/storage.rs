@@ -29,7 +29,7 @@ where
 {
     /// Verifies that the given size does not exceed the maximum allowed storage slot
     /// length.
-    pub(crate) fn verify_storage_size(
+    pub(crate) fn verify_storage_smaller_than_max(
         &self,
         size: usize,
     ) -> Result<(), RuntimeError<S::DataError>> {
@@ -87,7 +87,7 @@ where
     ) -> Result<(), RuntimeError<S::DataError>> {
         let contract_id = self.internal_contract()?;
         let len = convert::to_usize(len).ok_or(PanicReason::MemoryOverflow)?;
-        self.verify_storage_size(len)?;
+        self.verify_storage_smaller_than_max(len)?;
         let src = self.memory.as_mut().read(src_ptr, len)?;
         self.storage
             .contract_state_insert(&contract_id, &key, src)
@@ -125,7 +125,7 @@ where
             convert::to_usize(write_len).ok_or(PanicReason::MemoryOverflow)?;
         let len_after = offset.saturating_add(write_len);
 
-        self.verify_storage_size(len_after)?;
+        self.verify_storage_smaller_than_max(len_after)?;
 
         if len_after > value.len() {
             value.resize(len_after, 0);

@@ -95,7 +95,7 @@ where
     }
 
     /// Storage read, subslice update and write back.
-    /// Returns the resulting slot length.
+    /// Returns max of read length and resulting slot length.
     pub(crate) fn storage_update_from_memory(
         &mut self,
         key: Bytes32,
@@ -137,7 +137,7 @@ where
         self.storage
             .contract_state_insert(&contract_id, &key, &value)
             .map_err(RuntimeError::Storage)?;
-        Ok(len_after as u64)
+        Ok((len_after).max(value.len()) as u64)
     }
 
     /// Preloads the storage slot identified by `key` into a special memory area,

@@ -1,22 +1,18 @@
 #![allow(clippy::cast_possible_truncation)]
 
-use crate::{
-    error::{
-        InterpreterError,
-        RuntimeError,
-    },
-    storage::{
-        ContractsAssetKey,
-        ContractsAssets,
-        ContractsRawCode,
-        ContractsState,
-        ContractsStateData,
-        ContractsStateKey,
-        InterpreterStorage,
-        UploadedBytecode,
-        UploadedBytecodes,
-        interpreter::ContractsAssetsStorage,
-    },
+use core::convert::Infallible;
+
+use crate::storage::{
+    ContractsAssetKey,
+    ContractsAssets,
+    ContractsRawCode,
+    ContractsState,
+    ContractsStateData,
+    ContractsStateKey,
+    InterpreterStorage,
+    UploadedBytecode,
+    UploadedBytecodes,
+    interpreter::ContractsAssetsStorage,
 };
 
 use fuel_crypto::Hasher;
@@ -27,6 +23,7 @@ use fuel_storage::{
     StorageInspect,
     StorageMutate,
     StorageRead,
+    StorageReadError,
     StorageSize,
     StorageWrite,
 };
@@ -54,26 +51,6 @@ use alloc::{
     collections::BTreeMap,
     vec::Vec,
 };
-
-/// Errors arising from accessing the memory storage.
-#[derive(Debug, Clone, PartialEq, Eq, derive_more::Display)]
-pub enum MemoryStorageError {
-    /// The offset specified for the serialized value exceeds its length
-    #[display(fmt = "Offset {_0} is greater than the length of the value {_1}")]
-    OffsetOutOfBounds(usize, usize),
-}
-
-impl From<MemoryStorageError> for RuntimeError<MemoryStorageError> {
-    fn from(e: MemoryStorageError) -> Self {
-        RuntimeError::Storage(e)
-    }
-}
-
-impl From<MemoryStorageError> for InterpreterError<MemoryStorageError> {
-    fn from(e: MemoryStorageError) -> Self {
-        InterpreterError::Storage(e)
-    }
-}
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct MemoryStorageInner {
@@ -136,18 +113,6 @@ impl MemoryStorage {
         &self,
     ) -> impl Iterator<Item = (&ContractsStateKey, &ContractsStateData)> {
         self.memory.contract_state.iter()
-    }
-
-    /// Fetch a mapping from the contract state.
-    pub fn contract_state(
-        &self,
-        contract: &ContractId,
-        key: &Bytes32,
-    ) -> Cow<'_, ContractsStateData> {
-        self.storage::<ContractsState>()
-            .get(&(contract, key).into())
-            .expect("Infallible")
-            .unwrap_or(Cow::Owned(ContractsStateData::default()))
     }
 
     /// Set the transacted state to the memory state.
@@ -228,7 +193,7 @@ impl Default for MemoryStorage {
 }
 
 impl StorageInspect<ContractsRawCode> for MemoryStorage {
-    type Error = MemoryStorageError;
+    type Error = Infallible;
 
     fn get(&self, key: &ContractId) -> Result<Option<Cow<'_, Contract>>, Self::Error> {
         Ok(self.memory.contracts.get(key).map(Cow::Borrowed))
@@ -286,29 +251,41 @@ impl StorageSize<ContractsRawCode> for MemoryStorage {
 }
 
 impl StorageRead<ContractsRawCode> for MemoryStorage {
-    fn read(
+    fn read_exact(
         &self,
-        key: &ContractId,
+        key: &<ContractsRawCode as Mappable>::Key,
         offset: usize,
         buf: &mut [u8],
-    ) -> Result<bool, Self::Error> {
-        if let Some(c) = self.memory.contracts.get(key) {
-            let contract_len = c.as_ref().len();
-            let start = offset;
-            let end = offset.saturating_add(buf.len());
-            // We need to handle the case where the offset is greater than the length
-            // of the contract In this case we follow the same
-            // approach as `copy_from_slice_zero_fill`
-            if end > contract_len {
-                return Err(MemoryStorageError::OffsetOutOfBounds(end, contract_len));
-            }
-
-            let starting_from_offset = &c.as_ref()[start..end];
-            buf[..].copy_from_slice(starting_from_offset);
-            Ok(true)
-        } else {
-            Ok(false)
+    ) -> Result<Result<usize, StorageReadError>, Self::Error> {
+        let Some(data) = self.memory.contracts.get(key) else {
+            return Ok(Err(StorageReadError::KeyNotFound));
+        };
+        let total_len = data.as_ref().len();
+        let end = offset.saturating_add(buf.len());
+        if end > total_len {
+            return Ok(Err(StorageReadError::OutOfBounds));
         }
+        buf.copy_from_slice(&data.as_ref()[offset..end]);
+        Ok(Ok(total_len))
+    }
+
+    fn read_zerofill(
+        &self,
+        key: &<ContractsRawCode as Mappable>::Key,
+        offset: usize,
+        buf: &mut [u8],
+    ) -> Result<Result<usize, StorageReadError>, Self::Error> {
+        let Some(data) = self.memory.contracts.get(key) else {
+            return Ok(Err(StorageReadError::KeyNotFound));
+        };
+        let total_len = data.as_ref().len();
+        let Some((_, after)) = data.as_ref().split_at_checked(offset) else {
+            return Ok(Err(StorageReadError::OutOfBounds));
+        };
+        let (dst, rest) = buf.split_at_mut(after.len().min(buf.len()));
+        dst.copy_from_slice(&after[..dst.len()]);
+        rest.fill(0);
+        Ok(Ok(total_len))
     }
 
     fn read_alloc(&self, key: &ContractId) -> Result<Option<Vec<u8>>, Self::Error> {
@@ -317,7 +294,7 @@ impl StorageRead<ContractsRawCode> for MemoryStorage {
 }
 
 impl StorageInspect<UploadedBytecodes> for MemoryStorage {
-    type Error = MemoryStorageError;
+    type Error = Infallible;
 
     fn get(
         &self,
@@ -359,7 +336,7 @@ impl StorageMutate<UploadedBytecodes> for MemoryStorage {
 }
 
 impl StorageInspect<ContractsAssets> for MemoryStorage {
-    type Error = MemoryStorageError;
+    type Error = Infallible;
 
     fn get(
         &self,
@@ -394,7 +371,7 @@ impl StorageMutate<ContractsAssets> for MemoryStorage {
 }
 
 impl StorageInspect<ContractsState> for MemoryStorage {
-    type Error = MemoryStorageError;
+    type Error = Infallible;
 
     fn get(
         &self,
@@ -482,32 +459,41 @@ impl StorageSize<ContractsState> for MemoryStorage {
 }
 
 impl StorageRead<ContractsState> for MemoryStorage {
-    fn read(
+    fn read_exact(
         &self,
         key: &<ContractsState as Mappable>::Key,
         offset: usize,
         buf: &mut [u8],
-    ) -> Result<bool, Self::Error> {
-        if let Some(data) = self.memory.contract_state.get(key) {
-            let contract_state_len = data.as_ref().len();
-            // We need to handle the case where the offset is greater than the length
-            // of the serialized ContractState. In this case we follow
-            // the same approach as `copy_from_slice_zero_fill` and
-            // fill the input buffer with zeros.
-            if offset > contract_state_len {
-                return Err(MemoryStorageError::OffsetOutOfBounds(
-                    offset,
-                    contract_state_len,
-                ));
-            }
-            let starting_from_offset = &data.as_ref()[offset..];
-            let len = buf.len().min(starting_from_offset.len());
-            buf[..len].copy_from_slice(&starting_from_offset[..len]);
-            buf[len..].fill(0);
-            Ok(true)
-        } else {
-            Ok(false)
+    ) -> Result<Result<usize, StorageReadError>, Self::Error> {
+        let Some(data) = self.memory.contract_state.get(key) else {
+            return Ok(Err(StorageReadError::KeyNotFound));
+        };
+        let total_len = data.as_ref().len();
+        let end = offset.saturating_add(buf.len());
+        if end > total_len {
+            return Ok(Err(StorageReadError::OutOfBounds));
         }
+        buf.copy_from_slice(&data.as_ref()[offset..end]);
+        Ok(Ok(total_len))
+    }
+
+    fn read_zerofill(
+        &self,
+        key: &<ContractsState as Mappable>::Key,
+        offset: usize,
+        buf: &mut [u8],
+    ) -> Result<Result<usize, StorageReadError>, Self::Error> {
+        let Some(data) = self.memory.contract_state.get(key) else {
+            return Ok(Err(StorageReadError::KeyNotFound));
+        };
+        let total_len = data.as_ref().len();
+        let Some((_, after)) = data.as_ref().split_at_checked(offset) else {
+            return Ok(Err(StorageReadError::OutOfBounds));
+        };
+        let (dst, rest) = buf.split_at_mut(after.len().min(buf.len()));
+        dst.copy_from_slice(&after[..dst.len()]);
+        rest.fill(0);
+        Ok(Ok(total_len))
     }
 
     fn read_alloc(
@@ -532,30 +518,41 @@ impl StorageSize<BlobData> for MemoryStorage {
 }
 
 impl StorageRead<BlobData> for MemoryStorage {
-    fn read(
+    fn read_exact(
         &self,
         key: &<BlobData as Mappable>::Key,
         offset: usize,
         buf: &mut [u8],
-    ) -> Result<bool, Self::Error> {
-        if let Some(data) = self.memory.blobs.get(key) {
-            let blob_len = data.as_ref().len();
-            let start = offset;
-            let end = offset.saturating_add(buf.len());
-            // We need to handle the case where the offset is greater than the length
-            // of the serialized ContractState. In this case we follow
-            // the same approach as `copy_from_slice_zero_fill` and
-            // fill the input buffer with zeros.
-            if end > blob_len {
-                return Err(MemoryStorageError::OffsetOutOfBounds(offset, blob_len));
-            }
-
-            let starting_from_offset = &data.as_ref()[start..end];
-            buf[..].copy_from_slice(starting_from_offset);
-            Ok(true)
-        } else {
-            Ok(false)
+    ) -> Result<Result<usize, StorageReadError>, Self::Error> {
+        let Some(data) = self.memory.blobs.get(key) else {
+            return Ok(Err(StorageReadError::KeyNotFound));
+        };
+        let total_len = data.as_ref().len();
+        let end = offset.saturating_add(buf.len());
+        if end > total_len {
+            return Ok(Err(StorageReadError::OutOfBounds));
         }
+        buf.copy_from_slice(&data.as_ref()[offset..end]);
+        Ok(Ok(total_len))
+    }
+
+    fn read_zerofill(
+        &self,
+        key: &<BlobData as Mappable>::Key,
+        offset: usize,
+        buf: &mut [u8],
+    ) -> Result<Result<usize, StorageReadError>, Self::Error> {
+        let Some(data) = self.memory.blobs.get(key) else {
+            return Ok(Err(StorageReadError::KeyNotFound));
+        };
+        let total_len = data.as_ref().len();
+        let Some((_, after)) = data.as_ref().split_at_checked(offset) else {
+            return Ok(Err(StorageReadError::OutOfBounds));
+        };
+        let (dst, rest) = buf.split_at_mut(after.len().min(buf.len()));
+        dst.copy_from_slice(&after[..dst.len()]);
+        rest.fill(0);
+        Ok(Ok(total_len))
     }
 
     fn read_alloc(
@@ -567,7 +564,7 @@ impl StorageRead<BlobData> for MemoryStorage {
 }
 
 impl StorageInspect<BlobData> for MemoryStorage {
-    type Error = MemoryStorageError;
+    type Error = Infallible;
 
     fn get(
         &self,
@@ -662,7 +659,7 @@ impl IncreaseStorageKey for U256 {
 impl ContractsAssetsStorage for MemoryStorage {}
 
 impl InterpreterStorage for MemoryStorage {
-    type DataError = MemoryStorageError;
+    type DataError = Infallible;
 
     fn block_height(&self) -> Result<BlockHeight, Self::DataError> {
         Ok(self.block_height)
@@ -822,13 +819,13 @@ mod tests {
         ]
     }
 
-    #[test_case(&[&[0u8; 32]], &[0u8; 32], 1 => vec![Some(Default::default())])]
+    #[test_case(&[&[0u8; 32]], &[0u8; 32], 1 => vec![Some([0; 32].to_vec().into())])]
     #[test_case(&[&[0u8; 32]], &[0u8; 32], 0 => Vec::<Option<ContractsStateData>>::with_capacity(0))]
     #[test_case(&[], &[0u8; 32], 1 => vec![None])]
     #[test_case(&[], &[1u8; 32], 1 => vec![None])]
     #[test_case(&[&[0u8; 32]], &key(1), 2 => vec![None, None])]
-    #[test_case(&[&key(1), &key(3)], &[0u8; 32], 4 => vec![None, Some(Default::default()), None, Some(Default::default())])]
-    #[test_case(&[&[0u8; 32], &key(1)], &[0u8; 32], 1 => vec![Some(Default::default())])]
+    #[test_case(&[&key(1), &key(3)], &[0u8; 32], 4 => vec![None, Some([0; 32].to_vec().into()), None, Some([0; 32].to_vec().into())])]
+    #[test_case(&[&[0u8; 32], &key(1)], &[0u8; 32], 1 => vec![Some([0; 32].to_vec().into())])]
     fn test_contract_state_range(
         store: &[&[u8; 32]],
         start: &[u8; 32],
@@ -838,7 +835,7 @@ mod tests {
         for k in store {
             mem.memory.contract_state.insert(
                 (&ContractId::default(), &(**k).into()).into(),
-                Default::default(),
+                [0; 32].to_vec().into(),
             );
         }
         mem.contract_state_range(&ContractId::default(), &(*start).into(), range)
@@ -848,25 +845,25 @@ mod tests {
             .collect()
     }
 
-    #[test_case(0, 32 => Ok(true))]
-    #[test_case(4, 32 => Ok(true))]
-    #[test_case(8, 32 => Ok(true))]
-    #[test_case(0, 28 => Ok(true))]
-    #[test_case(4, 28 => Ok(true))]
-    #[test_case(8, 28 => Ok(true))]
-    #[test_case(28, 0 => Ok(true))]
-    #[test_case(28, 4 => Ok(true))]
-    #[test_case(28, 8 => Ok(true))]
-    #[test_case(32, 0 => Ok(true))]
-    #[test_case(32, 4 => Ok(true))]
-    #[test_case(32, 8 => Ok(true))]
-    #[test_case(33, 0 => Err(MemoryStorageError::OffsetOutOfBounds(33,32)))]
-    #[test_case(33, 4 => Err(MemoryStorageError::OffsetOutOfBounds(33,32)))]
-    #[test_case(33, 8 => Err(MemoryStorageError::OffsetOutOfBounds(33,32)))]
+    #[test_case(0, 32 => Ok(32))]
+    #[test_case(4, 32 => Ok(32))]
+    #[test_case(8, 32 => Ok(32))]
+    #[test_case(0, 28 => Ok(32))]
+    #[test_case(4, 28 => Ok(32))]
+    #[test_case(8, 28 => Ok(32))]
+    #[test_case(28, 0 => Ok(32))]
+    #[test_case(28, 4 => Ok(32))]
+    #[test_case(28, 8 => Ok(32))]
+    #[test_case(32, 0 => Ok(32))]
+    #[test_case(32, 4 => Ok(32))]
+    #[test_case(32, 8 => Ok(32))]
+    #[test_case(33, 0 => Err(StorageReadError::OutOfBounds))]
+    #[test_case(33, 4 => Err(StorageReadError::OutOfBounds))]
+    #[test_case(33, 8 => Err(StorageReadError::OutOfBounds))]
     fn test_contract_read(
         offset: usize,
         load_buf_size: usize,
-    ) -> Result<bool, MemoryStorageError> {
+    ) -> Result<usize, StorageReadError> {
         // Given
         let raw_contract = [1u8; 32];
         let mut mem = MemoryStorage::default();
@@ -877,19 +874,17 @@ mod tests {
         let mut buf = vec![0u8; buf_size];
 
         // When
-        let r = StorageRead::<ContractsRawCode>::read(
+        let r = StorageRead::<ContractsRawCode>::read_zerofill(
             &mem,
             &ContractId::default(),
             offset,
             &mut buf,
-        );
+        )
+        .expect("infallible");
 
         // Then
-
-        if r.is_ok() {
-            assert!(buf[0..buf_size].iter().all(|&v| v == 1));
-            assert!(buf[buf_size..].iter().all(|&v| v == 0));
-        }
+        assert!(buf[0..buf_size].iter().all(|&v| v == 1));
+        assert!(buf[buf_size..].iter().all(|&v| v == 0));
 
         r
     }

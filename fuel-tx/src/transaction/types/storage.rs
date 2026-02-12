@@ -17,6 +17,8 @@ use rand::{
 
 use core::cmp::Ordering;
 
+/// Legacy storage slot representation. Only used by Create transaction when initializing
+/// contract storage.
 #[derive(
     Debug, Default, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
 )]

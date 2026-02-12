@@ -20,6 +20,7 @@ use fuel_storage::{
     StorageInspect,
     StorageMutate,
     StorageRead,
+    StorageReadError,
     StorageSize,
     StorageWrite,
 };
@@ -139,7 +140,21 @@ impl StorageSize<BlobData> for EmptyStorage {
 }
 
 impl StorageRead<BlobData> for EmptyStorage {
-    fn read(&self, _: &BlobId, _: usize, _: &mut [u8]) -> Result<bool, Self::Error> {
+    fn read_exact(
+        &self,
+        _: &BlobId,
+        _: usize,
+        _: &mut [u8],
+    ) -> Result<Result<usize, StorageReadError>, Self::Error> {
+        Err(Self::Error::UnsupportedStorageOperation)
+    }
+
+    fn read_zerofill(
+        &self,
+        _: &BlobId,
+        _: usize,
+        _: &mut [u8],
+    ) -> Result<Result<usize, StorageReadError>, Self::Error> {
         Err(Self::Error::UnsupportedStorageOperation)
     }
 
@@ -238,12 +253,21 @@ impl<D> StorageSize<ContractsRawCode> for PredicateStorage<D> {
 }
 
 impl<D> StorageRead<ContractsRawCode> for PredicateStorage<D> {
-    fn read(
+    fn read_exact(
         &self,
         _key: &<ContractsRawCode as Mappable>::Key,
         _offset: usize,
         _buf: &mut [u8],
-    ) -> Result<bool, Self::Error> {
+    ) -> Result<Result<usize, StorageReadError>, Self::Error> {
+        Err(Self::Error::UnsupportedStorageOperation)
+    }
+
+    fn read_zerofill(
+        &self,
+        _key: &<ContractsRawCode as Mappable>::Key,
+        _offset: usize,
+        _buf: &mut [u8],
+    ) -> Result<Result<usize, StorageReadError>, Self::Error> {
         Err(Self::Error::UnsupportedStorageOperation)
     }
 
@@ -290,12 +314,21 @@ impl<D> StorageSize<ContractsState> for PredicateStorage<D> {
 }
 
 impl<D> StorageRead<ContractsState> for PredicateStorage<D> {
-    fn read(
+    fn read_exact(
         &self,
         _key: &<ContractsState as Mappable>::Key,
         _offset: usize,
         _buf: &mut [u8],
-    ) -> Result<bool, Self::Error> {
+    ) -> Result<Result<usize, StorageReadError>, Self::Error> {
+        Err(Self::Error::UnsupportedStorageOperation)
+    }
+
+    fn read_zerofill(
+        &self,
+        _key: &<ContractsState as Mappable>::Key,
+        _offset: usize,
+        _buf: &mut [u8],
+    ) -> Result<Result<usize, StorageReadError>, Self::Error> {
         Err(Self::Error::UnsupportedStorageOperation)
     }
 
@@ -349,13 +382,23 @@ impl<D> StorageRead<BlobData> for PredicateStorage<D>
 where
     D: PredicateStorageRequirements,
 {
-    fn read(
+    fn read_exact(
         &self,
         key: &<BlobData as Mappable>::Key,
         offset: usize,
         buf: &mut [u8],
-    ) -> Result<bool, Self::Error> {
-        StorageRead::<BlobData>::read(&self.storage, key, offset, buf)
+    ) -> Result<Result<usize, StorageReadError>, Self::Error> {
+        StorageRead::<BlobData>::read_exact(&self.storage, key, offset, buf)
+            .map_err(|e| Self::Error::StorageError(D::storage_error_to_string(e)))
+    }
+
+    fn read_zerofill(
+        &self,
+        key: &<BlobData as Mappable>::Key,
+        offset: usize,
+        buf: &mut [u8],
+    ) -> Result<Result<usize, StorageReadError>, Self::Error> {
+        StorageRead::<BlobData>::read_zerofill(&self.storage, key, offset, buf)
             .map_err(|e| Self::Error::StorageError(D::storage_error_to_string(e)))
     }
 

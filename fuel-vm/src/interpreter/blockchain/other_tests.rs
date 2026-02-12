@@ -1,12 +1,10 @@
 #![allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
 
 use alloc::vec;
+use core::convert::Infallible;
 
 use crate::{
-    storage::{
-        MemoryStorage,
-        MemoryStorageError,
-    },
+    storage::MemoryStorage,
     verification::Normal,
 };
 
@@ -30,7 +28,7 @@ fn test_burn(
     initialize: impl Into<Option<Word>>,
     amount: Word,
     sub_id: [u8; 32],
-) -> IoResult<(), MemoryStorageError> {
+) -> IoResult<(), Infallible> {
     let mut storage = MemoryStorage::default();
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let contract_id = ContractId::from([3u8; 32]);
@@ -108,7 +106,7 @@ fn test_mint(
     initialize: impl Into<Option<Word>>,
     amount: Word,
     sub_id: [u8; 32],
-) -> IoResult<(), MemoryStorageError> {
+) -> IoResult<(), Infallible> {
     let mut storage = MemoryStorage::default();
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let contract_id = ContractId::from([3u8; 32]);

@@ -9,7 +9,6 @@ use crate::storage::{
     ContractsState,
     ContractsStateData,
     MemoryStorage,
-    MemoryStorageError,
 };
 
 use super::*;
@@ -216,8 +215,7 @@ struct SWWQInput {
 )]
 fn test_state_write_qword(
     input: SWWQInput,
-) -> Result<(Vec<([u8; 32], ContractsStateData)>, u64), RuntimeError<MemoryStorageError>>
-{
+) -> Result<(Vec<([u8; 32], ContractsStateData)>, u64), RuntimeError<Infallible>> {
     let SWWQInput {
         input,
         storage_slots,

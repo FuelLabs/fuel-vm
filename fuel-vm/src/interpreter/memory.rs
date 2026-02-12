@@ -7,6 +7,7 @@ use super::{
 use crate::{
     constraints::reg_key::*,
     consts::*,
+    convert,
     error::SimpleResult,
 };
 
@@ -42,6 +43,7 @@ use alloc::vec::Vec;
 use fuel_storage::{
     Mappable,
     StorageRead,
+    StorageReadError,
 };
 
 #[cfg(test)]
@@ -62,7 +64,7 @@ pub trait Memory: AsRef<MemoryInstance> + AsMut<MemoryInstance> {}
 
 impl<M> Memory for M where M: AsRef<MemoryInstance> + AsMut<MemoryInstance> {}
 
-/// The memory of the VM, represented as stack and heap.
+/// The memory of the VM, represented as stack, heap, and storage preload area.
 #[derive(Clone, Eq)]
 pub struct MemoryInstance {
     /// Stack. Grows upwards.
@@ -72,6 +74,8 @@ pub struct MemoryInstance {
     /// Lowest allowed heap address, i.e. hp register value.
     /// This is needed since we can allocate extra heap for performance reasons.
     hp: usize,
+    /// Storage preload area.
+    storage_preload: Vec<u8>,
 }
 
 impl Default for MemoryInstance {
@@ -121,6 +125,7 @@ impl MemoryInstance {
             stack: Vec::new(),
             heap: Vec::new(),
             hp: MEM_SIZE,
+            storage_preload: Vec::new(),
         }
     }
 
@@ -128,6 +133,7 @@ impl MemoryInstance {
     pub fn reset(&mut self) {
         self.stack.truncate(0);
         self.hp = MEM_SIZE;
+        self.storage_preload.truncate(0);
     }
 
     /// Offset of the heap section
@@ -339,6 +345,45 @@ impl MemoryInstance {
         Ok(())
     }
 
+    /// Copies from preload area to main memory, verifying ownership.
+    #[inline]
+    pub fn memcopy_from_preload(
+        &mut self,
+        dst: Word,
+        offset: Word,
+        length: Word,
+        owner: OwnershipRegisters,
+    ) -> Result<(), PanicReason> {
+        let dst_range = self.verify(dst, length)?;
+        owner.verify_ownership(&dst_range)?;
+
+        let offset = convert::to_usize(offset).ok_or(PanicReason::MemoryOverflow)?;
+        let length = convert::to_usize(length).ok_or(PanicReason::MemoryOverflow)?;
+
+        let end = offset.saturating_add(length);
+        if end > self.storage_preload.len() {
+            return Err(PanicReason::StorageOutOfBounds);
+        }
+
+        let dst = if dst_range.end() <= self.stack.len() {
+            &mut self.stack[dst_range.usizes()]
+        } else if dst_range.start() >= self.heap_offset() {
+            #[allow(clippy::arithmetic_side_effects)]
+            // Safety: subtractions are checked above
+            let start = dst_range.start() - self.heap_offset();
+            #[allow(clippy::arithmetic_side_effects)]
+            // Safety: subtractions are checked above
+            let end = dst_range.end() - self.heap_offset();
+            &mut self.heap[start..end]
+        } else {
+            unreachable!("Range was verified to be valid")
+        };
+
+        dst.copy_from_slice(&self.storage_preload[offset..end]);
+
+        Ok(())
+    }
+
     /// Copies the memory from `src` to `dst` verifying ownership.
     #[inline]
     #[track_caller]
@@ -408,6 +453,16 @@ impl MemoryInstance {
         }
 
         Ok(())
+    }
+
+    /// Storage preload/staging area access.
+    pub fn storage_preload(&self) -> &[u8] {
+        &self.storage_preload
+    }
+
+    /// Mutable storage preload/staging area access.
+    pub fn storage_preload_mut(&mut self) -> &mut Vec<u8> {
+        &mut self.storage_preload
     }
 
     /// Memory access to the raw stack buffer.
@@ -1137,14 +1192,20 @@ where
         let src_read_length = src_read_length.min(write_buffer.len());
 
         let (src_read_buffer, _) = write_buffer.split_at_mut(src_read_length);
-        let found = storage
-            .read(src_id, src_offset as usize, src_read_buffer)
+        let read_result = storage
+            .read_zerofill(src_id, src_offset as usize, src_read_buffer)
             .map_err(RuntimeError::Storage)?;
-        if !found {
-            return Err(not_found_error.into());
+        match read_result {
+            Ok(_) => {
+                empty_offset = src_read_length;
+            }
+            Err(StorageReadError::KeyNotFound) => {
+                return Err(not_found_error.into());
+            }
+            Err(StorageReadError::OutOfBounds) => {
+                empty_offset = 0; // zero fill whole range       
+            }
         }
-
-        empty_offset = src_read_length;
     }
 
     write_buffer[empty_offset..].fill(0);

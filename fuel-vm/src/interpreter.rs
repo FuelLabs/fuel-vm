@@ -74,6 +74,7 @@ mod receipts;
 
 mod debug;
 mod ecal;
+mod storage;
 
 pub use balances::RuntimeBalances;
 pub use ecal::EcalHandler;
@@ -152,6 +153,8 @@ pub struct InterpreterParams {
     pub tx_offset: usize,
     /// Maximum length of the message data
     pub max_message_data_length: u64,
+    /// Maximum length of a storage slot
+    pub max_storage_slot_length: u64,
     /// Chain ID
     pub chain_id: ChainId,
     /// Fee parameters
@@ -171,6 +174,8 @@ impl Default for InterpreterParams {
             tx_offset: fuel_tx::TxParameters::DEFAULT.tx_offset(),
             max_message_data_length: fuel_tx::PredicateParameters::DEFAULT
                 .max_message_data_length(),
+            max_storage_slot_length: fuel_tx::ScriptParameters::DEFAULT
+                .max_storage_slot_length(),
             chain_id: ChainId::default(),
             fee_params: FeeParameters::default(),
             base_asset_id: Default::default(),
@@ -189,6 +194,7 @@ impl InterpreterParams {
             contract_max_size: params.contract_max_size,
             tx_offset: params.tx_offset,
             max_message_data_length: params.max_message_data_length,
+            max_storage_slot_length: params.max_storage_slot_length,
             chain_id: params.chain_id,
             fee_params: params.fee_params,
             base_asset_id: params.base_asset_id,

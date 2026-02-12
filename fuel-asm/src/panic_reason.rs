@@ -170,6 +170,8 @@ enum_from! {
         CanNotGetGasPriceInPredicate = 0x40,
         /// The owner of the transaction is unknown
         OwnerIsUnknown = 0x41,
+        /// Storage operation out of bounds or exceeds maximum allowed size
+        StorageOutOfBounds = 0x42,
     }
 }
 

@@ -2,7 +2,6 @@ use crate::storage::{
     ContractsState,
     ContractsStateData,
     MemoryStorage,
-    MemoryStorageError,
 };
 
 use super::*;
@@ -164,7 +163,7 @@ struct SRWQInput {
 )]
 fn test_state_read_qword(
     input: SRWQInput,
-) -> Result<(MemoryInstance, bool), RuntimeError<MemoryStorageError>> {
+) -> Result<(MemoryInstance, bool), RuntimeError<Infallible>> {
     let SRWQInput {
         storage_slots,
         context,

@@ -1143,7 +1143,10 @@ pub mod typescript {
         string::String,
         vec::Vec,
     };
-    use fuel_types::{Bytes32, ChainId};
+    use fuel_types::{
+        Bytes32,
+        ChainId,
+    };
 
     #[derive(Debug, Clone, Eq, Hash, PartialEq, serde::Serialize, serde::Deserialize)]
     #[wasm_bindgen]

@@ -6,6 +6,24 @@
   "main": "dist/node/index.cjs",
   "types": "dist/node/index.d.ts",
   "browser": "dist/web/index.mjs",
+  "exports": {
+    ".": {
+      "node": {
+        "types": "./dist/node/index.d.ts",
+        "default": "./dist/node/index.cjs"
+      },
+      "types": "./dist/web/index.d.ts",
+      "import": "./dist/web/index.mjs",
+      "default": "./dist/node/index.cjs"
+    },
+    "./slim": {
+      "types": "./dist/slim/index.d.ts",
+      "import": "./dist/slim/index.mjs",
+      "require": "./dist/slim/index.cjs"
+    },
+    "./wasm": "./dist/{{NAME_UNDERSCORED}}_bg.wasm",
+    "./package.json": "./package.json"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/FuelLabs/fuel-vm.git"

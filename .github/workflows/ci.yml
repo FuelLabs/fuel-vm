@@ -304,6 +304,9 @@ jobs:
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: buildjet-4vcpu-ubuntu-2204
     environment: npm-deploy
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v3
         with:
@@ -327,22 +330,21 @@ jobs:
         uses: actions/setup-node@v3
         with:
           cache: "pnpm"
-          node-version: 18.14.1
+          node-version: 22.22.0
           node-version-file: ".npm/package.json"
           cache-dependency-path: ".npm/pnpm-lock.yaml"
           registry-url: 'https://registry.npmjs.org'
+
+      # Ensure latest NPM is installed to support OIDC publishing
+      - name: Update npm
+        run: npm install -g npm@11
 
       - name: Build and Test packages
         run: |
           pnpm -C .npm install
           pnpm -C .npm pack:all
 
-      - name: Ensure NPM access
-        run: npm whoami
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN_VM }}
-
       - name: Publish
         run: pnpm -C .npm publish -r --access public --no-git-checks
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN_VM }}
+          NPM_CONFIG_PROVENANCE: "true"

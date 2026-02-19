@@ -14,3 +14,5 @@ Cargo.lock
 .idea
 
 .history
+
+.pnpm-store

@@ -1143,7 +1143,7 @@ pub mod typescript {
         string::String,
         vec::Vec,
     };
-    use fuel_types::Bytes32;
+    use fuel_types::{Bytes32, ChainId};
 
     #[derive(Debug, Clone, Eq, Hash, PartialEq, serde::Serialize, serde::Deserialize)]
     #[wasm_bindgen]
@@ -1207,6 +1207,18 @@ pub mod typescript {
             crate::Transaction::from_bytes(value)
                 .map(|v| Transaction(Box::new(v)))
                 .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))
+        }
+
+        #[wasm_bindgen(js_name = id)]
+        pub fn typescript_id(&self, chain_id: &ChainId) -> Bytes32 {
+            use crate::UniqueIdentifier;
+            self.0.id(chain_id)
+        }
+
+        #[wasm_bindgen(js_name = cachedId)]
+        pub fn typescript_cached_id(&self) -> Option<Bytes32> {
+            use crate::UniqueIdentifier;
+            self.0.cached_id()
         }
 
         #[wasm_bindgen]
@@ -1367,6 +1379,18 @@ pub mod typescript {
                     let res = <_ as Deserialize>::from_bytes(value)
                         .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))?;
                     Ok(Self(Box::new(res)))
+                }
+
+                #[wasm_bindgen(js_name = id)]
+                pub fn typescript_id(&self, chain_id: &ChainId) -> Bytes32 {
+                    use crate::UniqueIdentifier;
+                    self.0.id(chain_id)
+                }
+
+                #[wasm_bindgen(js_name = cachedId)]
+                pub fn typescript_cached_id(&self) -> Option<Bytes32> {
+                    use crate::UniqueIdentifier;
+                    self.0.cached_id()
                 }
             }
         };

@@ -6,6 +6,10 @@
   "main": "dist/node/index.cjs",
   "types": "dist/node/index.d.ts",
   "browser": "dist/web/index.mjs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FuelLabs/fuel-vm.git"
+  },
   "files": [
     "dist"
   ],

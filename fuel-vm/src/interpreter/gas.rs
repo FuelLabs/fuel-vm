@@ -66,6 +66,7 @@ impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
         let cgas = self.registers[RegId::CGAS];
         let ggas = self.registers[RegId::GGAS];
 
+        #[allow(clippy::arithmetic_side_effects)] // Safety: checked in if condition
         if gas > cgas {
             self.registers[RegId::GGAS] = ggas.saturating_sub(cgas);
             self.registers[RegId::CGAS] = 0;

@@ -719,59 +719,59 @@ macro_rules! op_unpack {
 macro_rules! op_reserved_part {
     (RegId) => {
         /// Check that the reserved part of the instruction is zero.
-        pub fn reserved_part_is_zero(self) -> bool {
+        pub const fn reserved_part_is_zero(self) -> bool {
             let (_, imm) = unpack::ra_imm18_from_bytes(self.0);
             imm.0 == 0
         }
     };
     (RegId RegId) => {
         /// Check that the reserved part of the instruction is zero.
-        pub fn reserved_part_is_zero(self) -> bool {
+        pub const fn reserved_part_is_zero(self) -> bool {
             let (_, _, imm) = unpack::ra_rb_imm12_from_bytes(self.0);
             imm.0 == 0
         }
     };
     (RegId RegId RegId) => {
         /// Check that the reserved part of the instruction is zero.
-        pub fn reserved_part_is_zero(self) -> bool {
+        pub const fn reserved_part_is_zero(self) -> bool {
             let (_, _, _, imm) = unpack::ra_rb_rc_imm06_from_bytes(self.0);
             imm.0 == 0
         }
     };
     (RegId RegId RegId RegId) => {
         /// Check that the reserved part of the instruction is zero.
-        pub fn reserved_part_is_zero(self) -> bool {
+        pub const fn reserved_part_is_zero(self) -> bool {
             true
         }
     };
     (RegId RegId RegId Imm06) => {
         /// Check that the reserved part of the instruction is zero.
-        pub fn reserved_part_is_zero(self) -> bool {
+        pub const fn reserved_part_is_zero(self) -> bool {
             true
         }
     };
     (RegId RegId Imm12) => {
         /// Check that the reserved part of the instruction is zero.
-        pub fn reserved_part_is_zero(self) -> bool {
+        pub const fn reserved_part_is_zero(self) -> bool {
             true
         }
     };
     (RegId Imm18) => {
         /// Check that the reserved part of the instruction is zero.
-        pub fn reserved_part_is_zero(self) -> bool {
+        pub const fn reserved_part_is_zero(self) -> bool {
             true
         }
     };
     (Imm24) => {
         /// Check that the reserved part of the instruction is zero.
-        pub fn reserved_part_is_zero(self) -> bool {
+        pub const fn reserved_part_is_zero(self) -> bool {
             true
         }
     };
     () => {
         /// Check that the reserved part of the instruction is zero.
-        pub fn reserved_part_is_zero(self) -> bool {
-            self.0 == [0; 3]
+        pub const fn reserved_part_is_zero(self) -> bool {
+            self.0[0] == 0 && self.0[1] == 0 && self.0[2] == 0
         }
     };
 }
@@ -1056,7 +1056,7 @@ macro_rules! decl_op_struct {
         #[derive(Clone, Copy, Eq, Hash, PartialEq)]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
-        pub struct $Op(pub [u8; 3]);
+        pub struct $Op(pub(super) [u8; 3]);
         decl_op_struct!($($rest)*);
     };
     () => {};
@@ -1200,6 +1200,23 @@ macro_rules! impl_instructions {
         }
     };
 
+    // Implement constructor from raw operands
+    (impl_from_raw_args $($doc:literal $ix:literal $Op:ident $op:ident [$($fname:ident: $field:ident)*])*) => {
+        $(
+            impl crate::_op::$Op {
+                /// Construct the instruction from raw operands.
+                pub const fn from_raw_args(args: [u8; 3]) -> Result<crate::_op::$Op, InvalidOpcode> {
+                    let op = crate::_op::$Op(args);
+                    if op.reserved_part_is_zero() {
+                        Ok(op)
+                    } else {
+                        Err(InvalidOpcode)
+                    }
+                }
+            }
+        )*
+    };
+
     // Implement accessors for register and immediate values.
     (impl_instruction $($doc:literal $ix:literal $Op:ident $op:ident [$($fname:ident: $field:ident)*])*) => {
         impl Instruction {
@@ -1281,6 +1298,7 @@ macro_rules! impl_instructions {
         }
         impl_instructions!(decl_opcode_enum $($tts)*);
         impl_instructions!(decl_instruction_enum $($tts)*);
+        impl_instructions!(impl_from_raw_args $($tts)*);
         impl_instructions!(impl_opcode $($tts)*);
         impl_instructions!(impl_instruction $($tts)*);
         impl_instructions!(impl_opcode_test_construct $($tts)*);

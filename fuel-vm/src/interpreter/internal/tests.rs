@@ -1,7 +1,6 @@
 use alloc::vec;
 
 use crate::{
-    constraints::reg_key::RegMut,
     interpreter::{
         InterpreterParams,
         MemoryInstance,
@@ -24,8 +23,6 @@ use rand::{
     SeedableRng,
     rngs::StdRng,
 };
-
-use super::inc_pc;
 
 #[test]
 fn external_balance() {

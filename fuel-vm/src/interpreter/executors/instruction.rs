@@ -9,7 +9,6 @@ use crate::{
         ExecutableTransaction,
         Interpreter,
         Memory,
-        constructors::handlers,
     },
     state::ExecuteState,
     storage::InterpreterStorage,
@@ -27,24 +26,7 @@ use fuel_asm::{
     PanicReason,
     RawInstruction,
     RegId,
-    op::{
-        ADD,
-        ADDI,
-        DIV,
-        EQ,
-        GT,
-        JMPB,
-        JMPF,
-        JNZF,
-        LOG,
-        LT,
-        LW,
-        MOD,
-        MOVE,
-        MOVI,
-        MUL,
-        RET,
-    },
+    op,
 };
 use fuel_types::Word;
 
@@ -172,7 +154,7 @@ where
     ) -> IoResult<ExecuteState, S::DataError>;
 }
 
-impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for ADD
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for op::ADD
 where
     M: Memory,
     S: InterpreterStorage,
@@ -186,10 +168,9 @@ where
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge_op(interpreter.gas_costs().add())?;
 
-        let op = Self(args);
-        if !op.reserved_part_is_zero() {
+        let Ok(op) = Self::from_raw_args(args) else {
             return Err(PanicReason::InvalidInstruction.into());
-        }
+        };
 
         let (a, b, c) = op.unpack();
         interpreter.alu_capture_overflow_op(
@@ -203,7 +184,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for DIV
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for op::DIV
 where
     M: Memory,
     S: InterpreterStorage,
@@ -217,10 +198,9 @@ where
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge_op(interpreter.gas_costs().div())?;
 
-        let op = Self(args);
-        if !op.reserved_part_is_zero() {
+        let Ok(op) = Self::from_raw_args(args) else {
             return Err(PanicReason::InvalidInstruction.into());
-        }
+        };
 
         let (a, b, c) = op.unpack();
         let c = interpreter.registers[c];
@@ -229,7 +209,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for EQ
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for op::EQ
 where
     M: Memory,
     S: InterpreterStorage,
@@ -243,10 +223,9 @@ where
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge_op(interpreter.gas_costs().eq_())?;
 
-        let op = Self(args);
-        if !op.reserved_part_is_zero() {
+        let Ok(op) = Self::from_raw_args(args) else {
             return Err(PanicReason::InvalidInstruction.into());
-        }
+        };
 
         let (a, b, c) = op.unpack();
         interpreter.alu_set_op(
@@ -257,7 +236,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for LT
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for op::LT
 where
     M: Memory,
     S: InterpreterStorage,
@@ -271,10 +250,9 @@ where
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge_op(interpreter.gas_costs().lt())?;
 
-        let op = Self(args);
-        if !op.reserved_part_is_zero() {
+        let Ok(op) = Self::from_raw_args(args) else {
             return Err(PanicReason::InvalidInstruction.into());
-        }
+        };
 
         let (a, b, c) = op.unpack();
         interpreter.alu_set_op(
@@ -285,7 +263,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for GT
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for op::GT
 where
     M: Memory,
     S: InterpreterStorage,
@@ -299,10 +277,9 @@ where
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge_op(interpreter.gas_costs().gt())?;
 
-        let op = Self(args);
-        if !op.reserved_part_is_zero() {
+        let Ok(op) = Self::from_raw_args(args) else {
             return Err(PanicReason::InvalidInstruction.into());
-        }
+        };
 
         let (a, b, c) = op.unpack();
         interpreter.alu_set_op(
@@ -313,7 +290,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for MOD
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for op::MOD
 where
     M: Memory,
     S: InterpreterStorage,
@@ -327,10 +304,9 @@ where
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge_op(interpreter.gas_costs().mod_op())?;
 
-        let op = Self(args);
-        if !op.reserved_part_is_zero() {
+        let Ok(op) = Self::from_raw_args(args) else {
             return Err(PanicReason::InvalidInstruction.into());
-        }
+        };
 
         let (a, b, c) = op.unpack();
         let rhs = interpreter.registers[c];
@@ -345,7 +321,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for MOVE
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for op::MOVE
 where
     M: Memory,
     S: InterpreterStorage,
@@ -359,10 +335,9 @@ where
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge_op(interpreter.gas_costs().move_op())?;
 
-        let op = Self(args);
-        if !op.reserved_part_is_zero() {
+        let Ok(op) = Self::from_raw_args(args) else {
             return Err(PanicReason::InvalidInstruction.into());
-        }
+        };
 
         let (a, b) = op.unpack();
         interpreter.alu_set_op(a, interpreter.registers[b])?;
@@ -370,7 +345,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for MUL
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for op::MUL
 where
     M: Memory,
     S: InterpreterStorage,
@@ -384,10 +359,9 @@ where
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge_op(interpreter.gas_costs().mul())?;
 
-        let op = Self(args);
-        if !op.reserved_part_is_zero() {
+        let Ok(op) = Self::from_raw_args(args) else {
             return Err(PanicReason::InvalidInstruction.into());
-        }
+        };
 
         let (a, b, c) = op.unpack();
         interpreter.alu_capture_overflow_op(
@@ -400,7 +374,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for RET
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for op::RET
 where
     M: Memory,
     S: InterpreterStorage,
@@ -414,10 +388,9 @@ where
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge_op(interpreter.gas_costs().ret())?;
 
-        let op = Self(args);
-        if !op.reserved_part_is_zero() {
+        let Ok(op) = Self::from_raw_args(args) else {
             return Err(PanicReason::InvalidInstruction.into());
-        }
+        };
 
         let a = op.unpack();
         let ra = interpreter.registers[a];
@@ -426,7 +399,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for LOG
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for op::LOG
 where
     M: Memory,
     S: InterpreterStorage,
@@ -440,10 +413,9 @@ where
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge_op(interpreter.gas_costs().log())?;
 
-        let op = Self(args);
-        if !op.reserved_part_is_zero() {
+        let Ok(op) = Self::from_raw_args(args) else {
             return Err(PanicReason::InvalidInstruction.into());
-        }
+        };
 
         let (a, b, c, d) = op.unpack();
         interpreter.log(
@@ -456,7 +428,31 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for LW
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for op::LB
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute_opt(
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+        args: [u8; 3],
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge_op(interpreter.gas_costs().lb())?;
+
+        let Ok(op) = Self::from_raw_args(args) else {
+            return Err(PanicReason::InvalidInstruction.into());
+        };
+
+        let (a, b, imm) = op.unpack();
+        interpreter.load_u8_op(a, interpreter.registers[b], imm)?;
+        Ok(ExecuteState::Proceed)
+    }
+}
+
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for op::LQW
 where
     M: Memory,
     S: InterpreterStorage,
@@ -470,10 +466,57 @@ where
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge_op(interpreter.gas_costs().lw())?;
 
-        let op = Self(args);
-        if !op.reserved_part_is_zero() {
+        let Ok(op) = Self::from_raw_args(args) else {
             return Err(PanicReason::InvalidInstruction.into());
-        }
+        };
+
+        let (a, b, imm) = op.unpack();
+        interpreter.load_u16_op(a, interpreter.registers[b], imm)?;
+        Ok(ExecuteState::Proceed)
+    }
+}
+
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for op::LHW
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute_opt(
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+        args: [u8; 3],
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge_op(interpreter.gas_costs().lw())?;
+
+        let Ok(op) = Self::from_raw_args(args) else {
+            return Err(PanicReason::InvalidInstruction.into());
+        };
+
+        let (a, b, imm) = op.unpack();
+        interpreter.load_u32_op(a, interpreter.registers[b], imm)?;
+        Ok(ExecuteState::Proceed)
+    }
+}
+
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for op::LW
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute_opt(
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+        args: [u8; 3],
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge_op(interpreter.gas_costs().lw())?;
+
+        let Ok(op) = Self::from_raw_args(args) else {
+            return Err(PanicReason::InvalidInstruction.into());
+        };
 
         let (a, b, imm) = op.unpack();
         interpreter.load_u64_op(a, interpreter.registers[b], imm)?;
@@ -481,7 +524,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for MOVI
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for op::MOVI
 where
     M: Memory,
     S: InterpreterStorage,
@@ -495,10 +538,9 @@ where
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge_op(interpreter.gas_costs().movi())?;
 
-        let op = Self(args);
-        if !op.reserved_part_is_zero() {
+        let Ok(op) = Self::from_raw_args(args) else {
             return Err(PanicReason::InvalidInstruction.into());
-        }
+        };
 
         let (a, imm) = op.unpack();
         interpreter.alu_set_op(a, Word::from(imm))?;
@@ -506,7 +548,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for JMPF
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for op::JMPF
 where
     M: Memory,
     S: InterpreterStorage,
@@ -520,10 +562,9 @@ where
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge_op(interpreter.gas_costs().jmpf())?;
 
-        let op = Self(args);
-        if !op.reserved_part_is_zero() {
+        let Ok(op) = Self::from_raw_args(args) else {
             return Err(PanicReason::InvalidInstruction.into());
-        }
+        };
 
         let (a, offset) = op.unpack();
         interpreter.jump_op(
@@ -535,7 +576,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for JMPB
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for op::JMPB
 where
     M: Memory,
     S: InterpreterStorage,
@@ -549,10 +590,9 @@ where
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge_op(interpreter.gas_costs().jmpb())?;
 
-        let op = Self(args);
-        if !op.reserved_part_is_zero() {
+        let Ok(op) = Self::from_raw_args(args) else {
             return Err(PanicReason::InvalidInstruction.into());
-        }
+        };
 
         let (a, offset) = op.unpack();
         interpreter.jump_op(
@@ -564,7 +604,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for JNZF
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for op::JNZF
 where
     M: Memory,
     S: InterpreterStorage,
@@ -578,10 +618,9 @@ where
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge_op(interpreter.gas_costs().jnzf())?;
 
-        let op = Self(args);
-        if !op.reserved_part_is_zero() {
+        let Ok(op) = Self::from_raw_args(args) else {
             return Err(PanicReason::InvalidInstruction.into());
-        }
+        };
 
         let (a, b, offset) = op.unpack();
         let ra = interpreter.registers[a];
@@ -596,7 +635,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for ADDI
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for op::ADDI
 where
     M: Memory,
     S: InterpreterStorage,
@@ -610,7 +649,9 @@ where
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge_op(interpreter.gas_costs().addi())?;
 
-        let op = Self(args);
+        let Ok(op) = Self::from_raw_args(args) else {
+            return Err(PanicReason::InvalidInstruction.into());
+        };
         let (a, b, imm) = op.unpack();
         interpreter.alu_capture_overflow_op(
             a,

@@ -257,7 +257,8 @@ impl RetCtx<'_> {
 
         self.receipts.push(receipt)?;
 
-        Ok(inc_pc(self.registers.pc_mut()))
+        inc_pc(self.registers.pc_mut());
+        Ok(())
     }
 
     pub(crate) fn ret_data(self, a: Word, b: Word) -> SimpleResult<Bytes32> {
@@ -355,7 +356,8 @@ impl JumpArgs {
 
     pub(crate) fn jump(&self, is: Reg<IS>, mut pc: RegMut<PC>) -> SimpleResult<()> {
         if !self.condition {
-            return Ok(inc_pc(pc))
+            inc_pc(pc);
+            return Ok(());
         }
 
         let target_addr = match self.mode {

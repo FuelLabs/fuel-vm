@@ -89,19 +89,15 @@ pub use memory::{
 pub use self::receipts::ReceiptsCtx;
 #[cfg(not(feature = "test-helpers"))]
 use self::receipts::ReceiptsCtx;
-use crate::{
-    checked_transaction::{
-        CreateCheckedMetadata,
-        EstimatePredicates,
-        IntoChecked,
-        NonRetryableFreeBalances,
-        RetryableAmount,
-        ScriptCheckedMetadata,
-        UpgradeCheckedMetadata,
-        UploadCheckedMetadata,
-    },
-    error::PanicOrBug,
-    state::ExecuteState,
+use crate::checked_transaction::{
+    CreateCheckedMetadata,
+    EstimatePredicates,
+    IntoChecked,
+    NonRetryableFreeBalances,
+    RetryableAmount,
+    ScriptCheckedMetadata,
+    UpgradeCheckedMetadata,
+    UploadCheckedMetadata,
 };
 
 /// ECAL opcode is not supported and return an error if you try to call.

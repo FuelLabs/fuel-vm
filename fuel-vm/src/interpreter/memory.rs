@@ -828,7 +828,8 @@ where
     }
 
     try_update_stack_pointer(sp, ssp, hp, new_sp, memory)?;
-    Ok(inc_pc(pc))
+    inc_pc(pc);
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -867,7 +868,8 @@ pub(crate) fn push_selected_registers(
         }
     }
 
-    Ok(inc_pc(pc))
+    inc_pc(pc);
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -903,7 +905,8 @@ pub(crate) fn pop_selected_registers(
         }
     }
 
-    Ok(inc_pc(pc))
+    inc_pc(pc);
+    Ok(())
 }
 
 macro_rules! store_load {
@@ -932,7 +935,7 @@ macro_rules! store_load {
 
                 self.memory.as_mut().write_bytes(owner, addr, value.to_be_bytes())?;
 
-                Ok(inc_pc(pc))
+                inc_pc(pc); Ok(())
             }
 
             pub(crate) fn [< load_ $t >](
@@ -950,7 +953,7 @@ macro_rules! store_load {
                 let addr = src_addr.checked_add(offset).ok_or(PanicReason::MemoryOverflow)?;
                 *result = $t::from_be_bytes(self.memory.as_ref().read_bytes(addr)?) as u64;
 
-                Ok(inc_pc(pc))
+                inc_pc(pc); Ok(())
             }
 
             pub(crate) fn [< load_ $t _op>](
@@ -974,7 +977,7 @@ macro_rules! store_load {
 
                 *result = $t::from_be_bytes(bytes) as u64;
 
-                Ok(inc_pc(pc))
+                inc_pc(pc); Ok(())
             }
         }
     }};
@@ -993,7 +996,8 @@ pub(crate) fn malloc(
     memory: &mut MemoryInstance,
 ) -> SimpleResult<()> {
     memory.grow_heap_by(sp, hp, amount)?;
-    Ok(inc_pc(pc))
+    inc_pc(pc);
+    Ok(())
 }
 
 pub(crate) fn memclear(
@@ -1004,7 +1008,8 @@ pub(crate) fn memclear(
     b: Word,
 ) -> SimpleResult<()> {
     memory.write(owner, a, b)?.fill(0);
-    Ok(inc_pc(pc))
+    inc_pc(pc);
+    Ok(())
 }
 
 pub(crate) fn memcopy(
@@ -1017,7 +1022,8 @@ pub(crate) fn memcopy(
 ) -> SimpleResult<()> {
     memory.memcopy(dst, src, length, owner)?;
 
-    Ok(inc_pc(pc))
+    inc_pc(pc);
+    Ok(())
 }
 
 pub(crate) fn memeq(
@@ -1029,7 +1035,8 @@ pub(crate) fn memeq(
     d: Word,
 ) -> SimpleResult<()> {
     *result = (memory.read(b, d)? == memory.read(c, d)?) as Word;
-    Ok(inc_pc(pc))
+    inc_pc(pc);
+    Ok(())
 }
 
 #[derive(Debug, Clone, Copy)]

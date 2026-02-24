@@ -11,7 +11,6 @@ use crate::{
     error::{
         Bug,
         InterpreterError,
-        PanicOrBug,
         PredicateVerificationFailed,
     },
     interpreter::{
@@ -1060,54 +1059,6 @@ where
                 ProgramState::Return(return_val),
             )
         } else {
-            // // TODO set tree balance
-            // loop {
-            //     // Check whether the instruction will be executed in a call context
-            //     let in_call = !self.frames.is_empty();
-            //
-            //     match self.execute::<false>() {
-            //         // Proceeding with the execution normally
-            //         Ok(ExecuteState::Proceed) => continue,
-            //         // Debugger events are returned directly to the caller
-            //         Ok(ExecuteState::DebugEvent(d)) => {
-            //             self.debugger_set_last_state(ProgramState::RunProgram(d));
-            //             return Ok(ProgramState::RunProgram(d));
-            //         }
-            //         // Reverting terminated execution immediately
-            //         Ok(ExecuteState::Revert(r)) => {
-            //             break (ScriptExecutionResult::Revert, ProgramState::Revert(r))
-            //         }
-            //         // Returning in call context is ignored
-            //         Ok(ExecuteState::Return(_) | ExecuteState::ReturnData(_))
-            //             if in_call =>
-            //         {
-            //             continue
-            //         }
-            //         // In non-call context, returning terminates the execution
-            //         Ok(ExecuteState::Return(r)) => {
-            //             break (ScriptExecutionResult::Success, ProgramState::Return(r))
-            //         }
-            //         Ok(ExecuteState::ReturnData(d)) => {
-            //             break (
-            //                 ScriptExecutionResult::Success,
-            //                 ProgramState::ReturnData(d),
-            //             )
-            //         }
-            //         // Error always terminates the execution
-            //         Err(e) => match e.instruction_result() {
-            //             Some(result) => {
-            //                 self.append_panic_receipt(result);
-            //                 break (ScriptExecutionResult::Panic,
-            // ProgramState::Revert(0));             }
-            //             // This isn't a specified case of an erroneous program and
-            // should             // be propagated. If applicable, OS errors
-            //             // will fall into this category.
-            //             // The VM state is not finalized in this case.
-            //             None => return Err(e),
-            //         },
-            //     }
-            // }
-
             let handlers = handlers::<M, S, Tx, Ecal, V>();
             loop {
                 let in_call = !self.frames.is_empty();

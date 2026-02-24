@@ -163,7 +163,8 @@ pub(crate) fn secp256k1_recover(
         }
     }
 
-    Ok(inc_pc(pc))
+    inc_pc(pc);
+    Ok(())
 }
 
 pub(crate) fn secp256r1_recover(
@@ -190,7 +191,8 @@ pub(crate) fn secp256r1_recover(
         }
     }
 
-    Ok(inc_pc(pc))
+    inc_pc(pc);
+    Ok(())
 }
 
 pub(crate) fn ed25519_verify(
@@ -212,7 +214,8 @@ pub(crate) fn ed25519_verify(
         set_err(err);
     }
 
-    Ok(inc_pc(pc))
+    inc_pc(pc);
+    Ok(())
 }
 
 pub(crate) fn keccak256(
@@ -232,7 +235,8 @@ pub(crate) fn keccak256(
 
     memory.write_bytes(owner, a, *h.finalize().as_ref())?;
 
-    Ok(inc_pc(pc))
+    inc_pc(pc);
+    Ok(())
 }
 
 pub(crate) fn sha256(
@@ -244,7 +248,8 @@ pub(crate) fn sha256(
     c: Word,
 ) -> SimpleResult<()> {
     memory.write_bytes(owner, a, *Hasher::hash(memory.read(b, c)?))?;
-    Ok(inc_pc(pc))
+    inc_pc(pc);
+    Ok(())
 }
 
 fn read_g1_point_alt_bn_128(
@@ -356,7 +361,8 @@ pub(crate) fn ec_operation(
         }
         _ => return Err(fuel_tx::PanicReason::UnsupportedCurveId.into()),
     }
-    Ok(inc_pc(pc))
+    inc_pc(pc);
+    Ok(())
 }
 
 pub(crate) fn ec_pairing(
@@ -397,5 +403,6 @@ pub(crate) fn ec_pairing(
         }
         _ => return Err(fuel_tx::PanicReason::UnsupportedOperationType.into()),
     }
-    Ok(inc_pc(pc))
+    inc_pc(pc);
+    Ok(())
 }

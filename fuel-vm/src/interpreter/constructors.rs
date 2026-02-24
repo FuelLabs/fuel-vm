@@ -13,10 +13,7 @@ use super::{
 use crate::{
     consts::*,
     context::Context,
-    error::{
-        IoResult,
-        SimpleResult,
-    },
+    error::IoResult,
     interpreter::{
         InterpreterParams,
         PanicContext,
@@ -64,6 +61,7 @@ type Handler<M, S, Tx, Ecal, V, DataError> =
         [u8; 3],
     ) -> IoResult<ExecuteState, DataError>;
 
+#[allow(clippy::type_complexity)]
 pub fn handlers<M, S, Tx, Ecal, V>()
 -> [Option<Handler<M, S, Tx, Ecal, V, S::DataError>>; 256]
 where

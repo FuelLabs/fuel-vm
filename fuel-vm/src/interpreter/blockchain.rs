@@ -818,7 +818,8 @@ where
 
         self.receipts.push(receipt)?;
 
-        Ok(inc_pc(self.pc))
+        inc_pc(self.pc);
+        Ok(())
     }
 }
 
@@ -866,7 +867,8 @@ where
 
         self.receipts.push(receipt)?;
 
-        Ok(inc_pc(self.pc))
+        inc_pc(self.pc);
+        Ok(())
     }
 }
 
@@ -925,7 +927,8 @@ impl<S, V> CodeCopyCtx<'_, S, V> {
             PanicReason::ContractNotFound,
         )?;
 
-        Ok(inc_pc(self.pc))
+        inc_pc(self.pc);
+        Ok(())
     }
 }
 
@@ -1022,7 +1025,8 @@ impl<S, V> CodeRootCtx<'_, S, V> {
 
         self.memory.write_bytes(self.owner, a, *root)?;
 
-        Ok(inc_pc(self.pc))
+        inc_pc(self.pc);
+        Ok(())
     }
 }
 
@@ -1065,7 +1069,8 @@ impl<S, V> CodeSizeCtx<'_, S, V> {
         )?;
         *result = len as u64;
 
-        Ok(inc_pc(self.pc))
+        inc_pc(self.pc);
+        Ok(())
     }
 }
 
@@ -1107,7 +1112,8 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
     *result = value.unwrap_or(0);
     *got_result = value.is_some() as Word;
 
-    Ok(inc_pc(pc))
+    inc_pc(pc);
+    Ok(())
 }
 
 pub(crate) struct StateWriteWordCtx<'vm, S> {
@@ -1159,7 +1165,8 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
         )?;
     }
 
-    Ok(inc_pc(pc))
+    inc_pc(pc);
+    Ok(())
 }
 
 pub(crate) fn timestamp<S: InterpreterStorage>(
@@ -1178,7 +1185,8 @@ pub(crate) fn timestamp<S: InterpreterStorage>(
 
     *result = storage.timestamp(b).map_err(RuntimeError::Storage)?;
 
-    Ok(inc_pc(pc))
+    inc_pc(pc);
+    Ok(())
 }
 struct MessageOutputCtx<'vm, S>
 where
@@ -1249,7 +1257,8 @@ where
 
         self.receipts.push(receipt)?;
 
-        Ok(inc_pc(self.pc))
+        inc_pc(self.pc);
+        Ok(())
     }
 }
 

@@ -158,7 +158,8 @@ pub(crate) fn set_flag(
 
     *flag = flags.bits();
 
-    Ok(inc_pc(pc))
+    inc_pc(pc);
+    Ok(())
 }
 
 pub(crate) fn inc_pc(mut pc: RegMut<PC>) {

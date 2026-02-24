@@ -28,6 +28,7 @@ use fuel_asm::{
     RegId,
     op::{
         ADD,
+        ADDI,
         DIV,
         EQ,
         GT,
@@ -480,14 +481,14 @@ where
         // }
 
         let (a, b, c, d) = op.unpack();
-        interpreter
-            .log(
-                interpreter.registers[a],
-                interpreter.registers[b],
-                interpreter.registers[c],
-                interpreter.registers[d],
-            )
-            .expect("LOG failed");
+        if let Err(e) = interpreter.log(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
+            interpreter.registers[d],
+        ) {
+            interpreter.error = Some(e);
+        }
     }
 }
 
@@ -632,6 +633,32 @@ where
                 .with_condition(ra != 0)
                 .to_address(rb)
                 .plus_fixed(offset.into()),
+        );
+    }
+}
+
+impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for ADDI
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
+        interpreter.gas_charge_op(interpreter.gas_costs().addi());
+
+        if interpreter.error.is_some() {
+            return;
+        }
+
+        let op = Self(args);
+        let (a, b, imm) = op.unpack();
+        interpreter.alu_capture_overflow_op(
+            a,
+            u128::overflowing_add,
+            interpreter.registers[b].into(),
+            imm.into(),
         );
     }
 }

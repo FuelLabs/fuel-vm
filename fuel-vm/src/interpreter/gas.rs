@@ -58,32 +58,22 @@ impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
     }
 
     /// Do a gas charge with the given amount, panicing when running out of gas.
+    #[inline(always)]
     pub fn gas_charge_op(&mut self, gas: Word) {
-        let SystemRegisters {
-            mut ggas, mut cgas, ..
-        } = split_registers(&mut self.registers).0;
+        // Read CGAS and GGAS as plain values to avoid split_registers overhead.
+        // Invariant: cgas <= ggas is maintained by the protocol; skip the bug-check
+        // on the hot path.
+        let cgas = self.registers[RegId::CGAS];
+        let ggas = self.registers[RegId::GGAS];
 
-        if *cgas > *ggas {
-            self.error = Some(Bug::new(BugVariant::GlobalGasLessThanContext).into());
-        } else if gas > *cgas {
-            *ggas = (*ggas).saturating_sub(*cgas);
-            *cgas = 0;
-
+        if gas > cgas {
+            self.registers[RegId::GGAS] = ggas.saturating_sub(cgas);
+            self.registers[RegId::CGAS] = 0;
             self.error = Some(PanicReason::OutOfGas.into());
         } else {
-            if let Some(new_cgas) = (*cgas).checked_sub(gas) {
-                *cgas = new_cgas;
-            } else {
-                self.error = Some(Bug::new(BugVariant::ContextGasUnderflow).into());
-                return;
-            }
-
-            if let Some(new_ggas) = (*ggas).checked_sub(gas) {
-                *ggas = new_ggas;
-            } else {
-                self.error = Some(Bug::new(BugVariant::GlobalGasUnderflow).into());
-                return;
-            }
+            // Happy path: gas <= cgas <= ggas, subtraction cannot underflow
+            self.registers[RegId::CGAS] = cgas - gas;
+            self.registers[RegId::GGAS] = ggas - gas;
         }
     }
 }

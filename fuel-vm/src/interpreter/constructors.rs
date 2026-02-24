@@ -1,16 +1,14 @@
 //! Exposed constructors API for the [`Interpreter`]
 #![allow(clippy::default_constructed_unit_structs)] // need for ::default() depends on cfg
 
+#[cfg(any(test, feature = "test-helpers"))]
+use super::MemoryInstance;
 use super::{
     EcalHandler,
+    ExecutableTransaction,
     Interpreter,
     Memory,
     RuntimeBalances,
-};
-#[cfg(any(test, feature = "test-helpers"))]
-use super::{
-    ExecutableTransaction,
-    MemoryInstance,
 };
 use crate::{
     consts::*,
@@ -121,6 +119,9 @@ where
     ));
     array[Opcode::JNZF as usize] = Some(cast_handler!(
         <fuel_asm::op::JNZF as ExecuteOptimized<M, S, Tx, Ecal, V>>::execute_opt
+    ));
+    array[Opcode::ADDI as usize] = Some(cast_handler!(
+        <fuel_asm::op::ADDI as ExecuteOptimized<M, S, Tx, Ecal, V>>::execute_opt
     ));
     array
 }

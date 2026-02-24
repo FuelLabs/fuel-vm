@@ -11,6 +11,7 @@ use crate::{
     error::{
         Bug,
         InterpreterError,
+        PanicOrBug,
         PredicateVerificationFailed,
     },
     interpreter::{
@@ -61,7 +62,12 @@ use crate::{
         predicate::PredicateStorageRequirements,
     },
 };
-use fuel_asm::PanicReason;
+use fuel_asm::{
+    PanicInstruction,
+    PanicReason,
+    RawInstruction,
+    RegId,
+};
 use fuel_storage::{
     StorageAsMut,
     StorageAsRef,
@@ -1090,16 +1096,133 @@ where
             // }
 
             loop {
-                self.execute_op::<false>();
+                let in_call = !self.frames.is_empty();
+                let pc = self.registers[RegId::PC];
 
-                if let Some(err) = self.error.take() {
-                    return Err(err.into())
-                }
+                let raw: [u8; 4] = match self.memory().read_bytes(pc) {
+                    Ok(bytes) => bytes,
+                    Err(reason) => {
+                        let pi = PanicInstruction::error(reason, 0);
+                        self.append_panic_receipt(pi);
+                        break (ScriptExecutionResult::Panic, ProgramState::Revert(0))
+                    }
+                };
 
-                if let Some(state) = self.status.take()
-                    && let ExecuteState::Return(r) = state
-                {
-                    break (ScriptExecutionResult::Success, ProgramState::Return(r))
+                if let Some(f) = self.handlers[raw[0] as usize] {
+                    // Bounds check (same as fetch_instruction)
+                    if pc < self.registers[RegId::IS] || pc >= self.registers[RegId::SSP]
+                    {
+                        let pi = PanicInstruction::error(
+                            PanicReason::MemoryNotExecutable,
+                            RawInstruction::from_be_bytes(raw),
+                        );
+                        self.append_panic_receipt(pi);
+                        break (ScriptExecutionResult::Panic, ProgramState::Revert(0))
+                    }
+
+                    // Check debugger state (same as instruction_per_inner)
+                    if self.debugger.is_active() {
+                        let debug = self.eval_debugger_state();
+                        if !debug.should_continue() {
+                            self.debugger_set_last_state(ProgramState::RunProgram(debug));
+                            return Ok(ProgramState::RunProgram(debug));
+                        }
+                    }
+
+                    // Call optimized handler directly
+                    f(self, [raw[1], raw[2], raw[3]]);
+
+                    // Handle error side-channel
+                    if let Some(err) = self.error.take() {
+                        match err {
+                            PanicOrBug::Panic(reason) => {
+                                // Error occurred before PC was advanced; re-read
+                                // instruction
+                                let err_pc = self.registers[RegId::PC];
+                                let err_raw = self
+                                    .memory()
+                                    .read_bytes(err_pc)
+                                    .map(RawInstruction::from_be_bytes)
+                                    .unwrap_or(0);
+                                let pi = PanicInstruction::error(reason, err_raw);
+                                self.append_panic_receipt(pi);
+                                break (
+                                    ScriptExecutionResult::Panic,
+                                    ProgramState::Revert(0),
+                                )
+                            }
+                            PanicOrBug::Bug(bug) => {
+                                return Err(InterpreterError::Bug(bug))
+                            }
+                        }
+                    }
+
+                    // Handle status side-channel
+                    if let Some(state) = self.status.take() {
+                        match state {
+                            ExecuteState::Proceed => {}
+                            ExecuteState::DebugEvent(d) => {
+                                self.debugger_set_last_state(ProgramState::RunProgram(d));
+                                return Ok(ProgramState::RunProgram(d))
+                            }
+                            ExecuteState::Revert(r) => {
+                                break (
+                                    ScriptExecutionResult::Revert,
+                                    ProgramState::Revert(r),
+                                )
+                            }
+                            ExecuteState::Return(_) | ExecuteState::ReturnData(_)
+                                if in_call => {}
+                            ExecuteState::Return(r) => {
+                                break (
+                                    ScriptExecutionResult::Success,
+                                    ProgramState::Return(r),
+                                )
+                            }
+                            ExecuteState::ReturnData(d) => {
+                                break (
+                                    ScriptExecutionResult::Success,
+                                    ProgramState::ReturnData(d),
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    // No optimized handler - fall back to standard execution path
+                    match self.execute::<false>() {
+                        Ok(ExecuteState::Proceed) => {}
+                        Ok(ExecuteState::DebugEvent(d)) => {
+                            self.debugger_set_last_state(ProgramState::RunProgram(d));
+                            return Ok(ProgramState::RunProgram(d))
+                        }
+                        Ok(ExecuteState::Revert(r)) => {
+                            break (ScriptExecutionResult::Revert, ProgramState::Revert(r))
+                        }
+                        Ok(ExecuteState::Return(_) | ExecuteState::ReturnData(_))
+                            if in_call => {}
+                        Ok(ExecuteState::Return(r)) => {
+                            break (
+                                ScriptExecutionResult::Success,
+                                ProgramState::Return(r),
+                            )
+                        }
+                        Ok(ExecuteState::ReturnData(d)) => {
+                            break (
+                                ScriptExecutionResult::Success,
+                                ProgramState::ReturnData(d),
+                            )
+                        }
+                        Err(e) => match e.instruction_result() {
+                            Some(result) => {
+                                self.append_panic_receipt(result);
+                                break (
+                                    ScriptExecutionResult::Panic,
+                                    ProgramState::Revert(0),
+                                )
+                            }
+                            None => return Err(e),
+                        },
+                    }
                 }
             }
         };

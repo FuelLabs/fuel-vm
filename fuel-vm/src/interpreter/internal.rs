@@ -158,13 +158,11 @@ pub(crate) fn set_flag(
 
     *flag = flags.bits();
 
-    Ok(inc_pc(pc)?)
+    Ok(inc_pc(pc))
 }
 
-pub(crate) fn inc_pc(mut pc: RegMut<PC>) -> Result<(), PanicReason> {
-    pc.checked_add(Instruction::SIZE as Word)
-        .ok_or(PanicReason::MemoryOverflow)
-        .map(|i| *pc = i)
+pub(crate) fn inc_pc(mut pc: RegMut<PC>) {
+    *pc = pc.saturating_add(Instruction::SIZE as Word);
 }
 
 pub(crate) fn tx_id(memory: &MemoryInstance) -> Bytes32 {

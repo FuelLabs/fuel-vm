@@ -150,7 +150,7 @@ pub(crate) fn metadata(
         },
     };
 
-    inc_pc(pc)?;
+    inc_pc(pc);
     Ok(())
 }
 
@@ -630,7 +630,7 @@ impl<Tx> GTFInput<'_, Tx> {
 
         *result = a;
 
-        inc_pc(self.pc)?;
+        inc_pc(self.pc);
         Ok(())
     }
 }

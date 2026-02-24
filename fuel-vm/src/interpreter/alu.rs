@@ -252,7 +252,7 @@ where
     *dest = u64::try_from(result & Word::MAX as u128)
         .expect("We already truncated the result");
 
-    Ok(inc_pc(common.pc)?)
+    Ok(inc_pc(common.pc))
 }
 
 /// Set RegId::OF to true and zero the result register if overflow occurred.
@@ -279,7 +279,7 @@ where
 
     *dest = if overflow { 0 } else { result };
 
-    Ok(inc_pc(common.pc)?)
+    Ok(inc_pc(common.pc))
 }
 
 pub(crate) fn alu_error<F, B, C>(
@@ -303,7 +303,7 @@ where
 
     *dest = if err_bool { 0 } else { f(b, c) };
 
-    Ok(inc_pc(common.pc)?)
+    Ok(inc_pc(common.pc))
 }
 
 pub(crate) fn alu_set(
@@ -316,12 +316,12 @@ pub(crate) fn alu_set(
 
     *dest = b;
 
-    Ok(inc_pc(common.pc)?)
+    Ok(inc_pc(common.pc))
 }
 
 pub(crate) fn alu_clear(mut common: AluCommonReg) -> SimpleResult<()> {
     *common.of = 0;
     *common.err = 0;
 
-    Ok(inc_pc(common.pc)?)
+    Ok(inc_pc(common.pc))
 }

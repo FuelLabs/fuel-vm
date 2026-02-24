@@ -84,7 +84,7 @@ impl LogInput<'_> {
 
         self.receipts.push(receipt)?;
 
-        Ok(inc_pc(self.pc)?)
+        Ok(inc_pc(self.pc))
     }
 
     pub(crate) fn log_data(self, a: Word, b: Word, c: Word, d: Word) -> SimpleResult<()> {
@@ -102,6 +102,6 @@ impl LogInput<'_> {
 
         self.receipts.push(receipt)?;
 
-        Ok(inc_pc(self.pc)?)
+        Ok(inc_pc(self.pc))
     }
 }

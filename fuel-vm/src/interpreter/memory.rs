@@ -958,16 +958,10 @@ macro_rules! store_load {
                 result: RegId,
                 src_addr: Word,
                 offset: Imm12,
-            ) {
-                let (SystemRegisters { mut pc, .. }, mut w) = split_registers(&mut self.registers);
+            ) -> SimpleResult<()> {
+                let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
 
-                let ra = match WriteRegKey::try_from(result) {
-                    Ok(reg) => reg,
-                    Err(err) => {
-                        self.error = Some(err.into());
-                        return;
-                    }
-                };
+                let ra = WriteRegKey::try_from(result)?;
 
                 let result = &mut w[ra];
 
@@ -976,17 +970,11 @@ macro_rules! store_load {
                     .expect("u12 * size_of cannot overflow a Word");
                 let addr = src_addr.saturating_add(offset);
 
-                let bytes = match self.memory.as_ref().read_bytes(addr) {
-                    Ok(bytes) => bytes,
-                    Err(err) => {
-                        self.error = Some(err.into());
-                        return;
-                    }
-                };
+                let bytes = self.memory.as_ref().read_bytes(addr)?;
 
                 *result = $t::from_be_bytes(bytes) as u64;
 
-                *pc = pc.saturating_add($crate::prelude::Instruction::SIZE as Word);
+                Ok(inc_pc(pc))
             }
         }
     }};

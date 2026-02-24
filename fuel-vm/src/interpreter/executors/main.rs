@@ -1143,36 +1143,8 @@ where
                     }
 
                     // Call optimized handler directly
-                    f(self, [raw[1], raw[2], raw[3]]);
-
-                    // Handle error side-channel
-                    if let Some(err) = self.error.take() {
-                        match err {
-                            PanicOrBug::Panic(reason) => {
-                                // Error occurred before PC was advanced; re-read
-                                // instruction
-                                let err_pc = self.registers[RegId::PC];
-                                let err_raw = self
-                                    .memory()
-                                    .read_bytes(err_pc)
-                                    .map(RawInstruction::from_be_bytes)
-                                    .unwrap_or(0);
-                                let pi = PanicInstruction::error(reason, err_raw);
-                                self.append_panic_receipt(pi);
-                                break (
-                                    ScriptExecutionResult::Panic,
-                                    ProgramState::Revert(0),
-                                )
-                            }
-                            PanicOrBug::Bug(bug) => {
-                                return Err(InterpreterError::Bug(bug))
-                            }
-                        }
-                    }
-
-                    // Handle status side-channel
-                    if let Some(state) = self.status.take() {
-                        match state {
+                    match f(self, [raw[1], raw[2], raw[3]]) {
+                        Ok(state) => match state {
                             ExecuteState::Proceed => {}
                             ExecuteState::DebugEvent(d) => {
                                 self.debugger_set_last_state(ProgramState::RunProgram(d));
@@ -1198,7 +1170,31 @@ where
                                     ProgramState::ReturnData(d),
                                 )
                             }
-                        }
+                        },
+                        Err(err) => match err {
+                            RuntimeError::Recoverable(reason) => {
+                                // Error occurred before PC was advanced; re-read
+                                // instruction
+                                let err_pc = self.registers[RegId::PC];
+                                let err_raw = self
+                                    .memory()
+                                    .read_bytes(err_pc)
+                                    .map(RawInstruction::from_be_bytes)
+                                    .unwrap_or(0);
+                                let pi = PanicInstruction::error(reason, err_raw);
+                                self.append_panic_receipt(pi);
+                                break (
+                                    ScriptExecutionResult::Panic,
+                                    ProgramState::Revert(0),
+                                )
+                            }
+                            RuntimeError::Bug(bug) => {
+                                return Err(InterpreterError::Bug(bug))
+                            }
+                            RuntimeError::Storage(bug) => {
+                                return Err(InterpreterError::Storage(bug))
+                            }
+                        },
                     }
                 } else {
                     // No optimized handler — fall back using the already-fetched raw,

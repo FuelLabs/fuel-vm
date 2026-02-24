@@ -148,8 +148,6 @@ pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal, V = verification:
     /// Pointer to the memory, where the owner of the transaction lies.
     owner_ptr: Option<Word>,
     statistic: alloc::collections::BTreeMap<Opcode, OpcodeStat>,
-    pub error: Option<PanicOrBug>,
-    pub status: Option<ExecuteState>,
 }
 
 /// Interpreter parameters

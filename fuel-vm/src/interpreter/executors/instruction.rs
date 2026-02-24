@@ -64,34 +64,6 @@ where
         self.instruction_per_inner::<PREDICATE, false>(raw_instruction)
     }
 
-    /// Execute the current instruction located in `$m[$pc]`.
-    pub fn execute_op<const PREDICATE: bool>(&mut self) {
-        let pc = self.registers[RegId::PC];
-
-        let raw_instruction: [u8; 4] = match self.memory().read_bytes(pc) {
-            Ok(bytes) => bytes,
-            Err(reason) => {
-                self.error = Some(reason.into());
-                return;
-            }
-        };
-
-        if pc < self.registers[RegId::IS] || pc >= self.registers[RegId::SSP] {
-            self.error = Some(PanicReason::MemoryNotExecutable.into());
-            return
-        }
-
-        if let Some(f) = handlers::<M, S, Tx, Ecal, V>()[raw_instruction[0] as usize] {
-            f(
-                self,
-                [raw_instruction[1], raw_instruction[2], raw_instruction[3]],
-            );
-        } else {
-            self.error = Some(PanicReason::InvalidInstruction.into());
-            return;
-        }
-    }
-
     /// Reads the current instruction located in `$m[$pc]`,
     /// performing memory boundary checks.
     fn fetch_instruction(&self) -> Result<[u8; 4], InterpreterError<S::DataError>> {
@@ -194,7 +166,10 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
-    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]);
+    fn execute_opt(
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+        args: [u8; 3],
+    ) -> IoResult<ExecuteState, S::DataError>;
 }
 
 impl<M, S, Tx, Ecal, V> ExecuteOptimized<M, S, Tx, Ecal, V> for ADD
@@ -205,17 +180,15 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
-    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
-        interpreter.gas_charge_op(interpreter.gas_costs().add());
-
-        if interpreter.error.is_some() {
-            return;
-        }
+    fn execute_opt(
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+        args: [u8; 3],
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge_op(interpreter.gas_costs().add())?;
 
         let op = Self(args);
         if !op.reserved_part_is_zero() {
-            interpreter.error = Some(PanicReason::InvalidInstruction.into());
-            return;
+            return Err(PanicReason::InvalidInstruction.into());
         }
 
         let (a, b, c) = op.unpack();
@@ -224,7 +197,9 @@ where
             u128::overflowing_add,
             interpreter.registers[b].into(),
             interpreter.registers[c].into(),
-        );
+        )?;
+
+        Ok(ExecuteState::Proceed)
     }
 }
 
@@ -236,22 +211,21 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
-    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
-        interpreter.gas_charge_op(interpreter.gas_costs().div());
-
-        if interpreter.error.is_some() {
-            return;
-        }
+    fn execute_opt(
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+        args: [u8; 3],
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge_op(interpreter.gas_costs().div())?;
 
         let op = Self(args);
         if !op.reserved_part_is_zero() {
-            interpreter.error = Some(PanicReason::InvalidInstruction.into());
-            return;
+            return Err(PanicReason::InvalidInstruction.into());
         }
 
         let (a, b, c) = op.unpack();
         let c = interpreter.registers[c];
-        interpreter.alu_error_op(a, Word::div, interpreter.registers[b], c, c == 0);
+        interpreter.alu_error_op(a, Word::div, interpreter.registers[b], c, c == 0)?;
+        Ok(ExecuteState::Proceed)
     }
 }
 
@@ -263,24 +237,23 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
-    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
-        interpreter.gas_charge_op(interpreter.gas_costs().eq_());
-
-        if interpreter.error.is_some() {
-            return;
-        }
+    fn execute_opt(
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+        args: [u8; 3],
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge_op(interpreter.gas_costs().eq_())?;
 
         let op = Self(args);
         if !op.reserved_part_is_zero() {
-            interpreter.error = Some(PanicReason::InvalidInstruction.into());
-            return;
+            return Err(PanicReason::InvalidInstruction.into());
         }
 
         let (a, b, c) = op.unpack();
         interpreter.alu_set_op(
             a,
             (interpreter.registers[b] == interpreter.registers[c]) as Word,
-        );
+        )?;
+        Ok(ExecuteState::Proceed)
     }
 }
 
@@ -292,24 +265,23 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
-    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
-        interpreter.gas_charge_op(interpreter.gas_costs().lt());
-
-        if interpreter.error.is_some() {
-            return;
-        }
+    fn execute_opt(
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+        args: [u8; 3],
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge_op(interpreter.gas_costs().lt())?;
 
         let op = Self(args);
         if !op.reserved_part_is_zero() {
-            interpreter.error = Some(PanicReason::InvalidInstruction.into());
-            return;
+            return Err(PanicReason::InvalidInstruction.into());
         }
 
         let (a, b, c) = op.unpack();
         interpreter.alu_set_op(
             a,
             (interpreter.registers[b] < interpreter.registers[c]) as Word,
-        );
+        )?;
+        Ok(ExecuteState::Proceed)
     }
 }
 
@@ -321,24 +293,23 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
-    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
-        interpreter.gas_charge_op(interpreter.gas_costs().gt());
-
-        if interpreter.error.is_some() {
-            return;
-        }
+    fn execute_opt(
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+        args: [u8; 3],
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge_op(interpreter.gas_costs().gt())?;
 
         let op = Self(args);
         if !op.reserved_part_is_zero() {
-            interpreter.error = Some(PanicReason::InvalidInstruction.into());
-            return;
+            return Err(PanicReason::InvalidInstruction.into());
         }
 
         let (a, b, c) = op.unpack();
         interpreter.alu_set_op(
             a,
             (interpreter.registers[b] > interpreter.registers[c]) as Word,
-        );
+        )?;
+        Ok(ExecuteState::Proceed)
     }
 }
 
@@ -350,17 +321,15 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
-    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
-        interpreter.gas_charge_op(interpreter.gas_costs().mod_op());
-
-        if interpreter.error.is_some() {
-            return;
-        }
+    fn execute_opt(
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+        args: [u8; 3],
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge_op(interpreter.gas_costs().mod_op())?;
 
         let op = Self(args);
         if !op.reserved_part_is_zero() {
-            interpreter.error = Some(PanicReason::InvalidInstruction.into());
-            return;
+            return Err(PanicReason::InvalidInstruction.into());
         }
 
         let (a, b, c) = op.unpack();
@@ -371,7 +340,8 @@ where
             interpreter.registers[b],
             rhs,
             rhs == 0,
-        );
+        )?;
+        Ok(ExecuteState::Proceed)
     }
 }
 
@@ -383,21 +353,20 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
-    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
-        interpreter.gas_charge_op(interpreter.gas_costs().move_op());
-
-        if interpreter.error.is_some() {
-            return;
-        }
+    fn execute_opt(
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+        args: [u8; 3],
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge_op(interpreter.gas_costs().move_op())?;
 
         let op = Self(args);
         if !op.reserved_part_is_zero() {
-            interpreter.error = Some(PanicReason::InvalidInstruction.into());
-            return;
+            return Err(PanicReason::InvalidInstruction.into());
         }
 
         let (a, b) = op.unpack();
-        interpreter.alu_set_op(a, interpreter.registers[b]);
+        interpreter.alu_set_op(a, interpreter.registers[b])?;
+        Ok(ExecuteState::Proceed)
     }
 }
 
@@ -409,17 +378,15 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
-    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
-        interpreter.gas_charge_op(interpreter.gas_costs().mul());
-
-        if interpreter.error.is_some() {
-            return;
-        }
+    fn execute_opt(
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+        args: [u8; 3],
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge_op(interpreter.gas_costs().mul())?;
 
         let op = Self(args);
         if !op.reserved_part_is_zero() {
-            interpreter.error = Some(PanicReason::InvalidInstruction.into());
-            return;
+            return Err(PanicReason::InvalidInstruction.into());
         }
 
         let (a, b, c) = op.unpack();
@@ -428,7 +395,8 @@ where
             u128::overflowing_mul,
             interpreter.registers[b].into(),
             interpreter.registers[c].into(),
-        );
+        )?;
+        Ok(ExecuteState::Proceed)
     }
 }
 
@@ -440,23 +408,21 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
-    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
-        interpreter.gas_charge_op(interpreter.gas_costs().ret());
-
-        if interpreter.error.is_some() {
-            return;
-        }
+    fn execute_opt(
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+        args: [u8; 3],
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge_op(interpreter.gas_costs().ret())?;
 
         let op = Self(args);
         if !op.reserved_part_is_zero() {
-            interpreter.error = Some(PanicReason::InvalidInstruction.into());
-            return;
+            return Err(PanicReason::InvalidInstruction.into());
         }
 
         let a = op.unpack();
         let ra = interpreter.registers[a];
         interpreter.ret(ra).expect("RET failed");
-        interpreter.status = Some(ExecuteState::Return(ra));
+        Ok(ExecuteState::Return(ra))
     }
 }
 
@@ -468,28 +434,25 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
-    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
-        interpreter.gas_charge_op(interpreter.gas_costs().log());
-
-        if interpreter.error.is_some() {
-            return;
-        }
+    fn execute_opt(
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+        args: [u8; 3],
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge_op(interpreter.gas_costs().log())?;
 
         let op = Self(args);
         if !op.reserved_part_is_zero() {
-            interpreter.error = Some(PanicReason::InvalidInstruction.into());
-            return;
+            return Err(PanicReason::InvalidInstruction.into());
         }
 
         let (a, b, c, d) = op.unpack();
-        if let Err(e) = interpreter.log(
+        interpreter.log(
             interpreter.registers[a],
             interpreter.registers[b],
             interpreter.registers[c],
             interpreter.registers[d],
-        ) {
-            interpreter.error = Some(e);
-        }
+        )?;
+        Ok(ExecuteState::Proceed)
     }
 }
 
@@ -501,21 +464,20 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
-    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
-        interpreter.gas_charge_op(interpreter.gas_costs().lw());
-
-        if interpreter.error.is_some() {
-            return;
-        }
+    fn execute_opt(
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+        args: [u8; 3],
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge_op(interpreter.gas_costs().lw())?;
 
         let op = Self(args);
         if !op.reserved_part_is_zero() {
-            interpreter.error = Some(PanicReason::InvalidInstruction.into());
-            return;
+            return Err(PanicReason::InvalidInstruction.into());
         }
 
         let (a, b, imm) = op.unpack();
-        interpreter.load_u64_op(a, interpreter.registers[b], imm);
+        interpreter.load_u64_op(a, interpreter.registers[b], imm)?;
+        Ok(ExecuteState::Proceed)
     }
 }
 
@@ -527,21 +489,20 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
-    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
-        interpreter.gas_charge_op(interpreter.gas_costs().movi());
-
-        if interpreter.error.is_some() {
-            return;
-        }
+    fn execute_opt(
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+        args: [u8; 3],
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge_op(interpreter.gas_costs().movi())?;
 
         let op = Self(args);
         if !op.reserved_part_is_zero() {
-            interpreter.error = Some(PanicReason::InvalidInstruction.into());
-            return;
+            return Err(PanicReason::InvalidInstruction.into());
         }
 
         let (a, imm) = op.unpack();
-        interpreter.alu_set_op(a, Word::from(imm));
+        interpreter.alu_set_op(a, Word::from(imm))?;
+        Ok(ExecuteState::Proceed)
     }
 }
 
@@ -553,17 +514,15 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
-    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
-        interpreter.gas_charge_op(interpreter.gas_costs().jmpf());
-
-        if interpreter.error.is_some() {
-            return;
-        }
+    fn execute_opt(
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+        args: [u8; 3],
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge_op(interpreter.gas_costs().jmpf())?;
 
         let op = Self(args);
         if !op.reserved_part_is_zero() {
-            interpreter.error = Some(PanicReason::InvalidInstruction.into());
-            return;
+            return Err(PanicReason::InvalidInstruction.into());
         }
 
         let (a, offset) = op.unpack();
@@ -571,7 +530,8 @@ where
             JumpArgs::new(JumpMode::RelativeForwards)
                 .to_address(interpreter.registers[a])
                 .plus_fixed(offset.into()),
-        );
+        )?;
+        Ok(ExecuteState::Proceed)
     }
 }
 
@@ -583,17 +543,15 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
-    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
-        interpreter.gas_charge_op(interpreter.gas_costs().jmpb());
-
-        if interpreter.error.is_some() {
-            return;
-        }
+    fn execute_opt(
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+        args: [u8; 3],
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge_op(interpreter.gas_costs().jmpb())?;
 
         let op = Self(args);
         if !op.reserved_part_is_zero() {
-            interpreter.error = Some(PanicReason::InvalidInstruction.into());
-            return;
+            return Err(PanicReason::InvalidInstruction.into());
         }
 
         let (a, offset) = op.unpack();
@@ -601,7 +559,8 @@ where
             JumpArgs::new(JumpMode::RelativeBackwards)
                 .to_address(interpreter.registers[a])
                 .plus_fixed(offset.into()),
-        );
+        )?;
+        Ok(ExecuteState::Proceed)
     }
 }
 
@@ -613,17 +572,15 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
-    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
-        interpreter.gas_charge_op(interpreter.gas_costs().jnzf());
-
-        if interpreter.error.is_some() {
-            return;
-        }
+    fn execute_opt(
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+        args: [u8; 3],
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge_op(interpreter.gas_costs().jnzf())?;
 
         let op = Self(args);
         if !op.reserved_part_is_zero() {
-            interpreter.error = Some(PanicReason::InvalidInstruction.into());
-            return;
+            return Err(PanicReason::InvalidInstruction.into());
         }
 
         let (a, b, offset) = op.unpack();
@@ -634,7 +591,8 @@ where
                 .with_condition(ra != 0)
                 .to_address(rb)
                 .plus_fixed(offset.into()),
-        );
+        )?;
+        Ok(ExecuteState::Proceed)
     }
 }
 
@@ -646,12 +604,11 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
-    fn execute_opt(interpreter: &mut Interpreter<M, S, Tx, Ecal, V>, args: [u8; 3]) {
-        interpreter.gas_charge_op(interpreter.gas_costs().addi());
-
-        if interpreter.error.is_some() {
-            return;
-        }
+    fn execute_opt(
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+        args: [u8; 3],
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge_op(interpreter.gas_costs().addi())?;
 
         let op = Self(args);
         let (a, b, imm) = op.unpack();
@@ -660,7 +617,8 @@ where
             u128::overflowing_add,
             interpreter.registers[b].into(),
             imm.into(),
-        );
+        )?;
+        Ok(ExecuteState::Proceed)
     }
 }
 

@@ -13,11 +13,18 @@ use super::{
 use crate::{
     consts::*,
     context::Context,
+    error::{
+        IoResult,
+        SimpleResult,
+    },
     interpreter::{
         InterpreterParams,
         PanicContext,
     },
-    state::Debugger,
+    state::{
+        Debugger,
+        ExecuteState,
+    },
 };
 
 #[cfg(feature = "test-helpers")]
@@ -51,11 +58,14 @@ where
     }
 }
 
-type Handler<M, S, Tx, Ecal, V> =
-    for<'a> fn(&'a mut Interpreter<M, S, Tx, Ecal, V>, [u8; 3]);
+type Handler<M, S, Tx, Ecal, V, DataError> =
+    for<'a> fn(
+        &'a mut Interpreter<M, S, Tx, Ecal, V>,
+        [u8; 3],
+    ) -> IoResult<ExecuteState, DataError>;
 
 pub fn handlers<M, S, Tx, Ecal, V>()
--> [Option<for<'a> fn(&'a mut Interpreter<M, S, Tx, Ecal, V>, [u8; 3])>; 256]
+-> [Option<Handler<M, S, Tx, Ecal, V, S::DataError>>; 256]
 where
     M: Memory,
     S: InterpreterStorage,
@@ -68,7 +78,7 @@ where
     macro_rules! cast_handler {
         ($e:expr) => {{
             #[allow(clippy::as_conversions)]
-            let handler = $e as Handler<M, S, Tx, Ecal, V>;
+            let handler = $e as Handler<M, S, Tx, Ecal, V, S::DataError>;
             handler
         }};
     }
@@ -164,8 +174,6 @@ where
             verifier: Default::default(),
             owner_ptr: None,
             statistic: Default::default(),
-            error: None,
-            status: None,
         }
     }
 }

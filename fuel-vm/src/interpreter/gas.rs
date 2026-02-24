@@ -59,7 +59,7 @@ impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
 
     /// Do a gas charge with the given amount, panicing when running out of gas.
     #[inline(always)]
-    pub fn gas_charge_op(&mut self, gas: Word) {
+    pub fn gas_charge_op(&mut self, gas: Word) -> SimpleResult<()> {
         // Read CGAS and GGAS as plain values to avoid split_registers overhead.
         // Invariant: cgas <= ggas is maintained by the protocol; skip the bug-check
         // on the hot path.
@@ -69,11 +69,12 @@ impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
         if gas > cgas {
             self.registers[RegId::GGAS] = ggas.saturating_sub(cgas);
             self.registers[RegId::CGAS] = 0;
-            self.error = Some(PanicReason::OutOfGas.into());
+            Err(PanicReason::OutOfGas.into())
         } else {
             // Happy path: gas <= cgas <= ggas, subtraction cannot underflow
             self.registers[RegId::CGAS] = cgas - gas;
             self.registers[RegId::GGAS] = ggas - gas;
+            Ok(())
         }
     }
 }

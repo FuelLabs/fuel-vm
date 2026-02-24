@@ -92,14 +92,13 @@ where
         args.jump(is.as_ref(), pc)
     }
 
-    pub(crate) fn jump_op(&mut self, args: JumpArgs) {
+    pub(crate) fn jump_op(&mut self, args: JumpArgs) -> SimpleResult<()> {
         let (SystemRegisters { mut pc, is, .. }, _) =
             split_registers(&mut self.registers);
 
         if !args.condition {
-            *pc = pc.saturating_add(Instruction::SIZE as Word);
-
-            return
+            inc_pc(pc);
+            return Ok(());
         }
 
         let target_addr = match args.mode {
@@ -127,22 +126,19 @@ where
                 let offset_bytes =
                     offset_instructions.saturating_mul(Instruction::SIZE as Word);
 
-                match pc.checked_sub(offset_bytes) {
-                    None => {
-                        self.error = Some(PanicReason::MemoryOverflow.into());
-                        return;
-                    }
-                    Some(new_pc) => new_pc,
-                }
+                let Some(new_pc) = pc.checked_sub(offset_bytes) else {
+                    return Err(PanicReason::MemoryOverflow.into());
+                };
+                new_pc
             }
         };
 
         if target_addr >= VM_MAX_RAM {
-            self.error = Some(PanicReason::MemoryOverflow.into());
-            return;
+            return Err(PanicReason::MemoryOverflow.into());
         }
 
         *pc = target_addr;
+        Ok(())
     }
 
     pub(crate) fn ret(&mut self, a: Word) -> SimpleResult<()> {

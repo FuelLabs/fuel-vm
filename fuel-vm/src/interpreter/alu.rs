@@ -48,7 +48,13 @@ where
     }
 
     /// Stores the overflowed wrapped value into RegId::OF
-    pub(crate) fn alu_capture_overflow_op<F, B, C>(&mut self, ra: RegId, f: F, b: B, c: C)
+    pub(crate) fn alu_capture_overflow_op<F, B, C>(
+        &mut self,
+        ra: RegId,
+        f: F,
+        b: B,
+        c: C,
+    ) -> SimpleResult<()>
     where
         F: FnOnce(B, C) -> (u128, bool),
     {
@@ -59,21 +65,14 @@ where
             mut w,
         ) = split_registers(&mut self.registers);
 
-        let ra = match WriteRegKey::try_from(ra) {
-            Ok(ra) => ra,
-            Err(err) => {
-                self.error = Some(err.into());
-                return;
-            }
-        };
+        let ra = WriteRegKey::try_from(ra)?;
 
         let dest = &mut w[ra];
         let mut common = AluCommonReg { of, err, pc };
         let (result, _overflow) = f(b, c);
 
         if result > Word::MAX as u128 && !is_wrapping(flag.as_ref()) {
-            self.error = Some(PanicReason::ArithmeticOverflow.into());
-            return;
+            return Err(PanicReason::ArithmeticOverflow.into());
         }
 
         // set the OF register to high bits of the u128 result
@@ -85,6 +84,7 @@ where
             .expect("We already truncated the result");
 
         *common.pc = common.pc.saturating_add(Instruction::SIZE as Word);
+        Ok(())
     }
 
     /// Set RegId::OF to true and zero the result register if overflow occurred.
@@ -138,7 +138,8 @@ where
         b: B,
         c: C,
         err_bool: bool,
-    ) where
+    ) -> SimpleResult<()>
+    where
         F: FnOnce(B, C) -> Word,
     {
         let (
@@ -148,20 +149,13 @@ where
             mut w,
         ) = split_registers(&mut self.registers);
 
-        let ra = match WriteRegKey::try_from(ra) {
-            Ok(ra) => ra,
-            Err(err) => {
-                self.error = Some(err.into());
-                return;
-            }
-        };
+        let ra = WriteRegKey::try_from(ra)?;
 
         let dest = &mut w[ra];
         let mut common = AluCommonReg { of, err, pc };
 
         if err_bool && !is_unsafe_math(flag.as_ref()) {
-            self.error = Some(PanicReason::ArithmeticError.into());
-            return;
+            return Err(PanicReason::ArithmeticError.into());
         }
 
         *common.of = 0;
@@ -170,6 +164,7 @@ where
         *dest = if err_bool { 0 } else { f(b, c) };
 
         *common.pc = common.pc.saturating_add(Instruction::SIZE as Word);
+        Ok(())
     }
 
     pub(crate) fn alu_set(&mut self, ra: RegId, b: Word) -> SimpleResult<()> {
@@ -180,17 +175,11 @@ where
         alu_set(dest, common, b)
     }
 
-    pub(crate) fn alu_set_op(&mut self, ra: RegId, b: Word) {
+    pub(crate) fn alu_set_op(&mut self, ra: RegId, b: Word) -> SimpleResult<()> {
         let (SystemRegisters { of, err, pc, .. }, mut w) =
             split_registers(&mut self.registers);
 
-        let ra = match WriteRegKey::try_from(ra) {
-            Ok(ra) => ra,
-            Err(err) => {
-                self.error = Some(err.into());
-                return;
-            }
-        };
+        let ra = WriteRegKey::try_from(ra)?;
 
         let dest = &mut w[ra];
         let mut common = AluCommonReg { of, err, pc };
@@ -200,6 +189,7 @@ where
         *dest = b;
 
         *common.pc = common.pc.saturating_add(Instruction::SIZE as Word);
+        Ok(())
     }
 
     pub(crate) fn alu_clear(&mut self) -> SimpleResult<()> {

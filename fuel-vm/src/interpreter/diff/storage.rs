@@ -118,8 +118,6 @@ where
             verifier: self.verifier,
             owner_ptr: self.owner_ptr,
             statistic: Default::default(),
-            error: self.error,
-            status: self.status,
         }
     }
 
@@ -214,8 +212,6 @@ where
             verifier: self.verifier,
             owner_ptr: self.owner_ptr,
             statistic: Default::default(),
-            error: self.error,
-            status: self.status,
         }
     }
 

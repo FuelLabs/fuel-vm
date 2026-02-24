@@ -117,7 +117,6 @@ where
             ecal_state: self.ecal_state,
             verifier: self.verifier,
             owner_ptr: self.owner_ptr,
-            statistic: Default::default(),
         }
     }
 
@@ -211,7 +210,6 @@ where
             ecal_state: self.ecal_state,
             verifier: self.verifier,
             owner_ptr: self.owner_ptr,
-            statistic: Default::default(),
         }
     }
 

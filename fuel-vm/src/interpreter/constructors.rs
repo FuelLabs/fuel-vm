@@ -62,7 +62,7 @@ type Handler<M, S, Tx, Ecal, V, DataError> =
     ) -> IoResult<ExecuteState, DataError>;
 
 #[allow(clippy::type_complexity)]
-pub fn handlers<M, S, Tx, Ecal, V>()
+pub const fn handlers<M, S, Tx, Ecal, V>()
 -> [Option<Handler<M, S, Tx, Ecal, V, S::DataError>>; 256]
 where
     M: Memory,
@@ -171,7 +171,6 @@ where
             ecal_state,
             verifier: Default::default(),
             owner_ptr: None,
-            statistic: Default::default(),
         }
     }
 }

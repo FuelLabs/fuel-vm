@@ -42,6 +42,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -66,6 +67,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -90,6 +92,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -109,6 +112,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -128,6 +132,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -148,6 +153,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -168,6 +174,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -190,6 +197,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -214,6 +222,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -239,6 +248,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -261,6 +271,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -283,6 +294,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -309,6 +321,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -335,6 +348,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -361,6 +375,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -387,6 +402,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -413,6 +429,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -439,6 +456,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -465,6 +483,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -491,6 +510,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -515,6 +535,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -539,6 +560,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -562,6 +584,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -585,6 +608,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -608,6 +632,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -632,6 +657,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -662,6 +688,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -688,6 +715,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -714,6 +742,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -733,6 +762,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -752,6 +782,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -782,6 +813,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -806,6 +838,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -830,6 +863,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -854,6 +888,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -881,6 +916,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -899,6 +935,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -918,6 +955,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -937,6 +975,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -956,6 +995,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -983,6 +1023,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1008,6 +1049,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1034,6 +1076,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1059,6 +1102,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1083,6 +1127,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1107,6 +1152,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1126,6 +1172,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1145,6 +1192,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1164,6 +1212,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1187,6 +1236,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1210,6 +1260,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1231,6 +1282,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1254,6 +1306,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1277,6 +1330,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1300,6 +1354,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1324,6 +1379,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1348,6 +1404,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1372,6 +1429,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1396,6 +1454,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1427,6 +1486,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1447,6 +1507,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1468,6 +1529,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1488,6 +1550,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1515,6 +1578,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1536,6 +1600,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1556,6 +1621,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1577,6 +1643,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1596,6 +1663,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1616,6 +1684,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1635,6 +1704,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1654,6 +1724,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1673,6 +1744,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1692,6 +1764,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1711,6 +1784,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1730,6 +1804,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1749,6 +1824,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1768,6 +1844,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1788,6 +1865,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1808,6 +1886,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1828,6 +1907,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1848,6 +1928,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1868,6 +1949,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1887,6 +1969,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1906,6 +1989,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1925,6 +2009,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1944,6 +2029,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1967,6 +2053,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -1986,6 +2073,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2005,6 +2093,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2024,6 +2113,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2045,6 +2135,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2064,6 +2155,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2087,6 +2179,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2105,6 +2198,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2124,6 +2218,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2148,6 +2243,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2172,6 +2268,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2199,6 +2296,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2218,6 +2316,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2244,6 +2343,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2263,6 +2363,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2290,6 +2391,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2313,6 +2415,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2340,6 +2443,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2359,6 +2463,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2382,6 +2487,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2405,6 +2511,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2436,6 +2543,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2456,6 +2564,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2476,6 +2585,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2495,6 +2605,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2514,6 +2625,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2533,6 +2645,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2556,6 +2669,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2580,6 +2694,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2598,6 +2713,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2617,6 +2733,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2641,6 +2758,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
@@ -2666,6 +2784,7 @@ where
     Ecal: EcalHandler,
     V: Verifier,
 {
+    #[inline(never)]
     fn execute(
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,

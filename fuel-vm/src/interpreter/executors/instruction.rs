@@ -104,25 +104,11 @@ where
         let instruction = Instruction::try_from(raw)
             .map_err(|_| RuntimeError::from(PanicReason::InvalidInstruction))?;
 
-        if PREDICATE {
-            // TODO additional branch that might be optimized after
-            // https://github.com/FuelLabs/fuel-asm/issues/68
-            if !instruction.opcode().is_predicate_allowed() {
-                return Err(PanicReason::ContractInstructionNotAllowed.into())
-            }
+        if PREDICATE && !instruction.opcode().is_predicate_allowed() {
+            return Err(PanicReason::ContractInstructionNotAllowed.into())
         }
 
-        let opcode = instruction.opcode();
-
-        let gas_before = self.remaining_gas();
-        let result = instruction.execute(self);
-
-        let gas = gas_before.saturating_sub(self.remaining_gas());
-        let stat = self.statistic.entry(opcode).or_default();
-        stat.count = stat.count.saturating_add(1);
-        stat.gas = gas;
-
-        result
+        instruction.execute(self)
     }
 }
 
@@ -394,7 +380,7 @@ where
 
         let a = op.unpack();
         let ra = interpreter.registers[a];
-        interpreter.ret(ra).expect("RET failed");
+        interpreter.ret(ra)?;
         Ok(ExecuteState::Return(ra))
     }
 }

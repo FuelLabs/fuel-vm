@@ -7,10 +7,7 @@ use super::{
     *,
 };
 use crate::{
-    interpreter::{
-        EcalHandler,
-        constructors::handlers,
-    },
+    interpreter::EcalHandler,
     storage::{
         BlobBytes,
         BlobData,
@@ -123,7 +120,6 @@ where
             statistic: Default::default(),
             error: self.error,
             status: self.status,
-            handlers: handlers::<M, S, Tx, Ecal, V>(),
         }
     }
 
@@ -220,7 +216,6 @@ where
             statistic: Default::default(),
             error: self.error,
             status: self.status,
-            handlers: handlers::<M, Record<S>, Tx, Ecal, V>(),
         }
     }
 

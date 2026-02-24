@@ -150,7 +150,6 @@ pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal, V = verification:
     statistic: alloc::collections::BTreeMap<Opcode, OpcodeStat>,
     pub error: Option<PanicOrBug>,
     pub status: Option<ExecuteState>,
-    pub handlers: [Option<for<'a> fn(&'a mut Self, [u8; 3])>; 256],
 }
 
 /// Interpreter parameters

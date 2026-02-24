@@ -9,6 +9,7 @@ use crate::{
         ExecutableTransaction,
         Interpreter,
         Memory,
+        constructors::handlers,
     },
     state::ExecuteState,
     storage::InterpreterStorage,
@@ -60,7 +61,7 @@ where
         &mut self,
     ) -> Result<ExecuteState, InterpreterError<S::DataError>> {
         let raw_instruction = self.fetch_instruction()?;
-        self.instruction_per_inner::<PREDICATE>(raw_instruction)
+        self.instruction_per_inner::<PREDICATE, false>(raw_instruction)
     }
 
     /// Execute the current instruction located in `$m[$pc]`.
@@ -80,7 +81,7 @@ where
             return
         }
 
-        if let Some(f) = self.handlers[raw_instruction[0] as usize] {
+        if let Some(f) = handlers::<M, S, Tx, Ecal, V>()[raw_instruction[0] as usize] {
             f(
                 self,
                 [raw_instruction[1], raw_instruction[2], raw_instruction[3]],
@@ -123,14 +124,14 @@ where
         let raw = raw.into();
         let raw = raw.to_be_bytes();
 
-        self.instruction_per_inner::<PREDICATE>(raw)
+        self.instruction_per_inner::<PREDICATE, false>(raw)
     }
 
-    fn instruction_per_inner<const PREDICATE: bool>(
+    pub(super) fn instruction_per_inner<const PREDICATE: bool, const DEBUG: bool>(
         &mut self,
         raw: [u8; 4],
     ) -> Result<ExecuteState, InterpreterError<S::DataError>> {
-        if self.debugger.is_active() {
+        if DEBUG {
             let debug = self.eval_debugger_state();
             if !debug.should_continue() {
                 return Ok(debug.into())
@@ -212,10 +213,10 @@ where
         }
 
         let op = Self(args);
-        // if !op.reserved_part_is_zero() {
-        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
-        //     return;
-        // }
+        if !op.reserved_part_is_zero() {
+            interpreter.error = Some(PanicReason::InvalidInstruction.into());
+            return;
+        }
 
         let (a, b, c) = op.unpack();
         interpreter.alu_capture_overflow_op(
@@ -243,10 +244,10 @@ where
         }
 
         let op = Self(args);
-        // if !op.reserved_part_is_zero() {
-        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
-        //     return;
-        // }
+        if !op.reserved_part_is_zero() {
+            interpreter.error = Some(PanicReason::InvalidInstruction.into());
+            return;
+        }
 
         let (a, b, c) = op.unpack();
         let c = interpreter.registers[c];
@@ -270,10 +271,10 @@ where
         }
 
         let op = Self(args);
-        // if !op.reserved_part_is_zero() {
-        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
-        //     return;
-        // }
+        if !op.reserved_part_is_zero() {
+            interpreter.error = Some(PanicReason::InvalidInstruction.into());
+            return;
+        }
 
         let (a, b, c) = op.unpack();
         interpreter.alu_set_op(
@@ -299,10 +300,10 @@ where
         }
 
         let op = Self(args);
-        // if !op.reserved_part_is_zero() {
-        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
-        //     return;
-        // }
+        if !op.reserved_part_is_zero() {
+            interpreter.error = Some(PanicReason::InvalidInstruction.into());
+            return;
+        }
 
         let (a, b, c) = op.unpack();
         interpreter.alu_set_op(
@@ -328,10 +329,10 @@ where
         }
 
         let op = Self(args);
-        // if !op.reserved_part_is_zero() {
-        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
-        //     return;
-        // }
+        if !op.reserved_part_is_zero() {
+            interpreter.error = Some(PanicReason::InvalidInstruction.into());
+            return;
+        }
 
         let (a, b, c) = op.unpack();
         interpreter.alu_set_op(
@@ -357,10 +358,10 @@ where
         }
 
         let op = Self(args);
-        // if !op.reserved_part_is_zero() {
-        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
-        //     return;
-        // }
+        if !op.reserved_part_is_zero() {
+            interpreter.error = Some(PanicReason::InvalidInstruction.into());
+            return;
+        }
 
         let (a, b, c) = op.unpack();
         let rhs = interpreter.registers[c];
@@ -390,10 +391,10 @@ where
         }
 
         let op = Self(args);
-        // if !op.reserved_part_is_zero() {
-        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
-        //     return;
-        // }
+        if !op.reserved_part_is_zero() {
+            interpreter.error = Some(PanicReason::InvalidInstruction.into());
+            return;
+        }
 
         let (a, b) = op.unpack();
         interpreter.alu_set_op(a, interpreter.registers[b]);
@@ -416,10 +417,10 @@ where
         }
 
         let op = Self(args);
-        // if !op.reserved_part_is_zero() {
-        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
-        //     return;
-        // }
+        if !op.reserved_part_is_zero() {
+            interpreter.error = Some(PanicReason::InvalidInstruction.into());
+            return;
+        }
 
         let (a, b, c) = op.unpack();
         interpreter.alu_capture_overflow_op(
@@ -447,10 +448,10 @@ where
         }
 
         let op = Self(args);
-        // if !op.reserved_part_is_zero() {
-        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
-        //     return;
-        // }
+        if !op.reserved_part_is_zero() {
+            interpreter.error = Some(PanicReason::InvalidInstruction.into());
+            return;
+        }
 
         let a = op.unpack();
         let ra = interpreter.registers[a];
@@ -475,10 +476,10 @@ where
         }
 
         let op = Self(args);
-        // if !op.reserved_part_is_zero() {
-        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
-        //     return;
-        // }
+        if !op.reserved_part_is_zero() {
+            interpreter.error = Some(PanicReason::InvalidInstruction.into());
+            return;
+        }
 
         let (a, b, c, d) = op.unpack();
         if let Err(e) = interpreter.log(
@@ -508,10 +509,10 @@ where
         }
 
         let op = Self(args);
-        // if !op.reserved_part_is_zero() {
-        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
-        //     return;
-        // }
+        if !op.reserved_part_is_zero() {
+            interpreter.error = Some(PanicReason::InvalidInstruction.into());
+            return;
+        }
 
         let (a, b, imm) = op.unpack();
         interpreter.load_u64_op(a, interpreter.registers[b], imm);
@@ -534,10 +535,10 @@ where
         }
 
         let op = Self(args);
-        // if !op.reserved_part_is_zero() {
-        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
-        //     return;
-        // }
+        if !op.reserved_part_is_zero() {
+            interpreter.error = Some(PanicReason::InvalidInstruction.into());
+            return;
+        }
 
         let (a, imm) = op.unpack();
         interpreter.alu_set_op(a, Word::from(imm));
@@ -560,10 +561,10 @@ where
         }
 
         let op = Self(args);
-        // if !op.reserved_part_is_zero() {
-        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
-        //     return;
-        // }
+        if !op.reserved_part_is_zero() {
+            interpreter.error = Some(PanicReason::InvalidInstruction.into());
+            return;
+        }
 
         let (a, offset) = op.unpack();
         interpreter.jump_op(
@@ -590,10 +591,10 @@ where
         }
 
         let op = Self(args);
-        // if !op.reserved_part_is_zero() {
-        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
-        //     return;
-        // }
+        if !op.reserved_part_is_zero() {
+            interpreter.error = Some(PanicReason::InvalidInstruction.into());
+            return;
+        }
 
         let (a, offset) = op.unpack();
         interpreter.jump_op(
@@ -620,10 +621,10 @@ where
         }
 
         let op = Self(args);
-        // if !op.reserved_part_is_zero() {
-        //     interpreter.error = Some(PanicReason::InvalidInstruction.into());
-        //     return;
-        // }
+        if !op.reserved_part_is_zero() {
+            interpreter.error = Some(PanicReason::InvalidInstruction.into());
+            return;
+        }
 
         let (a, b, offset) = op.unpack();
         let ra = interpreter.registers[a];

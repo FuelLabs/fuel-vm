@@ -53,7 +53,10 @@ use crate::{
         CheckPredicateParams,
         Ready,
     },
-    interpreter::InterpreterParams,
+    interpreter::{
+        InterpreterParams,
+        constructors::handlers,
+    },
     prelude::MemoryInstance,
     state::StateTransition,
     storage::{
@@ -1033,6 +1036,16 @@ where
     pub(crate) fn run_program(
         &mut self,
     ) -> Result<ProgramState, InterpreterError<S::DataError>> {
+        if self.debugger.is_active() {
+            self.run_program_inner::<true>()
+        } else {
+            self.run_program_inner::<false>()
+        }
+    }
+
+    fn run_program_inner<const DEBUG: bool>(
+        &mut self,
+    ) -> Result<ProgramState, InterpreterError<S::DataError>> {
         let Some(script) = self.tx.as_script() else {
             unreachable!("Only `Script` transactions can be executed inside of the VM")
         };
@@ -1095,6 +1108,7 @@ where
             //     }
             // }
 
+            let handlers = handlers::<M, S, Tx, Ecal, V>();
             loop {
                 let in_call = !self.frames.is_empty();
                 let pc = self.registers[RegId::PC];
@@ -1108,20 +1122,19 @@ where
                     }
                 };
 
-                if let Some(f) = self.handlers[raw[0] as usize] {
-                    // Bounds check (same as fetch_instruction)
-                    if pc < self.registers[RegId::IS] || pc >= self.registers[RegId::SSP]
-                    {
-                        let pi = PanicInstruction::error(
-                            PanicReason::MemoryNotExecutable,
-                            RawInstruction::from_be_bytes(raw),
-                        );
-                        self.append_panic_receipt(pi);
-                        break (ScriptExecutionResult::Panic, ProgramState::Revert(0))
-                    }
+                // Bounds check - applies to both the optimized and fallback paths
+                if pc < self.registers[RegId::IS] || pc >= self.registers[RegId::SSP] {
+                    let pi = PanicInstruction::error(
+                        PanicReason::MemoryNotExecutable,
+                        RawInstruction::from_be_bytes(raw),
+                    );
+                    self.append_panic_receipt(pi);
+                    break (ScriptExecutionResult::Panic, ProgramState::Revert(0))
+                }
 
+                if let Some(f) = handlers[raw[0] as usize] {
                     // Check debugger state (same as instruction_per_inner)
-                    if self.debugger.is_active() {
+                    if DEBUG {
                         let debug = self.eval_debugger_state();
                         if !debug.should_continue() {
                             self.debugger_set_last_state(ProgramState::RunProgram(debug));
@@ -1188,8 +1201,11 @@ where
                         }
                     }
                 } else {
-                    // No optimized handler - fall back to standard execution path
-                    match self.execute::<false>() {
+                    // No optimized handler — fall back using the already-fetched raw,
+                    // threading DEBUG through so the debug check is also const-eliminated
+                    // when DEBUG=false. This also avoids re-fetching and re-checking
+                    // bounds.
+                    match self.instruction_per_inner::<false, DEBUG>(raw) {
                         Ok(ExecuteState::Proceed) => {}
                         Ok(ExecuteState::DebugEvent(d)) => {
                             self.debugger_set_last_state(ProgramState::RunProgram(d));

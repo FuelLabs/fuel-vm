@@ -166,7 +166,6 @@ where
             statistic: Default::default(),
             error: None,
             status: None,
-            handlers: handlers::<M, S, Tx, Ecal, V>(),
         }
     }
 }

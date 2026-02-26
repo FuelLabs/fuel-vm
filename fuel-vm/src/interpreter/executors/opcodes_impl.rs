@@ -2821,6 +2821,16 @@ where
             interpreter.gas_costs().swrd().map_err(PanicReason::from)?,
             len,
         )?;
+        let size_before = interpreter.get_size_of_slot_cached(key)?;
+        let new_bytes = size_before.saturating_sub(len);
+        if new_bytes > 0 {
+            interpreter.gas_charge(
+                interpreter
+                    .gas_costs()
+                    .new_storage_per_byte()
+                    .saturating_mul(new_bytes),
+            )?;
+        }
         interpreter.storage_write_from_memory(
             key,
             interpreter.registers[r_value_ptr],
@@ -2855,6 +2865,16 @@ where
             interpreter.gas_costs().swrd().map_err(PanicReason::from)?,
             len,
         )?;
+        let size_before = interpreter.get_size_of_slot_cached(key)?;
+        let new_bytes = size_before.saturating_sub(len);
+        if new_bytes > 0 {
+            interpreter.gas_charge(
+                interpreter
+                    .gas_costs()
+                    .new_storage_per_byte()
+                    .saturating_mul(new_bytes),
+            )?;
+        }
         interpreter.storage_write_from_memory(
             key,
             interpreter.registers[r_value_ptr],
@@ -2884,7 +2904,7 @@ where
                 .memory()
                 .read_bytes(interpreter.registers[r_key_ptr])?,
         );
-        let len = interpreter.storage_update_from_memory(
+        let update = interpreter.storage_update_from_memory(
             key,
             interpreter.registers[r_value_ptr],
             interpreter.registers[r_offset],
@@ -2892,8 +2912,16 @@ where
         )?;
         interpreter.dependent_gas_charge(
             interpreter.gas_costs().supd().map_err(PanicReason::from)?,
-            len,
+            update.transfer_charge(),
         )?;
+        if update.new_bytes() > 0 {
+            interpreter.gas_charge(
+                interpreter
+                    .gas_costs()
+                    .new_storage_per_byte()
+                    .saturating_mul(update.new_bytes()),
+            )?;
+        }
         let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
         inc_pc(pc)?;
         Ok(ExecuteState::Proceed)
@@ -2918,7 +2946,7 @@ where
                 .memory()
                 .read_bytes(interpreter.registers[r_key_ptr])?,
         );
-        let len = interpreter.storage_update_from_memory(
+        let update = interpreter.storage_update_from_memory(
             key,
             interpreter.registers[r_value_ptr],
             interpreter.registers[r_offset],
@@ -2926,8 +2954,16 @@ where
         )?;
         interpreter.dependent_gas_charge(
             interpreter.gas_costs().supd().map_err(PanicReason::from)?,
-            len,
+            update.transfer_charge(),
         )?;
+        if update.new_bytes() > 0 {
+            interpreter.gas_charge(
+                interpreter
+                    .gas_costs()
+                    .new_storage_per_byte()
+                    .saturating_mul(update.new_bytes()),
+            )?;
+        }
         let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
         inc_pc(pc)?;
         Ok(ExecuteState::Proceed)

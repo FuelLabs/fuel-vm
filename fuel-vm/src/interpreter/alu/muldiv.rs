@@ -49,7 +49,7 @@ where
         *err = 0;
         *dest = result;
 
-        inc_pc(pc)?;
+        inc_pc(pc);
         Ok(())
     }
 }

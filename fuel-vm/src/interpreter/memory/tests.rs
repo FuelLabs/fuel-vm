@@ -13,6 +13,17 @@ use fuel_asm::op;
 use fuel_tx::ConsensusParameters;
 use test_case::test_case;
 
+impl OwnershipRegisters {
+    pub fn test(stack: Range<u64>, heap: Range<u64>) -> Self {
+        Self {
+            sp: stack.end,
+            ssp: stack.start,
+            hp: heap.start,
+            prev_hp: heap.end,
+        }
+    }
+}
+
 #[cfg(feature = "random")]
 #[test]
 fn memcopy() {

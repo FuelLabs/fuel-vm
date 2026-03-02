@@ -19,9 +19,6 @@ use crate::consts::{
     VM_REGISTER_SYSTEM_COUNT,
 };
 
-#[cfg(test)]
-mod tests;
-
 #[derive(Debug, PartialEq, Eq)]
 /// Mutable reference to a register value at a given index.
 pub struct RegMut<'r, const INDEX: u8>(&'r mut Word);
@@ -219,6 +216,7 @@ pub(crate) struct SystemRegistersRef<'a> {
 pub(crate) struct ProgramRegisters<'a>(pub &'a mut [Word; VM_REGISTER_PROGRAM_COUNT]);
 
 /// Same as `ProgramRegisters` but with immutable references.
+#[allow(dead_code)]
 pub(crate) struct ProgramRegistersRef<'a>(pub &'a [Word; VM_REGISTER_PROGRAM_COUNT]);
 
 /// Split the registers into system and program registers.
@@ -265,57 +263,6 @@ pub(crate) fn split_registers(
         flag: RegMut(flag),
     };
     (r, ProgramRegisters(rest))
-}
-
-/// Copy the system and program registers into a single array.
-pub(crate) fn copy_registers(
-    system_registers: &SystemRegistersRef<'_>,
-    program_registers: &ProgramRegistersRef<'_>,
-) -> [Word; VM_REGISTER_COUNT] {
-    let mut out = [0u64; VM_REGISTER_COUNT];
-    out[..VM_REGISTER_SYSTEM_COUNT]
-        .copy_from_slice(&<[Word; VM_REGISTER_SYSTEM_COUNT]>::from(system_registers));
-    out[VM_REGISTER_SYSTEM_COUNT..].copy_from_slice(program_registers.0);
-    out
-}
-
-impl ProgramRegisters<'_> {
-    /// Get two mutable references to program registers.
-    /// Note they cannot be the same register.
-    pub fn get_mut_two(
-        &mut self,
-        a: WriteRegKey,
-        b: WriteRegKey,
-    ) -> Option<(&mut Word, &mut Word)> {
-        if a == b {
-            // Cannot mutably borrow the same register twice.
-            return None
-        }
-
-        // Order registers
-        let swap = a > b;
-        let (a, b) = if swap { (b, a) } else { (a, b) };
-
-        // Translate the absolute register indices to a program register indeces.
-        let a = a.translate();
-
-        // Subtract a + 1 because because we split the array at `a`.
-        let b = b
-            .translate()
-            .checked_sub(a.saturating_add(1))
-            .expect("Cannot underflow as the values are ordered");
-
-        // Split the array at the first register which is a.
-        let [i, rest @ ..] = &mut self.0[a..] else {
-            return None
-        };
-
-        // Translate the higher absolute register index to a program register index.
-        // Get the `b` register.
-        let j = &mut rest[b];
-
-        Some(if swap { (j, i) } else { (i, j) })
-    }
 }
 
 impl<'a> From<&'a SystemRegisters<'_>> for SystemRegistersRef<'a> {

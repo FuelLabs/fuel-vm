@@ -1,8 +1,7 @@
 use crate::{
     constraints::reg_key::{
+        GetRegMut as _,
         ProgramRegistersSegment,
-        SystemRegisters,
-        split_registers,
     },
     error::{
         IoResult,
@@ -2724,8 +2723,7 @@ where
             .storage
             .contract_state_remove_range_nostatus(&contract_id, &start_key, num_slots)
             .map_err(RuntimeError::Storage)?;
-        let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
-        inc_pc(pc)?;
+        inc_pc(interpreter.registers.pc_mut())?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2758,8 +2756,7 @@ where
             interpreter.gas_costs().srdd().map_err(PanicReason::from)?,
             len,
         )?;
-        let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
-        inc_pc(pc)?;
+        inc_pc(interpreter.registers.pc_mut())?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2792,8 +2789,7 @@ where
             interpreter.gas_costs().srdd().map_err(PanicReason::from)?,
             len,
         )?;
-        let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
-        inc_pc(pc)?;
+        inc_pc(interpreter.registers.pc_mut())?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2826,8 +2822,7 @@ where
             interpreter.registers[r_value_ptr],
             len,
         )?;
-        let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
-        inc_pc(pc)?;
+        inc_pc(interpreter.registers.pc_mut())?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2860,8 +2855,7 @@ where
             interpreter.registers[r_value_ptr],
             len,
         )?;
-        let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
-        inc_pc(pc)?;
+        inc_pc(interpreter.registers.pc_mut())?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2894,8 +2888,7 @@ where
             interpreter.gas_costs().supd().map_err(PanicReason::from)?,
             len,
         )?;
-        let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
-        inc_pc(pc)?;
+        inc_pc(interpreter.registers.pc_mut())?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2928,8 +2921,7 @@ where
             interpreter.gas_costs().supd().map_err(PanicReason::from)?,
             len,
         )?;
-        let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
-        inc_pc(pc)?;
+        inc_pc(interpreter.registers.pc_mut())?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2958,8 +2950,7 @@ where
             interpreter.gas_costs().spld().map_err(PanicReason::from)?,
             len,
         )?;
-        let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
-        inc_pc(pc)?;
+        inc_pc(interpreter.registers.pc_mut())?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2988,8 +2979,7 @@ where
             interpreter.gas_costs().spcp().map_err(PanicReason::from)?,
             len,
         )?;
-        let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
-        inc_pc(pc)?;
+        inc_pc(interpreter.registers.pc_mut())?;
         Ok(ExecuteState::Proceed)
     }
 }

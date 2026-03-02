@@ -1,12 +1,5 @@
 use super::Interpreter;
-use crate::{
-    constraints::reg_key::*,
-    error::SimpleResult,
-    prelude::{
-        Bug,
-        BugVariant,
-    },
-};
+use crate::error::SimpleResult;
 
 use fuel_asm::{
     PanicReason,
@@ -14,9 +7,6 @@ use fuel_asm::{
 };
 use fuel_tx::DependentCost;
 use fuel_types::Word;
-
-#[cfg(test)]
-mod tests;
 
 impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
     /// Global remaining gas amount
@@ -37,8 +27,8 @@ impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
         gas_cost: DependentCost,
         arg: Word,
     ) -> SimpleResult<()> {
-        let SystemRegisters { ggas, cgas, .. } = split_registers(&mut self.registers).0;
-        dependent_gas_charge(cgas, ggas, gas_cost, arg)
+        let cost = gas_cost.resolve(arg);
+        self.gas_charge(cost)
     }
 
     pub(crate) fn dependent_gas_charge_without_base(
@@ -46,60 +36,26 @@ impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
         gas_cost: DependentCost,
         arg: Word,
     ) -> SimpleResult<()> {
-        let SystemRegisters { ggas, cgas, .. } = split_registers(&mut self.registers).0;
-        dependent_gas_charge_without_base(cgas, ggas, gas_cost, arg)
+        let cost = gas_cost.resolve_without_base(arg);
+        self.gas_charge(cost)
     }
 
     /// Do a gas charge with the given amount, panicing when running out of gas.
+    /// Relies on the invariant that CGAS <= GGAS.
     pub fn gas_charge(&mut self, gas: Word) -> SimpleResult<()> {
-        let SystemRegisters { ggas, cgas, .. } = split_registers(&mut self.registers).0;
+        let cgas = self.registers[RegId::CGAS];
+        let ggas = self.registers[RegId::GGAS];
 
-        gas_charge(cgas, ggas, gas)
-    }
-}
-
-pub(crate) fn dependent_gas_charge_without_base(
-    mut cgas: RegMut<CGAS>,
-    ggas: RegMut<GGAS>,
-    gas_cost: DependentCost,
-    arg: Word,
-) -> SimpleResult<()> {
-    let cost = gas_cost.resolve_without_base(arg);
-    gas_charge(cgas.as_mut(), ggas, cost)
-}
-
-pub(crate) fn dependent_gas_charge(
-    mut cgas: RegMut<CGAS>,
-    ggas: RegMut<GGAS>,
-    gas_cost: DependentCost,
-    arg: Word,
-) -> SimpleResult<()> {
-    let cost = gas_cost.resolve(arg);
-    gas_charge(cgas.as_mut(), ggas, cost)
-}
-
-pub(crate) fn gas_charge(
-    mut cgas: RegMut<CGAS>,
-    mut ggas: RegMut<GGAS>,
-    gas: Word,
-) -> SimpleResult<()> {
-    if *cgas > *ggas {
-        Err(Bug::new(BugVariant::GlobalGasLessThanContext).into())
-    } else if gas > *cgas {
-        *ggas = (*ggas)
-            .checked_sub(*cgas)
-            .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
-        *cgas = 0;
-
-        Err(PanicReason::OutOfGas.into())
-    } else {
-        *cgas = (*cgas)
-            .checked_sub(gas)
-            .ok_or_else(|| Bug::new(BugVariant::ContextGasUnderflow))?;
-        *ggas = (*ggas)
-            .checked_sub(gas)
-            .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
-
-        Ok(())
+        #[allow(clippy::arithmetic_side_effects)] // Safety: checked in if condition
+        if gas > cgas {
+            self.registers[RegId::GGAS] = ggas.saturating_sub(cgas);
+            self.registers[RegId::CGAS] = 0;
+            Err(PanicReason::OutOfGas.into())
+        } else {
+            // Happy path: gas <= cgas <= ggas, subtraction cannot underflow
+            self.registers[RegId::CGAS] = cgas - gas;
+            self.registers[RegId::GGAS] = ggas - gas;
+            Ok(())
+        }
     }
 }

@@ -18,10 +18,11 @@ pub use debug::{
 
 pub use debugger::Debugger;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 /// Resulting state of an instruction set execution.
 pub enum ExecuteState {
     /// The VM should proceed normally with the execution.
+    #[default]
     Proceed,
     /// The current context returned a [`Word`].
     Return(Word),
@@ -38,12 +39,6 @@ impl ExecuteState {
     /// Return true if the VM execution should continue.
     pub const fn should_continue(&self) -> bool {
         matches!(self, Self::Proceed | Self::DebugEvent(DebugEval::Continue))
-    }
-}
-
-impl Default for ExecuteState {
-    fn default() -> Self {
-        Self::Proceed
     }
 }
 

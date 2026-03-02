@@ -1,5 +1,5 @@
 FROM gcr.io/oss-fuzz-base/base-builder-rust:v1
-# Update Rust to version 1.90.0
+# Update Rust to version 1.93.0
 ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER clang
 ENV RUSTUP_TOOLCHAIN nightly-2025-09-28
 

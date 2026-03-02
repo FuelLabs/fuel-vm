@@ -11,7 +11,10 @@ use fuel_tx::{
 
 use crate::{
     convert,
-    error::RuntimeError,
+    error::{
+        IoResult,
+        RuntimeError,
+    },
     prelude::{
         Interpreter,
         Memory,
@@ -151,6 +154,8 @@ where
             .map(|v| v.as_ref().0.clone().into_inner())
             .unwrap_or_default();
 
+        let total_size_before = value.len() as u64;
+
         let offset = if offset == u64::MAX {
             value.len()
         } else {
@@ -177,16 +182,86 @@ where
         self.storage
             .contract_state_insert(&contract_id, &key, &value)
             .map_err(RuntimeError::Storage)?;
+
+        let total_size_after = len_after as u64;
+        self.cache_size_of_slot(contract_id, key, total_size_after);
+
         Ok(StorageUpdated {
-            total_size_before: value.len() as u64,
-            total_size_after: len_after as u64,
+            total_size_before,
+            total_size_after,
         })
     }
 
-    /// Preloads the storage slot identified by `key` into a special memory area,
-    /// returning its size. Returns length of the slot, or 0 if the slot is not found.
+    /// Implementation of SRDD/SRDI opcodes
+    pub(crate) fn dynamic_storage_read(
+        &mut self,
+        buffer_ptr: u64,
+        key_ptr: u64,
+        offset: u64,
+        len: u64,
+    ) -> IoResult<(), S::DataError> {
+        let key = Bytes32::from(self.memory().read_bytes(key_ptr)?);
+        let len = self.storage_read_to_memory(key, buffer_ptr, offset, len)?;
+        self.dependent_gas_charge(
+            self.gas_costs().srdd().map_err(PanicReason::from)?,
+            len,
+        )?;
+        Ok(())
+    }
+
+    /// Implementation of SWRD/SWRI opcodes
+    pub(crate) fn dynamic_storage_write(
+        &mut self,
+        key_ptr: u64,
+        value_ptr: u64,
+        len: u64,
+    ) -> IoResult<(), S::DataError> {
+        let key = Bytes32::from(self.memory().read_bytes(key_ptr)?);
+        self.dependent_gas_charge(
+            self.gas_costs().swrd().map_err(PanicReason::from)?,
+            len,
+        )?;
+        let size_before = self.get_size_of_slot_cached(key)?;
+        let new_bytes = len.saturating_sub(size_before);
+        if new_bytes > 0 {
+            self.gas_charge(
+                self.gas_costs()
+                    .new_storage_per_byte()
+                    .saturating_mul(new_bytes),
+            )?;
+        }
+        self.storage_write_from_memory(key, value_ptr, len)?;
+        Ok(())
+    }
+
+    /// Implementation of SUPD/SUPI opcodes
+    pub(crate) fn dynamic_storage_update(
+        &mut self,
+        key_ptr: u64,
+        value_ptr: u64,
+        offset: u64,
+        len: u64,
+    ) -> IoResult<(), S::DataError> {
+        let key = Bytes32::from(self.memory().read_bytes(key_ptr)?);
+        let update = self.storage_update_from_memory(key, value_ptr, offset, len)?;
+        self.dependent_gas_charge(
+            self.gas_costs().supd().map_err(PanicReason::from)?,
+            update.transfer_charge(),
+        )?;
+        if update.new_bytes() > 0 {
+            self.gas_charge(
+                self.gas_costs()
+                    .new_storage_per_byte()
+                    .saturating_mul(update.new_bytes()),
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Implementation of SPLD opcode
     pub(crate) fn storage_preload(
         &mut self,
+        r_dst_len: RegId,
         key: Bytes32,
     ) -> Result<u64, RuntimeError<S::DataError>> {
         let contract_id = self.internal_contract()?;
@@ -205,6 +280,12 @@ where
         let len = dst.len() as u64;
         self.registers[RegId::ERR] = 0;
         self.cache_size_of_slot(contract_id, key, len);
+
+        self.write_user_register(r_dst_len, len)?;
+        self.dependent_gas_charge(
+            self.gas_costs().spld().map_err(PanicReason::from)?,
+            len,
+        )?;
         Ok(len)
     }
 }

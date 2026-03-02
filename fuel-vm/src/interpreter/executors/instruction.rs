@@ -14,7 +14,7 @@ use crate::{
     storage::InterpreterStorage,
     verification::Verifier,
 };
-use std::ops::Div;
+use core::ops::Div;
 
 use crate::interpreter::flow::{
     JumpArgs,

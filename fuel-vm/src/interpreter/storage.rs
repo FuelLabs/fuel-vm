@@ -272,6 +272,7 @@ where
 
         let Some(value) = value else {
             self.registers[RegId::ERR] = 1;
+            self.write_user_register(r_dst_len, 0)?;
             return Ok(0);
         };
 

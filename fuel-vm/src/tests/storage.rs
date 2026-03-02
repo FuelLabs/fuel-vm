@@ -49,7 +49,7 @@ fn call_contract_once(program: Vec<Instruction>) -> Vec<Receipt> {
 
     let result = test_context
         .start_script(script_call.clone(), script_call_data)
-        .script_gas_limit(1_000_000)
+        .script_gas_limit(10_000_000)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)

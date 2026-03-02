@@ -113,6 +113,15 @@ where
     array[Opcode::LOG as usize] = Some(cast_handler!(
         <fuel_asm::op::LOG as ExecuteOptimized<M, S, Tx, Ecal, V>>::execute_opt
     ));
+    array[Opcode::LB as usize] = Some(cast_handler!(
+        <fuel_asm::op::LB as ExecuteOptimized<M, S, Tx, Ecal, V>>::execute_opt
+    ));
+    array[Opcode::LQW as usize] = Some(cast_handler!(
+        <fuel_asm::op::LQW as ExecuteOptimized<M, S, Tx, Ecal, V>>::execute_opt
+    ));
+    array[Opcode::LHW as usize] = Some(cast_handler!(
+        <fuel_asm::op::LHW as ExecuteOptimized<M, S, Tx, Ecal, V>>::execute_opt
+    ));
     array[Opcode::LW as usize] = Some(cast_handler!(
         <fuel_asm::op::LW as ExecuteOptimized<M, S, Tx, Ecal, V>>::execute_opt
     ));

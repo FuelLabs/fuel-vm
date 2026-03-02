@@ -58,8 +58,7 @@ use fuel_asm::{
 };
 use fuel_storage::{
     StorageAsRef,
-    StorageRead,
-    StorageSize,
+    StorageReadError,
 };
 use fuel_tx::{
     DependentCost,
@@ -148,7 +147,7 @@ where
             receipts: &mut self.receipts,
             frames: &mut self.frames,
             registers: &mut self.registers,
-            memory: self.memory.as_ref(),
+            memory: self.memory.as_mut(),
             context: &mut self.context,
             current_contract,
         };
@@ -206,7 +205,7 @@ where
 struct RetCtx<'vm> {
     frames: &'vm mut Vec<CallFrame>,
     registers: &'vm mut [Word; VM_REGISTER_COUNT],
-    memory: &'vm MemoryInstance,
+    memory: &'vm mut MemoryInstance,
     receipts: &'vm mut ReceiptsCtx,
     context: &'vm mut Context,
     current_contract: Option<ContractId>,
@@ -253,6 +252,9 @@ impl RetCtx<'_> {
 
             let fp = registers[RegId::FP];
             set_frame_pointer(context, registers.fp_mut(), fp);
+
+            // Clear storage preload area
+            self.memory.as_mut().storage_preload_mut().clear();
         }
 
         self.receipts.push(receipt)?;
@@ -642,8 +644,22 @@ impl<S, V> PrepareCallCtx<'_, S, V> {
         let (mem_frame, mem_code) = dst.split_at_mut(CallFrame::serialized_size());
         mem_frame.copy_from_slice(&frame.to_bytes());
         let (mem_code, mem_code_padding) = mem_code.split_at_mut(code_size);
-        read_contract(call.to(), self.storage, mem_code)?;
         mem_code_padding.fill(0);
+
+        let read_result = self
+            .storage
+            .storage::<ContractsRawCode>()
+            .read_exact(call.to(), 0, mem_code)
+            .map_err(RuntimeError::Storage)?;
+        match read_result {
+            Ok(read_len) => debug_assert_eq!(read_len, code_size),
+            Err(StorageReadError::KeyNotFound) => {
+                return Err(RuntimeError::Recoverable(PanicReason::ContractNotFound));
+            }
+            Err(StorageReadError::OutOfBounds) => {
+                unreachable!("The size is checked above using contract_size")
+            }
+        }
 
         #[allow(clippy::arithmetic_side_effects)] // Checked above
         let code_start =
@@ -654,6 +670,9 @@ impl<S, V> PrepareCallCtx<'_, S, V> {
         *self.registers.system_registers.is = *self.registers.system_registers.pc;
         *self.registers.system_registers.cgas = forward_gas_amount;
         *self.registers.system_registers.flag = 0;
+
+        // Clear storage preload area
+        self.memory.as_mut().storage_preload_mut().clear();
 
         let receipt = Receipt::call(
             id,
@@ -673,24 +692,6 @@ impl<S, V> PrepareCallCtx<'_, S, V> {
 
         Ok(())
     }
-}
-
-fn read_contract<S>(
-    contract: &ContractId,
-    storage: &S,
-    dst: &mut [u8],
-) -> IoResult<(), S::Error>
-where
-    S: StorageSize<ContractsRawCode> + StorageRead<ContractsRawCode> + StorageAsRef,
-{
-    if !storage
-        .storage::<ContractsRawCode>()
-        .read(contract, 0, dst)
-        .map_err(RuntimeError::Storage)?
-    {
-        return Err(PanicReason::ContractNotFound.into());
-    }
-    Ok(())
 }
 
 impl<'a> From<&'a PrepareCallRegisters<'_>> for SystemRegistersRef<'a> {

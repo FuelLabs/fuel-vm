@@ -246,6 +246,20 @@ pub trait InterpreterStorage:
         start_key: &Bytes32,
         range: usize,
     ) -> Result<Option<()>, Self::DataError>;
+
+    /// Remove a range of key-values from contract storage.
+    /// Unlike `contract_state_remove_range`, this method does not return
+    /// information about whether the keys were previously set or not.
+    fn contract_state_remove_range_nostatus(
+        &mut self,
+        contract: &ContractId,
+        start_key: &Bytes32,
+        range: usize,
+    ) -> Result<(), Self::DataError> {
+        // Default impl that just calls the possibly less efficient version
+        self.contract_state_remove_range(contract, start_key, range)
+            .map(|_| ())
+    }
 }
 
 /// Storage operations for contract assets.

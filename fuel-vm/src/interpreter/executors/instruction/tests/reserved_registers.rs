@@ -259,6 +259,15 @@ fn writes_to_ra(opcode: Opcode) -> bool {
         Opcode::BLDD => false,
         Opcode::ECOP => false,
         Opcode::EPAR => true,
+        Opcode::SCLR => false,
+        Opcode::SRDD => false,
+        Opcode::SRDI => false,
+        Opcode::SWRD => false,
+        Opcode::SWRI => false,
+        Opcode::SUPD => false,
+        Opcode::SUPI => false,
+        Opcode::SPLD => true,
+        Opcode::SPCP => false,
     }
 }
 
@@ -384,5 +393,14 @@ fn writes_to_rb(opcode: Opcode) -> bool {
         Opcode::BLDD => false,
         Opcode::ECOP => false,
         Opcode::EPAR => false,
+        Opcode::SCLR => false,
+        Opcode::SRDD => false,
+        Opcode::SRDI => false,
+        Opcode::SWRD => false,
+        Opcode::SWRI => false,
+        Opcode::SUPD => false,
+        Opcode::SUPI => false,
+        Opcode::SPLD => false,
+        Opcode::SPCP => false,
     }
 }

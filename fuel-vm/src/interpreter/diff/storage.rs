@@ -23,6 +23,7 @@ use crate::{
 };
 use fuel_storage::{
     StorageRead,
+    StorageReadError,
     StorageSize,
     StorageWrite,
 };
@@ -375,13 +376,22 @@ where
     S: StorageRead<Type>,
     S: InterpreterStorage,
 {
-    fn read(
+    fn read_exact(
         &self,
         key: &<Type as Mappable>::Key,
         offset: usize,
         buf: &mut [u8],
-    ) -> Result<bool, Self::Error> {
-        <S as StorageRead<Type>>::read(&self.0, key, offset, buf)
+    ) -> Result<Result<usize, StorageReadError>, Self::Error> {
+        <S as StorageRead<Type>>::read_exact(&self.0, key, offset, buf)
+    }
+
+    fn read_zerofill(
+        &self,
+        key: &<Type as Mappable>::Key,
+        offset: usize,
+        buf: &mut [u8],
+    ) -> Result<Result<usize, StorageReadError>, Self::Error> {
+        <S as StorageRead<Type>>::read_zerofill(&self.0, key, offset, buf)
     }
 
     fn read_alloc(

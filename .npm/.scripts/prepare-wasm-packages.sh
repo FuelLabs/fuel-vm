@@ -48,6 +48,9 @@ build_wasm_npm_pkg_for ()
   write_template ${NAME_DASHED} ${NAME_UNDERSCORED} package.json
   write_template ${NAME_DASHED} ${NAME_UNDERSCORED} rollup.config.mjs
   write_template ${NAME_DASHED} ${NAME_UNDERSCORED} src/index.js
+  write_template ${NAME_DASHED} ${NAME_UNDERSCORED} src/index_slim.js
+  write_template ${NAME_DASHED} ${NAME_UNDERSCORED} src/index.d.ts
+  write_template ${NAME_DASHED} ${NAME_UNDERSCORED} src/index_slim.d.ts
 
   # commenting out all `new URL()` and `fetch()` calls for great compatibility with JS bundlers
   sed -i.bkp -r 's;(.+= new URL.+);//\1;g' ${PKG_DIR}/src/${NAME_UNDERSCORED}.js

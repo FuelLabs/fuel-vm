@@ -409,6 +409,8 @@ pub struct CheckPredicateParams {
     pub contract_max_size: u64,
     /// Maximum length of the message data
     pub max_message_data_length: u64,
+    /// Maximum length of a storage slot
+    pub max_storage_slot_length: u64,
     /// Offset of the transaction data in the memory
     pub tx_offset: usize,
     /// Fee parameters
@@ -440,6 +442,7 @@ impl From<&ConsensusParameters> for CheckPredicateParams {
             max_inputs: value.tx_params().max_inputs(),
             contract_max_size: value.contract_params().contract_max_size(),
             max_message_data_length: value.predicate_params().max_message_data_length(),
+            max_storage_slot_length: value.script_params().max_storage_slot_length(),
             tx_offset: value.tx_params().tx_offset(),
             fee_params: *(value.fee_params()),
             base_asset_id: *value.base_asset_id(),

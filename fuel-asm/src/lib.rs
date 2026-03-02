@@ -1,5 +1,6 @@
 //! FuelVM instruction and opcodes representation.
 
+#![recursion_limit = "256"]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "std", doc = include_str!("../README.md"))]
@@ -198,7 +199,7 @@ impl_instructions! {
     "Clear a series of slots from contract storage."
     0x37 SCWQ scwq [key_ptr: RegId status: RegId lenq: RegId]
     "Load a word from contract storage."
-    0x38 SRW srw [dst: RegId status: RegId key_ptr: RegId]
+    0x38 SRW srw [dst: RegId status: RegId key_ptr: RegId imm: Imm06]
     "Load a series of 32 byte slots from contract storage."
     0x39 SRWQ srwq [dst_ptr: RegId status: RegId key_ptr: RegId lenq: RegId]
     "Store a word in contract storage."
@@ -362,6 +363,25 @@ impl_instructions! {
     0xbc ECOP ecop [dst_ptr: RegId curve_id: RegId operation_type: RegId points_ptr: RegId]
     "Given some curve, performs a pairing on groups of points"
     0xbe EPAR epar [success: RegId curve_id: RegId number_elements: RegId points_ptr: RegId]
+
+    "Clear a storage slot"
+    0xc0 SCLR sclr [key_ptr: RegId count: RegId]
+    "Read storage slot (register length)"
+    0xc1 SRDD srdd [dst_ptr: RegId key_ptr: RegId offset: RegId len: RegId]
+    "Read storage slot (immediate length)"
+    0xc2 SRDI srdi [dst_ptr: RegId key_ptr: RegId offset: RegId len: Imm06]
+    "Write to a storage slot (full overwrite) (register length)"
+    0xc3 SWRD swrd [key_ptr: RegId value_ptr: RegId len: RegId]
+    "Write to a storage slot (full overwrite) (immedidate length)"
+    0xc4 SWRI swri [key_ptr: RegId value_ptr: RegId len: Imm12]
+    "Update a storage slot (read+write) (register length)"
+    0xc5 SUPD supd [key_ptr: RegId value_ptr: RegId offset: RegId len: RegId]
+    "Update a storage slot (read+write) (immedidate length)"
+    0xc6 SUPI supi [key_ptr: RegId value_ptr: RegId offset: RegId len: Imm06]
+    "Storage preload"
+    0xc7 SPLD spld [len_dst: RegId key_ptr: RegId]
+    "Copy from preloaded storage slot"
+    0xc8 SPCP spcp [dst: RegId offset: RegId len_reg: RegId len_imm: Imm06]
 }
 
 impl Instruction {
@@ -1010,8 +1030,9 @@ fn check_predicate_allowed() {
         if let Ok(repr) = Opcode::try_from(byte) {
             let should_allow = match repr {
                 BAL | BHEI | BHSH | BURN | CALL | CB | CCP | CROO | CSIZ | LOG | LOGD
-                | MINT | RETD | RVRT | SMO | SCWQ | SRW | SRWQ | SWW | SWWQ | TIME
-                | TR | TRO => false,
+                | MINT | RETD | RVRT | SMO | SCWQ | SRW | SRWQ | SWW | SWWQ | SCLR
+                | SRDD | SRDI | SWRD | SWRI | SUPD | SUPI | SPLD | SPCP | TIME | TR
+                | TRO => false,
                 _ => true,
             };
             assert_eq!(should_allow, repr.is_predicate_allowed());

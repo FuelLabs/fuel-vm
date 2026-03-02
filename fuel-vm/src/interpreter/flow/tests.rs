@@ -1,5 +1,7 @@
 #![allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
 
+use core::convert::Infallible;
+
 use alloc::{
     vec,
     vec::Vec,
@@ -9,7 +11,6 @@ use crate::{
     storage::{
         ContractsAssetsStorage,
         MemoryStorage,
-        MemoryStorageError,
     },
     verification::Normal,
 };
@@ -338,7 +339,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> MemoryInstance {
         ..Default::default()
     } => using check_output(Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance))); "Transfer too many coins internally"
 )]
-fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<MemoryStorageError>> {
+fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<Infallible>> {
     let Input {
         params,
         mut reg,
@@ -409,8 +410,8 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<MemoryStorageE
 }
 
 fn check_output(
-    expected: Result<Output, RuntimeError<MemoryStorageError>>,
-) -> impl FnOnce(Result<Output, RuntimeError<MemoryStorageError>>) {
+    expected: Result<Output, RuntimeError<Infallible>>,
+) -> impl FnOnce(Result<Output, RuntimeError<Infallible>>) {
     move |result| match (expected, result) {
         (Ok(e), Ok(r)) => {
             assert_eq!(e.reg, r.reg);

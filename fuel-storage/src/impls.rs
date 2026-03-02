@@ -6,6 +6,7 @@ use crate::{
     StorageMut,
     StorageMutate,
     StorageRead,
+    StorageReadError,
     StorageRef,
     StorageSize,
     StorageWrite,
@@ -94,13 +95,22 @@ impl<T: StorageSize<Type> + ?Sized, Type: Mappable> StorageSize<Type> for &'_ mu
 impl<T: StorageRead<Type> + StorageSize<Type> + ?Sized, Type: Mappable> StorageRead<Type>
     for &'_ T
 {
-    fn read(
+    fn read_exact(
         &self,
         key: &<Type as Mappable>::Key,
         offset: usize,
         buf: &mut [u8],
-    ) -> Result<bool, Self::Error> {
-        <T as StorageRead<Type>>::read(self, key, offset, buf)
+    ) -> Result<Result<usize, StorageReadError>, Self::Error> {
+        <T as StorageRead<Type>>::read_exact(self, key, offset, buf)
+    }
+
+    fn read_zerofill(
+        &self,
+        key: &<Type as Mappable>::Key,
+        offset: usize,
+        buf: &mut [u8],
+    ) -> Result<Result<usize, StorageReadError>, Self::Error> {
+        <T as StorageRead<Type>>::read_zerofill(self, key, offset, buf)
     }
 
     fn read_alloc(
@@ -114,13 +124,22 @@ impl<T: StorageRead<Type> + StorageSize<Type> + ?Sized, Type: Mappable> StorageR
 impl<T: StorageRead<Type> + StorageSize<Type> + ?Sized, Type: Mappable> StorageRead<Type>
     for &'_ mut T
 {
-    fn read(
+    fn read_exact(
         &self,
         key: &<Type as Mappable>::Key,
         offset: usize,
         buf: &mut [u8],
-    ) -> Result<bool, Self::Error> {
-        <T as StorageRead<Type>>::read(self, key, offset, buf)
+    ) -> Result<Result<usize, StorageReadError>, Self::Error> {
+        <T as StorageRead<Type>>::read_exact(self, key, offset, buf)
+    }
+
+    fn read_zerofill(
+        &self,
+        key: &<Type as Mappable>::Key,
+        offset: usize,
+        buf: &mut [u8],
+    ) -> Result<Result<usize, StorageReadError>, Self::Error> {
+        <T as StorageRead<Type>>::read_zerofill(self, key, offset, buf)
     }
 
     fn read_alloc(
@@ -192,13 +211,23 @@ impl<T, Type: Mappable> StorageRef<'_, T, Type> {
 
 impl<T: StorageRead<Type>, Type: Mappable> StorageRef<'_, T, Type> {
     #[inline(always)]
-    pub fn read(
+    pub fn read_exact(
         &self,
         key: &<Type as Mappable>::Key,
         offset: usize,
         buf: &mut [u8],
-    ) -> Result<bool, T::Error> {
-        self.0.read(key, offset, buf)
+    ) -> Result<Result<usize, StorageReadError>, T::Error> {
+        self.0.read_exact(key, offset, buf)
+    }
+
+    #[inline(always)]
+    pub fn read_zerofill(
+        &self,
+        key: &<Type as Mappable>::Key,
+        offset: usize,
+        buf: &mut [u8],
+    ) -> Result<Result<usize, StorageReadError>, T::Error> {
+        self.0.read_zerofill(key, offset, buf)
     }
 
     #[inline(always)]

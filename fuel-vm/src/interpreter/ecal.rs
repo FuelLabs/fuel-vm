@@ -6,10 +6,7 @@ use fuel_asm::{
 };
 
 use crate::{
-    constraints::reg_key::{
-        SystemRegisters,
-        split_registers,
-    },
+    constraints::reg_key::GetRegMut,
     error::SimpleResult,
     interpreter::NotSupportedEcal,
 };
@@ -72,9 +69,8 @@ where
         d: RegId,
     ) -> SimpleResult<()> {
         Ecal::ecal(self, a, b, c, d)?;
-        let (SystemRegisters { pc, .. }, _) = split_registers(&mut self.registers);
         if Ecal::INC_PC {
-            Ok(inc_pc(pc)?)
+            Ok(inc_pc(self.registers.pc_mut())?)
         } else {
             Ok(())
         }

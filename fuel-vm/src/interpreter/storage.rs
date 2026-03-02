@@ -270,17 +270,17 @@ where
             .contract_state(&contract_id, &key)
             .map_err(RuntimeError::Storage)?;
 
-        let Some(value) = value else {
+        let len = if let Some(value) = value {
+            self.registers[RegId::ERR] = 0;
+            let dst = self.memory.as_mut().storage_preload_mut();
+            *dst = value.as_ref().as_ref().to_vec();
+            let len = dst.len() as u64;
+            self.cache_size_of_slot(contract_id, key, len);
+            len
+        } else {
             self.registers[RegId::ERR] = 1;
-            self.write_user_register(r_dst_len, 0)?;
-            return Ok(0);
+            0
         };
-
-        let dst = self.memory.as_mut().storage_preload_mut();
-        *dst = value.as_ref().as_ref().to_vec();
-        let len = dst.len() as u64;
-        self.registers[RegId::ERR] = 0;
-        self.cache_size_of_slot(contract_id, key, len);
 
         self.write_user_register(r_dst_len, len)?;
         self.dependent_gas_charge(

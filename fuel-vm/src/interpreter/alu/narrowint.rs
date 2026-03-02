@@ -103,7 +103,7 @@ where
         *of = overflow;
         *err = 0;
 
-        inc_pc(pc)?;
+        inc_pc(pc);
         Ok(())
     }
 }

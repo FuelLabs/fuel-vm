@@ -94,7 +94,7 @@ where
         &mut self,
         raw: [u8; 4],
     ) -> IoResult<ExecuteState, S::DataError> {
-        let opcode = Opcode::from_raw(raw[0])
+        let opcode = Opcode::try_from(raw[0])
             .map_err(|_| RuntimeError::from(PanicReason::InvalidInstruction))?;
 
         if PREDICATE && !opcode.is_predicate_allowed() {

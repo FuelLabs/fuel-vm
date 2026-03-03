@@ -1197,17 +1197,6 @@ macro_rules! impl_instructions {
                     )*
                 }
             }
-
-            /// Verify that the given opcode byte corresponds to a valid instruction, and if so, return
-            /// the corresponding `Opcode`.
-            pub fn from_raw(opcode: u8) -> Result<Self, InvalidOpcode> {
-                match opcode {
-                    $(
-                        $ix => Ok(Opcode::$Op),
-                    )*
-                    _ => Err(InvalidOpcode)
-                }
-            }
         }
     };
 

@@ -384,7 +384,7 @@ macro_rules! op_constructor {
     };
 }
 
-// Generate approriate `new` constructor for the instruction
+// Generate appropriate `new` constructor for the instruction
 macro_rules! op_new {
     // Generate a constructor based on the field layout.
     ($Op:ident $ra:ident : RegId) => {
@@ -1112,6 +1112,15 @@ macro_rules! impl_instructions {
         impl $Op {
             /// The associated 8-bit Opcode value.
             pub const OPCODE: Opcode = Opcode::$Op;
+
+            /// Construct the instruction from raw arguments.
+            pub fn from_raw_args(args: [u8; 3]) -> Result<Self, InvalidOpcode> {
+                let op = Self(args);
+                if !op.reserved_part_is_zero() {
+                    return Err(InvalidOpcode);
+                }
+                Ok(op)
+            }
         }
 
         op_new!($Op $($fname: $field)*);
@@ -1186,6 +1195,16 @@ macro_rules! impl_instructions {
                     $(
                         Self::$Op => Instruction::$Op(crate::_op::$Op::test_construct(ra, rb, rc, rd, imm)),
                     )*
+                }
+            }
+
+            /// Construct the instruction from a raw opcode, ignoring all other fields.
+            pub fn from_raw(opcode: u8) -> Result<Self, InvalidOpcode> {
+                match opcode {
+                    $(
+                        $ix => Ok(Opcode::$Op),
+                    )*
+                    _ => Err(InvalidOpcode)
                 }
             }
         }

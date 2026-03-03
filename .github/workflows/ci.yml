@@ -148,7 +148,7 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Code coverage report
-        run: cargo  +${{ env.RUST_VERSION_COV }} llvm-cov --all-features --html --branch
+        run: cargo  +${{ env.RUST_VERSION_COV }} llvm-cov --all-features --html --branch --no-mcdc
 
       - name: Checkout the repo again for pushing pages revision
         uses: actions/checkout@v3

@@ -126,7 +126,8 @@ macro_rules! wideint_ops {
 
                     self.memory.as_mut().write_bytes(owner_regs, dest_addr, wrapped.to_be_bytes())?;
 
-                    inc_pc(pc); Ok(())
+                    inc_pc(pc);
+                    Ok(())
                 }
 
                 pub(crate) fn [<alu_wideint_mul_ $t:lower>](
@@ -163,7 +164,8 @@ macro_rules! wideint_ops {
 
                     self.memory.as_mut().write_bytes(owner_regs, dest_addr, wrapped.to_be_bytes())?;
 
-                    inc_pc(pc); Ok(())
+                    inc_pc(pc);
+                    Ok(())
                 }
 
                 pub(crate) fn [<alu_wideint_div_ $t:lower>](
@@ -208,7 +210,8 @@ macro_rules! wideint_ops {
 
                     self.memory.as_mut().write_bytes(owner_regs, dest_addr, result.to_be_bytes())?;
 
-                    inc_pc(pc); Ok(())
+                    inc_pc(pc);
+                    Ok(())
                 }
 
                 pub(crate) fn [<alu_wideint_addmod_ $t:lower>](
@@ -252,7 +255,8 @@ macro_rules! wideint_ops {
 
                     self.memory.as_mut().write_bytes(owner_regs, dest_addr, result.to_be_bytes())?;
 
-                    inc_pc(pc); Ok(())
+                    inc_pc(pc);
+                    Ok(())
                 }
 
                 pub(crate) fn [<alu_wideint_mulmod_ $t:lower>](
@@ -294,7 +298,8 @@ macro_rules! wideint_ops {
 
                     self.memory.as_mut().write_bytes(owner_regs, dest_addr, result.to_be_bytes())?;
 
-                    inc_pc(pc); Ok(())
+                    inc_pc(pc);
+                    Ok(())
                 }
 
                 pub(crate) fn [<alu_wideint_muldiv_ $t:lower>](
@@ -336,7 +341,8 @@ macro_rules! wideint_ops {
 
                     self.memory.as_mut().write_bytes(owner_regs, dest_addr, result.to_be_bytes())?;
 
-                    inc_pc(pc); Ok(())
+                    inc_pc(pc);
+                    Ok(())
                 }
             }
 

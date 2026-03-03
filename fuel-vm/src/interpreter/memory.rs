@@ -990,7 +990,8 @@ macro_rules! store_load {
 
                 self.memory.as_mut().write_bytes(owner, addr, value.to_be_bytes())?;
 
-                inc_pc(pc); Ok(())
+                inc_pc(pc);
+                Ok(())
             }
 
             pub(crate) fn [< load_ $t >](
@@ -1008,7 +1009,8 @@ macro_rules! store_load {
                 let addr = src_addr.checked_add(offset).ok_or(PanicReason::MemoryOverflow)?;
                 *result = $t::from_be_bytes(self.memory.as_ref().read_bytes(addr)?) as u64;
 
-                inc_pc(pc); Ok(())
+                inc_pc(pc);
+                Ok(())
             }
 
             pub(crate) fn [< load_ $t _op>](
@@ -1032,7 +1034,8 @@ macro_rules! store_load {
 
                 *result = $t::from_be_bytes(bytes) as u64;
 
-                inc_pc(pc); Ok(())
+                inc_pc(pc);
+                Ok(())
             }
         }
     }};

@@ -172,7 +172,8 @@ where
             split_registers(&mut self.registers);
         let dest = &mut w[ra.try_into()?];
         let common = AluCommonReg { of, err, pc };
-        alu_set(dest, common, b)
+        alu_set(dest, common, b);
+        Ok(())
     }
 
     pub(crate) fn alu_set_op(&mut self, ra: RegId, b: Word) -> SimpleResult<()> {
@@ -196,7 +197,8 @@ where
         let (SystemRegisters { of, err, pc, .. }, _) =
             split_registers(&mut self.registers);
         let common = AluCommonReg { of, err, pc };
-        alu_clear(common)
+        alu_clear(common);
+        Ok(())
     }
 }
 
@@ -299,24 +301,18 @@ where
     Ok(())
 }
 
-pub(crate) fn alu_set(
-    dest: &mut Word,
-    mut common: AluCommonReg,
-    b: Word,
-) -> SimpleResult<()> {
+pub(crate) fn alu_set(dest: &mut Word, mut common: AluCommonReg, b: Word) {
     *common.of = 0;
     *common.err = 0;
 
     *dest = b;
 
     inc_pc(common.pc);
-    Ok(())
 }
 
-pub(crate) fn alu_clear(mut common: AluCommonReg) -> SimpleResult<()> {
+pub(crate) fn alu_clear(mut common: AluCommonReg) {
     *common.of = 0;
     *common.err = 0;
 
     inc_pc(common.pc);
-    Ok(())
 }

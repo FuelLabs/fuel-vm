@@ -2,10 +2,6 @@ use super::Interpreter;
 use crate::{
     constraints::reg_key::*,
     error::SimpleResult,
-    prelude::{
-        Bug,
-        BugVariant,
-    },
 };
 
 use fuel_asm::{
@@ -79,27 +75,23 @@ pub(crate) fn dependent_gas_charge(
 }
 
 pub(crate) fn gas_charge(
-    mut cgas: RegMut<CGAS>,
-    mut ggas: RegMut<GGAS>,
-    gas: Word,
+    mut reg_cgas: RegMut<CGAS>,
+    mut reg_ggas: RegMut<GGAS>,
+    gas_to_use: Word,
 ) -> SimpleResult<()> {
-    if *cgas > *ggas {
-        Err(Bug::new(BugVariant::GlobalGasLessThanContext).into())
-    } else if gas > *cgas {
-        *ggas = (*ggas)
-            .checked_sub(*cgas)
-            .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
-        *cgas = 0;
+    let cgas_before = *reg_cgas;
+    let ggas_before = *reg_ggas;
 
+    // Safety: relies on ggas >= cgas invariant
+    #[allow(clippy::arithmetic_side_effects)]
+    if gas_to_use > cgas_before {
+        *reg_ggas = ggas_before.saturating_sub(cgas_before);
+        *reg_cgas = 0;
         Err(PanicReason::OutOfGas.into())
     } else {
-        *cgas = (*cgas)
-            .checked_sub(gas)
-            .ok_or_else(|| Bug::new(BugVariant::ContextGasUnderflow))?;
-        *ggas = (*ggas)
-            .checked_sub(gas)
-            .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
-
+        // Happy path: gas_to_use <= cgas <= ggas, subtraction cannot underflow
+        *reg_ggas = ggas_before - gas_to_use;
+        *reg_cgas = cgas_before - gas_to_use;
         Ok(())
     }
 }

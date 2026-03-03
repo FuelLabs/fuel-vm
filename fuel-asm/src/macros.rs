@@ -1198,7 +1198,8 @@ macro_rules! impl_instructions {
                 }
             }
 
-            /// Construct the instruction from a raw opcode, ignoring all other fields.
+            /// Verify that the given opcode byte corresponds to a valid instruction, and if so, return
+            /// the corresponding `Opcode`.
             pub fn from_raw(opcode: u8) -> Result<Self, InvalidOpcode> {
                 match opcode {
                     $(

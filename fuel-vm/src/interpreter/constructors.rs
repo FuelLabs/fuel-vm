@@ -82,6 +82,7 @@ where
             ecal_state,
             verifier: Default::default(),
             owner_ptr: None,
+            storage_slot_size_cache: Default::default(),
         }
     }
 }

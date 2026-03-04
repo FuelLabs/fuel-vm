@@ -49,7 +49,7 @@ fn call_contract_once(program: Vec<Instruction>) -> Vec<Receipt> {
 
     let result = test_context
         .start_script(script_call.clone(), script_call_data)
-        .script_gas_limit(1_000_000)
+        .script_gas_limit(10_000_000)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)
@@ -1379,4 +1379,80 @@ fn preload_is_cleared_on_contract_return(
     }
 
     panic!("Missing Log receipt");
+}
+
+#[test]
+fn storage_new_bytes_charge_only_performed_for_actually_added_bytes() {
+    const SLOT_KEY: RegId = RegId::new(0x38);
+    const BUFFER: RegId = RegId::new(0x37);
+
+    const BYTES_TO_WRITE: u64 = 8;
+
+    let program = vec![
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+        op::aloc(0x15),
+        op::move_(BUFFER, RegId::HP),
+        op::swri(SLOT_KEY, BUFFER, BYTES_TO_WRITE as _),
+        op::ret(RegId::ONE),
+    ];
+
+    let mut test_context = TestBuilder::new(2322u64);
+
+    let contract_id = test_context.setup_contract(program, None, None).contract_id;
+
+    let (script_call, _) = script_with_data_offset!(
+        data_offset,
+        vec![
+            op::movi(0x10, data_offset as Immediate18),
+            op::call(0x10, RegId::ZERO, 0x10, RegId::CGAS),
+            op::ret(RegId::ONE),
+        ],
+        test_context.get_tx_params().tx_offset()
+    );
+    let script_call_data = Call::new(contract_id, 0, 0).to_bytes();
+
+    // Call the contract twice. The first call should charge gas for writing 8 new bytes,
+    // while the second call should charge less since it is overwriting existing data.
+
+    let result = test_context
+        .start_script(script_call.clone(), script_call_data.clone())
+        .script_gas_limit(1_000_000)
+        .contract_input(contract_id)
+        .fee_input()
+        .contract_output(&contract_id)
+        .variable_output(AssetId::zeroed())
+        .execute();
+    let receipts1 = result.receipts().to_vec();
+    assert_success(&receipts1);
+
+    let result = test_context
+        .start_script(script_call.clone(), script_call_data)
+        .script_gas_limit(1_000_000)
+        .contract_input(contract_id)
+        .fee_input()
+        .contract_output(&contract_id)
+        .variable_output(AssetId::zeroed())
+        .execute();
+    let receipts2 = result.receipts().to_vec();
+    assert_success(&receipts2);
+
+    let Some(Receipt::ScriptResult {
+        gas_used: gas_used_1,
+        ..
+    }) = receipts1.last()
+    else {
+        panic!("Missing ScriptResult receipt");
+    };
+
+    let Some(Receipt::ScriptResult {
+        gas_used: gas_used_2,
+        ..
+    }) = receipts2.last()
+    else {
+        panic!("Missing ScriptResult receipt");
+    };
+
+    assert_eq!(*gas_used_1, *gas_used_2 + BYTES_TO_WRITE,);
 }

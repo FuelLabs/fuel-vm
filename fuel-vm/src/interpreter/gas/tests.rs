@@ -14,11 +14,9 @@ struct GasChargeOutput {
 }
 #[test_case(GasChargeInput{cgas: 0, ggas: 0, dependent_factor: 0} => Ok(GasChargeOutput{ cgas: 0, ggas: 0}); "zero")]
 #[test_case(GasChargeInput{cgas: 0, ggas: 0, dependent_factor: 1} => Err(PanicOrBug::Panic(PanicReason::OutOfGas)); "no gas")]
-#[test_case(GasChargeInput{cgas: 2, ggas: 0, dependent_factor: 1} => matches Err(PanicOrBug::Bug(_)); "global gas less than context")]
 #[test_case(GasChargeInput{cgas: 0, ggas: 2, dependent_factor: 1} => Err(PanicOrBug::Panic(PanicReason::OutOfGas)); "no call gas")]
 #[test_case(GasChargeInput{cgas: 1, ggas: 1, dependent_factor: 1} => Ok(GasChargeOutput{ cgas: 0, ggas: 0}); "just enough")]
 #[test_case(GasChargeInput{cgas: 10, ggas: 15, dependent_factor: 1} => Ok(GasChargeOutput{ cgas: 9, ggas: 14}); "heaps")]
-
 fn test_gas_charge(input: GasChargeInput) -> SimpleResult<GasChargeOutput> {
     let GasChargeInput {
         mut cgas,
@@ -174,4 +172,17 @@ fn test_dependent_gas_charge_wihtout_base(
         cgas: *cgas,
         ggas: *ggas,
     })
+}
+
+#[test]
+#[should_panic]
+fn vm_panics_on_cgas_gt_ggas() {
+    let dependent_factor = 25;
+    let gas_cost = DependentCost::from_units_per_gas(1, 5);
+    let mut cgas_val = 10;
+    let mut ggas_val = 5;
+    let mut cgas = RegMut::new(&mut cgas_val);
+    let mut ggas = RegMut::new(&mut ggas_val);
+    let _ =
+        dependent_gas_charge(cgas.as_mut(), ggas.as_mut(), gas_cost, dependent_factor);
 }

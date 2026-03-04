@@ -1,7 +1,6 @@
 use alloc::vec;
 
 use crate::{
-    constraints::reg_key::RegMut,
     interpreter::{
         InterpreterParams,
         MemoryInstance,
@@ -24,8 +23,6 @@ use rand::{
     SeedableRng,
     rngs::StdRng,
 };
-
-use super::inc_pc;
 
 #[test]
 fn external_balance() {
@@ -171,11 +168,4 @@ fn variable_output_updates_in_memory() {
 
     let mem_output = Output::decode(&mut &vm.memory().stack_raw()[position..]).unwrap();
     assert_eq!(vm.transaction().outputs()[0], mem_output);
-}
-
-#[test]
-fn test_inc_pc_errors_on_of() {
-    let mut pc = Word::MAX - 4;
-    inc_pc(RegMut::new(&mut pc)).unwrap();
-    inc_pc(RegMut::new(&mut pc)).expect_err("Expected overflow error");
 }

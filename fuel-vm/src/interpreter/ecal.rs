@@ -74,7 +74,8 @@ where
         Ecal::ecal(self, a, b, c, d)?;
         let (SystemRegisters { pc, .. }, _) = split_registers(&mut self.registers);
         if Ecal::INC_PC {
-            Ok(inc_pc(pc)?)
+            inc_pc(pc);
+            Ok(())
         } else {
             Ok(())
         }

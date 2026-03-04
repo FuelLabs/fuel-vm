@@ -204,7 +204,8 @@ impl<S, V> ContractBalanceCtx<'_, S, V> {
 
         *result = balance;
 
-        Ok(inc_pc(self.pc)?)
+        inc_pc(self.pc);
+        Ok(())
     }
 }
 struct TransferCtx<'vm, S, Tx, V> {
@@ -300,7 +301,8 @@ impl<S, Tx, V> TransferCtx<'_, S, Tx, V> {
 
         self.receipts.push(receipt)?;
 
-        Ok(inc_pc(self.pc)?)
+        inc_pc(self.pc);
+        Ok(())
     }
 
     /// In Fuel specs:
@@ -365,7 +367,8 @@ impl<S, Tx, V> TransferCtx<'_, S, Tx, V> {
 
         self.receipts.push(receipt)?;
 
-        Ok(inc_pc(self.pc)?)
+        inc_pc(self.pc);
+        Ok(())
     }
 }
 

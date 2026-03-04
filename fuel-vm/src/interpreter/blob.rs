@@ -53,7 +53,8 @@ where
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(dst)?];
         *result = size as Word;
-        Ok(inc_pc(pc)?)
+        inc_pc(pc);
+        Ok(())
     }
 
     pub(crate) fn blob_load_data(
@@ -89,6 +90,7 @@ where
             PanicReason::BlobNotFound,
         )?;
 
-        Ok(inc_pc(self.registers.pc_mut())?)
+        inc_pc(self.registers.pc_mut());
+        Ok(())
     }
 }

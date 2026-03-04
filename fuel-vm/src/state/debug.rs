@@ -58,7 +58,7 @@ impl Breakpoint {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// State evaluation of the interpreter that will describe if a program should
 /// break or continue.
@@ -67,13 +67,8 @@ pub enum DebugEval {
     /// `Breakpoint`.
     Breakpoint(Breakpoint),
     /// This evaluation should not break the program.
+    #[default]
     Continue,
-}
-
-impl Default for DebugEval {
-    fn default() -> Self {
-        Self::Continue
-    }
 }
 
 impl From<Breakpoint> for DebugEval {

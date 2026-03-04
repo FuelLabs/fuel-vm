@@ -16,9 +16,9 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_VERSION: 1.90.0
-  RUST_VERSION_FMT: nightly-2025-09-28
-  RUST_VERSION_COV: nightly-2025-09-28
+  RUST_VERSION: 1.93.0
+  RUST_VERSION_FMT: nightly-2026-03-02
+  RUST_VERSION_COV: nightly-2026-03-02
   GIT_BRANCH: ${{ github.head_ref || github.ref_name }}
 
 jobs:
@@ -148,7 +148,7 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Code coverage report
-        run: cargo  +${{ env.RUST_VERSION_COV }} llvm-cov --all-features --html --branch
+        run: cargo  +${{ env.RUST_VERSION_COV }} llvm-cov --all-features --html
 
       - name: Checkout the repo again for pushing pages revision
         uses: actions/checkout@v3

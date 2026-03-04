@@ -2725,7 +2725,7 @@ where
             .contract_state_remove_range_nostatus(&contract_id, &start_key, num_slots)
             .map_err(RuntimeError::Storage)?;
         let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
-        inc_pc(pc)?;
+        inc_pc(pc);
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2750,7 +2750,7 @@ where
             interpreter.registers[r_len],
         )?;
         let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
-        inc_pc(pc)?;
+        inc_pc(pc);
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2775,7 +2775,7 @@ where
             imm_len.to_u8().into(),
         )?;
         let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
-        inc_pc(pc)?;
+        inc_pc(pc);
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2799,7 +2799,7 @@ where
             interpreter.registers[r_len],
         )?;
         let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
-        inc_pc(pc)?;
+        inc_pc(pc);
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2823,7 +2823,7 @@ where
             imm_len.to_u16().into(),
         )?;
         let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
-        inc_pc(pc)?;
+        inc_pc(pc);
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2848,7 +2848,7 @@ where
             interpreter.registers[r_len],
         )?;
         let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
-        inc_pc(pc)?;
+        inc_pc(pc);
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2873,7 +2873,7 @@ where
             imm_len.to_u8().into(),
         )?;
         let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
-        inc_pc(pc)?;
+        inc_pc(pc);
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2898,7 +2898,7 @@ where
         );
         interpreter.storage_preload(r_dst_len, key)?;
         let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
-        inc_pc(pc)?;
+        inc_pc(pc);
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2928,7 +2928,7 @@ where
             len,
         )?;
         let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
-        inc_pc(pc)?;
+        inc_pc(pc);
         Ok(ExecuteState::Proceed)
     }
 }

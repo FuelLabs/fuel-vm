@@ -5,7 +5,7 @@ use crate::predicate::RuntimePredicate;
 use fuel_asm::Word;
 use fuel_types::BlockHeight;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Runtime context description.
 pub enum Context {
@@ -30,13 +30,8 @@ pub enum Context {
         block_height: BlockHeight,
     },
     /// No transaction initialized/invalid context.
+    #[default]
     NotInitialized,
-}
-
-impl Default for Context {
-    fn default() -> Self {
-        Self::NotInitialized
-    }
 }
 
 impl Context {

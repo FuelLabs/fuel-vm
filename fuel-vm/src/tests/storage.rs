@@ -31,7 +31,7 @@ use fuel_types::{
 };
 
 /// Helper to deploy and call a contract once.
-fn call_contract_once(program: Vec<Instruction>) -> Vec<Receipt> {
+pub fn call_contract_once(program: Vec<Instruction>) -> Vec<Receipt> {
     let mut test_context = TestBuilder::new(2322u64);
 
     let contract_id = test_context.setup_contract(program, None, None).contract_id;

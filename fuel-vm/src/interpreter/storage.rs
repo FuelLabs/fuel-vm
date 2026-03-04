@@ -74,14 +74,14 @@ where
         key: Bytes32,
         value: &[u8],
     ) -> Result<(), RuntimeError<S::DataError>> {
+        let old_len =
+            self.storage_read_slot(key, |_, data| data.unwrap_or_default().len())?;
         let max_size = self.interpreter_params.max_storage_slot_length;
         if (value.len() as u64) > max_size {
             return Err(RuntimeError::Recoverable(PanicReason::StorageOutOfBounds));
         }
         let contract_id = self.internal_contract()?;
         let cache_key = (contract_id, key);
-        let old_len =
-            self.storage_read_slot(key, |_, data| data.unwrap_or_default().len())?;
         self.storage
             .contract_state_insert(&contract_id, &key, value)
             .map_err(RuntimeError::Storage)?;
@@ -110,6 +110,8 @@ where
     where
         F: FnOnce(&MemoryInstance) -> Result<&[u8], RuntimeError<S::DataError>>,
     {
+        let old_len =
+            self.storage_read_slot(key, |_, data| data.unwrap_or_default().len())?;
         let value = f(self.memory.as_ref())?;
         let max_size = self.interpreter_params.max_storage_slot_length;
         if (value.len() as u64) > max_size {
@@ -128,6 +130,11 @@ where
                 .storage_write()
                 .map_err(PanicReason::from)?,
             gas_charge_units,
+        )?;
+        self.gas_charge(
+            self.gas_costs()
+                .new_storage_per_byte()
+                .saturating_mul(gas_charge_units.saturating_sub(old_len as u64)),
         )?;
         Ok(())
     }

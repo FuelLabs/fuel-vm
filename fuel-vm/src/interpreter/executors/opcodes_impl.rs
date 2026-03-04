@@ -23,7 +23,7 @@ use crate::{
         internal::inc_pc,
         storage::key_range,
     },
-    prelude::InterpreterStorage,
+    prelude::*,
     state::ExecuteState,
     verification::Verifier,
 };
@@ -2264,6 +2264,13 @@ where
             Bytes32::new(interpreter.memory().read_bytes(interpreter.registers[c])?);
         let offset = d.to_u8() as usize;
 
+        if a == b {
+            // The error is weirdly named, but this is the previous behavior too.
+            return Err(RuntimeError::Recoverable(
+                PanicReason::ReservedRegisterNotWritable,
+            ));
+        }
+
         let result = interpreter.storage_read_slot(key, |_, v| match v {
             Some(bytes) => {
                 let offset_bytes = offset.saturating_mul(8);
@@ -2384,9 +2391,9 @@ where
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c, d) = self.unpack();
-        let start_ptr = interpreter.registers[a];
         let key =
-            Bytes32::new(interpreter.memory().read_bytes(interpreter.registers[c])?);
+            Bytes32::new(interpreter.memory().read_bytes(interpreter.registers[a])?);
+        let start_ptr = interpreter.registers[c];
         let range = crate::convert::to_usize(interpreter.registers[d])
             .ok_or(PanicReason::TooManySlots)?;
 

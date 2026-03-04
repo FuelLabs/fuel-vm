@@ -216,7 +216,6 @@ fn sww_writes_32_bytes() {
         op::ret(RegId::ONE),
     ]);
 
-    dbg!(&receipts);
     assert_success(&receipts);
 
     for r in receipts {

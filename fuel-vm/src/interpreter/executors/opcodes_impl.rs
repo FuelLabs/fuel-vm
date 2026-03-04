@@ -2234,6 +2234,7 @@ where
 
         let mut all_previously_set = true;
         for key in key_range(key, range) {
+            let key = key?;
             let was_set = interpreter.storage_read_slot(key, |_, v| v.is_some())?;
             if !was_set {
                 all_previously_set = false;
@@ -2316,6 +2317,7 @@ where
 
         let mut all_previously_set = true;
         for (i, key) in key_range(key, range).enumerate() {
+            let key = key?;
             interpreter.storage_read_slot(key, |memory, v| {
                 let dst_ptr = start_ptr.saturating_add((i as u64).saturating_mul(32));
                 let dst = memory.write(owner, dst_ptr, 32u64)?;
@@ -2354,7 +2356,6 @@ where
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpreter.gas_charge(interpreter.gas_costs().sww())?;
         let (a, b, c) = self.unpack();
         let key =
             Bytes32::new(interpreter.memory().read_bytes(interpreter.registers[a])?);
@@ -2392,6 +2393,7 @@ where
 
         let mut num_previously_unset = 0;
         for (i, key) in key_range(key, range).enumerate() {
+            let key = key?;
             let previously_set =
                 interpreter.storage_read_slot(key, |_, v| v.is_some())?;
             if !previously_set {

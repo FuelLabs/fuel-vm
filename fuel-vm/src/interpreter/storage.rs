@@ -155,6 +155,7 @@ where
             .contract_state_remove_range_nostatus(&contract_id, &key, range)
             .map_err(RuntimeError::Storage)?;
         for k in key_range(key, range) {
+            let k = k?;
             let cache_key = (contract_id, k);
             self.storage_slot_cache.insert(cache_key, None);
         }
@@ -308,13 +309,17 @@ where
     }
 }
 
-pub fn key_range(start_key: Bytes32, range: usize) -> impl Iterator<Item = Bytes32> {
-    // TODO: check overflow behavior, etc
+pub fn key_range(
+    start_key: Bytes32,
+    range: usize,
+) -> impl Iterator<Item = Result<Bytes32, PanicReason>> {
     let start_key = primitive_types::U256::from_big_endian(&*start_key);
 
     (0..range).map(move |i| {
         let incr = primitive_types::U256::from(i);
-        let key = start_key.checked_add(incr).expect("TODO: handle this");
-        Bytes32::new(key.into())
+        let key = start_key
+            .checked_add(incr)
+            .ok_or(PanicReason::ArithmeticOverflow)?;
+        Ok(Bytes32::new(key.into()))
     })
 }

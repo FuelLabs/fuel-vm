@@ -1383,15 +1383,15 @@ impl GasCostsValues {
         }
     }
 
-    pub fn scwq(&self) -> DependentCost {
+    pub fn scwq(&self) -> Result<DependentCost, GasCostNotDefined> {
         match self {
-            GasCostsValues::V1(v1) => v1.scwq,
-            GasCostsValues::V2(v2) => v2.scwq,
-            GasCostsValues::V3(v3) => v3.scwq,
-            GasCostsValues::V4(v4) => v4.scwq,
-            GasCostsValues::V5(v5) => v5.scwq,
-            GasCostsValues::V6(v6) => v6.scwq,
-            GasCostsValues::V7(v7) => v7.scwq,
+            GasCostsValues::V1(v1) => Ok(v1.scwq),
+            GasCostsValues::V2(v2) => Ok(v2.scwq),
+            GasCostsValues::V3(v3) => Ok(v3.scwq),
+            GasCostsValues::V4(v4) => Ok(v4.scwq),
+            GasCostsValues::V5(v5) => Ok(v5.scwq),
+            GasCostsValues::V6(v6) => Ok(v6.scwq),
+            GasCostsValues::V7(_) => Err(GasCostNotDefined),
         }
     }
 
@@ -1407,27 +1407,27 @@ impl GasCostsValues {
         }
     }
 
-    pub fn srwq(&self) -> DependentCost {
+    pub fn srwq(&self) -> Result<DependentCost, GasCostNotDefined> {
         match self {
-            GasCostsValues::V1(v1) => v1.srwq,
-            GasCostsValues::V2(v2) => v2.srwq,
-            GasCostsValues::V3(v3) => v3.srwq,
-            GasCostsValues::V4(v4) => v4.srwq,
-            GasCostsValues::V5(v5) => v5.srwq,
-            GasCostsValues::V6(v6) => v6.srwq,
-            GasCostsValues::V7(v7) => v7.srwq,
+            GasCostsValues::V1(v1) => Ok(v1.srwq),
+            GasCostsValues::V2(v2) => Ok(v2.srwq),
+            GasCostsValues::V3(v3) => Ok(v3.srwq),
+            GasCostsValues::V4(v4) => Ok(v4.srwq),
+            GasCostsValues::V5(v5) => Ok(v5.srwq),
+            GasCostsValues::V6(v6) => Ok(v6.srwq),
+            GasCostsValues::V7(_) => Err(GasCostNotDefined),
         }
     }
 
-    pub fn swwq(&self) -> DependentCost {
+    pub fn swwq(&self) -> Result<DependentCost, GasCostNotDefined> {
         match self {
-            GasCostsValues::V1(v1) => v1.swwq,
-            GasCostsValues::V2(v2) => v2.swwq,
-            GasCostsValues::V3(v3) => v3.swwq,
-            GasCostsValues::V4(v4) => v4.swwq,
-            GasCostsValues::V5(v5) => v5.swwq,
-            GasCostsValues::V6(v6) => v6.swwq,
-            GasCostsValues::V7(v7) => v7.swwq,
+            GasCostsValues::V1(v1) => Ok(v1.swwq),
+            GasCostsValues::V2(v2) => Ok(v2.swwq),
+            GasCostsValues::V3(v3) => Ok(v3.swwq),
+            GasCostsValues::V4(v4) => Ok(v4.swwq),
+            GasCostsValues::V5(v5) => Ok(v5.swwq),
+            GasCostsValues::V6(v6) => Ok(v6.swwq),
+            GasCostsValues::V7(_) => Err(GasCostNotDefined),
         }
     }
 
@@ -1467,75 +1467,51 @@ impl GasCostsValues {
         }
     }
 
-    pub fn sclr(&self) -> Result<DependentCost, GasCostNotDefined> {
+    pub fn storage_read_cold(&self) -> Result<DependentCost, GasCostNotDefined> {
         match self {
-            GasCostsValues::V1(_v1) => Err(GasCostNotDefined),
-            GasCostsValues::V2(_v2) => Err(GasCostNotDefined),
-            GasCostsValues::V3(_v3) => Err(GasCostNotDefined),
-            GasCostsValues::V4(_v4) => Err(GasCostNotDefined),
-            GasCostsValues::V5(_v5) => Err(GasCostNotDefined),
-            GasCostsValues::V6(_v6) => Err(GasCostNotDefined),
-            GasCostsValues::V7(v7) => Ok(v7.sclr),
+            GasCostsValues::V1(_) => Err(GasCostNotDefined),
+            GasCostsValues::V2(_) => Err(GasCostNotDefined),
+            GasCostsValues::V3(_) => Err(GasCostNotDefined),
+            GasCostsValues::V4(_) => Err(GasCostNotDefined),
+            GasCostsValues::V5(_) => Err(GasCostNotDefined),
+            GasCostsValues::V6(_) => Err(GasCostNotDefined),
+            GasCostsValues::V7(v7) => Ok(v7.storage_read_cold),
         }
     }
 
-    pub fn srdd(&self) -> Result<DependentCost, GasCostNotDefined> {
+    pub fn storage_read_hot(&self) -> Result<DependentCost, GasCostNotDefined> {
         match self {
-            GasCostsValues::V1(_v1) => Err(GasCostNotDefined),
-            GasCostsValues::V2(_v2) => Err(GasCostNotDefined),
-            GasCostsValues::V3(_v3) => Err(GasCostNotDefined),
-            GasCostsValues::V4(_v4) => Err(GasCostNotDefined),
-            GasCostsValues::V5(_v5) => Err(GasCostNotDefined),
-            GasCostsValues::V6(_v6) => Err(GasCostNotDefined),
-            GasCostsValues::V7(v7) => Ok(v7.srdd),
+            GasCostsValues::V1(_) => Err(GasCostNotDefined),
+            GasCostsValues::V2(_) => Err(GasCostNotDefined),
+            GasCostsValues::V3(_) => Err(GasCostNotDefined),
+            GasCostsValues::V4(_) => Err(GasCostNotDefined),
+            GasCostsValues::V5(_) => Err(GasCostNotDefined),
+            GasCostsValues::V6(_) => Err(GasCostNotDefined),
+            GasCostsValues::V7(v7) => Ok(v7.storage_read_hot),
         }
     }
 
-    pub fn swrd(&self) -> Result<DependentCost, GasCostNotDefined> {
+    pub fn storage_write(&self) -> Result<DependentCost, GasCostNotDefined> {
         match self {
-            GasCostsValues::V1(_v1) => Err(GasCostNotDefined),
-            GasCostsValues::V2(_v2) => Err(GasCostNotDefined),
-            GasCostsValues::V3(_v3) => Err(GasCostNotDefined),
-            GasCostsValues::V4(_v4) => Err(GasCostNotDefined),
-            GasCostsValues::V5(_v5) => Err(GasCostNotDefined),
-            GasCostsValues::V6(_v6) => Err(GasCostNotDefined),
-            GasCostsValues::V7(v7) => Ok(v7.swrd),
+            GasCostsValues::V1(_) => Err(GasCostNotDefined),
+            GasCostsValues::V2(_) => Err(GasCostNotDefined),
+            GasCostsValues::V3(_) => Err(GasCostNotDefined),
+            GasCostsValues::V4(_) => Err(GasCostNotDefined),
+            GasCostsValues::V5(_) => Err(GasCostNotDefined),
+            GasCostsValues::V6(_) => Err(GasCostNotDefined),
+            GasCostsValues::V7(v7) => Ok(v7.storage_write),
         }
     }
 
-    pub fn supd(&self) -> Result<DependentCost, GasCostNotDefined> {
+    pub fn storage_clear(&self) -> Result<DependentCost, GasCostNotDefined> {
         match self {
-            GasCostsValues::V1(_v1) => Err(GasCostNotDefined),
-            GasCostsValues::V2(_v2) => Err(GasCostNotDefined),
-            GasCostsValues::V3(_v3) => Err(GasCostNotDefined),
-            GasCostsValues::V4(_v4) => Err(GasCostNotDefined),
-            GasCostsValues::V5(_v5) => Err(GasCostNotDefined),
-            GasCostsValues::V6(_v6) => Err(GasCostNotDefined),
-            GasCostsValues::V7(v7) => Ok(v7.supd),
-        }
-    }
-
-    pub fn spld(&self) -> Result<DependentCost, GasCostNotDefined> {
-        match self {
-            GasCostsValues::V1(_v1) => Err(GasCostNotDefined),
-            GasCostsValues::V2(_v2) => Err(GasCostNotDefined),
-            GasCostsValues::V3(_v3) => Err(GasCostNotDefined),
-            GasCostsValues::V4(_v4) => Err(GasCostNotDefined),
-            GasCostsValues::V5(_v5) => Err(GasCostNotDefined),
-            GasCostsValues::V6(_v6) => Err(GasCostNotDefined),
-            GasCostsValues::V7(v7) => Ok(v7.spld),
-        }
-    }
-
-    pub fn spcp(&self) -> Result<DependentCost, GasCostNotDefined> {
-        match self {
-            GasCostsValues::V1(_v1) => Err(GasCostNotDefined),
-            GasCostsValues::V2(_v2) => Err(GasCostNotDefined),
-            GasCostsValues::V3(_v3) => Err(GasCostNotDefined),
-            GasCostsValues::V4(_v4) => Err(GasCostNotDefined),
-            GasCostsValues::V5(_v5) => Err(GasCostNotDefined),
-            GasCostsValues::V6(_v6) => Err(GasCostNotDefined),
-            GasCostsValues::V7(v7) => Ok(v7.spcp),
+            GasCostsValues::V1(_) => Err(GasCostNotDefined),
+            GasCostsValues::V2(_) => Err(GasCostNotDefined),
+            GasCostsValues::V3(_) => Err(GasCostNotDefined),
+            GasCostsValues::V4(_) => Err(GasCostNotDefined),
+            GasCostsValues::V5(_) => Err(GasCostNotDefined),
+            GasCostsValues::V6(_) => Err(GasCostNotDefined),
+            GasCostsValues::V7(v7) => Ok(v7.storage_clear),
         }
     }
 
@@ -2492,17 +2468,14 @@ pub struct GasCostsValuesV7 {
     #[serde(rename = "retd_contract")]
     pub retd: DependentCost,
     pub s256: DependentCost,
-    pub scwq: DependentCost,
     pub smo: DependentCost,
-    pub srwq: DependentCost,
-    pub swwq: DependentCost,
     pub epar: DependentCost,
-    pub sclr: DependentCost,
-    pub srdd: DependentCost,
-    pub swrd: DependentCost,
-    pub supd: DependentCost,
-    pub spld: DependentCost,
-    pub spcp: DependentCost,
+
+    // Storage operation costs
+    pub storage_read_cold: DependentCost,
+    pub storage_read_hot: DependentCost,
+    pub storage_write: DependentCost,
+    pub storage_clear: DependentCost,
 
     // Non-opcode costs
     pub contract_root: DependentCost,
@@ -4133,17 +4106,14 @@ impl GasCostsValuesV7 {
             meq: DependentCost::free(),
             retd: DependentCost::free(),
             s256: DependentCost::free(),
-            scwq: DependentCost::free(),
             smo: DependentCost::free(),
-            srwq: DependentCost::free(),
-            swwq: DependentCost::free(),
             epar: DependentCost::free(),
-            sclr: DependentCost::free(),
-            srdd: DependentCost::free(),
-            swrd: DependentCost::free(),
-            supd: DependentCost::free(),
-            spld: DependentCost::free(),
-            spcp: DependentCost::free(),
+
+            // Storage internals
+            storage_read_cold: DependentCost::free(),
+            storage_read_hot: DependentCost::free(),
+            storage_write: DependentCost::free(),
+            storage_clear: DependentCost::free(),
 
             // Non-opcode costs
             contract_root: DependentCost::free(),
@@ -4263,17 +4233,14 @@ impl GasCostsValuesV7 {
             meq: DependentCost::unit(),
             retd: DependentCost::unit(),
             s256: DependentCost::unit(),
-            scwq: DependentCost::unit(),
             smo: DependentCost::unit(),
-            srwq: DependentCost::unit(),
-            swwq: DependentCost::unit(),
             epar: DependentCost::unit(),
-            sclr: DependentCost::unit(),
-            srdd: DependentCost::unit(),
-            swrd: DependentCost::unit(),
-            supd: DependentCost::unit(),
-            spld: DependentCost::unit(),
-            spcp: DependentCost::unit(),
+
+            // Storage internals
+            storage_read_cold: DependentCost::unit(),
+            storage_read_hot: DependentCost::unit(),
+            storage_write: DependentCost::unit(),
+            storage_clear: DependentCost::unit(),
 
             // Non-opcode costs
             contract_root: DependentCost::unit(),

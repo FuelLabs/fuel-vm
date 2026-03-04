@@ -6,6 +6,7 @@ use alloc::vec;
 
 use super::*;
 use crate::{
+    consts::*,
     interpreter::PanicContext,
     storage::MemoryStorage,
     verification::Normal,

@@ -1,11 +1,7 @@
 use fuel_asm::RegId;
-use fuel_storage::{
-    StorageRead,
-    StorageReadError,
-};
+use fuel_storage::StorageRead;
 use fuel_tx::{
     Bytes32,
-    ContractId,
     PanicReason,
 };
 
@@ -18,6 +14,7 @@ use crate::{
     prelude::{
         Interpreter,
         Memory,
+        MemoryInstance,
     },
     storage::{
         ContractsState,
@@ -31,94 +28,172 @@ where
     M: Memory,
     S: InterpreterStorage,
 {
-    /// When size of a slot is known, cache it.
-    /// See documentation on [`Interpreter::storage_slot_size_cache`] field.
-    pub(crate) fn cache_size_of_slot(
-        &mut self,
-        contract_id: ContractId,
-        key: Bytes32,
-        size: u64,
-    ) {
-        let cache_key = (contract_id, key);
-        self.storage_slot_size_cache.insert(cache_key, size);
-    }
-
-    /// Gets the size of the storage slot identified by `key`, using the cache if
-    /// available. See documentation on [`Interpreter::storage_slot_size_cache`]
-    /// field.
-    pub(crate) fn get_size_of_slot_cached(
+    pub(crate) fn storage_read_slot<F, R>(
         &mut self,
         key: Bytes32,
-    ) -> Result<u64, RuntimeError<S::DataError>> {
+        f: F,
+    ) -> Result<R, RuntimeError<S::DataError>>
+    where
+        F: FnOnce(&mut MemoryInstance, Option<&[u8]>) -> R,
+    {
         let contract_id = self.internal_contract()?;
         let cache_key = (contract_id, key);
 
-        if let Some(size) = self.storage_slot_size_cache.get(&cache_key) {
-            return Ok(*size);
+        if let Some(v) = self.storage_slot_cache.get(&cache_key) {
+            // Cache hit
+            let gas_charge_units = v.as_ref().map(|data| data.len() as u64).unwrap_or(0);
+            let r = f(self.memory.as_mut(), v.as_deref());
+            self.dependent_gas_charge(
+                self.gas_costs()
+                    .storage_read_hot()
+                    .map_err(PanicReason::from)?,
+                gas_charge_units,
+            )?;
+            return Ok(r);
         }
-
-        let size = self
-            .storage
-            .contract_state(&contract_id, &key)
-            .map_err(RuntimeError::Storage)?
-            .map(|v| v.as_ref().0.len() as u64)
-            .unwrap_or(0);
-
-        self.cache_size_of_slot(contract_id, key, size);
-        Ok(size)
+        let value = StorageRead::<ContractsState>::read_alloc(
+            &self.storage,
+            &ContractsStateKey::new(&contract_id, &key),
+        )
+        .map_err(RuntimeError::Storage)?;
+        // Cache miss
+        let gas_charge_units = value.as_ref().map(|data| data.len() as u64).unwrap_or(0);
+        let r = f(self.memory.as_mut(), value.as_deref());
+        self.dependent_gas_charge(
+            self.gas_costs()
+                .storage_read_cold()
+                .map_err(PanicReason::from)?,
+            gas_charge_units,
+        )?;
+        self.storage_slot_cache.insert(cache_key, value);
+        Ok(r)
     }
 
-    /// Verifies that the given size does not exceed the maximum allowed storage slot
-    /// length.
-    pub(crate) fn verify_storage_smaller_than_max(
-        &self,
-        size: usize,
+    pub(crate) fn storage_write_slot(
+        &mut self,
+        key: Bytes32,
+        value: &[u8],
     ) -> Result<(), RuntimeError<S::DataError>> {
         let max_size = self.interpreter_params.max_storage_slot_length;
-        if (size as u64) > max_size {
+        if (value.len() as u64) > max_size {
             return Err(RuntimeError::Recoverable(PanicReason::StorageOutOfBounds));
+        }
+        let contract_id = self.internal_contract()?;
+        let cache_key = (contract_id, key);
+        let old_len =
+            self.storage_read_slot(key, |_, data| data.unwrap_or_default().len())?;
+        self.storage
+            .contract_state_insert(&contract_id, &key, value)
+            .map_err(RuntimeError::Storage)?;
+        let gas_charge_units = value.len() as u64;
+        self.storage_slot_cache
+            .insert(cache_key, Some(value.to_vec()));
+        self.dependent_gas_charge(
+            self.gas_costs()
+                .storage_write()
+                .map_err(PanicReason::from)?,
+            gas_charge_units,
+        )?;
+        self.gas_charge(
+            self.gas_costs()
+                .new_storage_per_byte()
+                .saturating_mul(gas_charge_units.saturating_sub(old_len as u64)),
+        )?;
+        Ok(())
+    }
+
+    pub(crate) fn storage_write_slot_from_memory<F>(
+        &mut self,
+        key: Bytes32,
+        f: F,
+    ) -> Result<(), RuntimeError<S::DataError>>
+    where
+        F: FnOnce(&MemoryInstance) -> Result<&[u8], RuntimeError<S::DataError>>,
+    {
+        let value = f(self.memory.as_ref())?;
+        let max_size = self.interpreter_params.max_storage_slot_length;
+        if (value.len() as u64) > max_size {
+            return Err(RuntimeError::Recoverable(PanicReason::StorageOutOfBounds));
+        }
+        let contract_id = self.internal_contract()?;
+        let cache_key = (contract_id, key);
+        self.storage
+            .contract_state_insert(&contract_id, &key, value)
+            .map_err(RuntimeError::Storage)?;
+        let gas_charge_units = value.len() as u64;
+        self.storage_slot_cache
+            .insert(cache_key, Some(value.to_vec()));
+        self.dependent_gas_charge(
+            self.gas_costs()
+                .storage_write()
+                .map_err(PanicReason::from)?,
+            gas_charge_units,
+        )?;
+        Ok(())
+    }
+
+    pub(crate) fn storage_clear_slot_range(
+        &mut self,
+        key: Bytes32,
+        range: usize,
+    ) -> Result<(), RuntimeError<S::DataError>> {
+        let contract_id = self.internal_contract()?;
+        self.dependent_gas_charge(
+            self.gas_costs()
+                .storage_clear()
+                .map_err(PanicReason::from)?,
+            range as u64,
+        )?;
+        self.storage
+            .contract_state_remove_range_nostatus(&contract_id, &key, range)
+            .map_err(RuntimeError::Storage)?;
+        for k in key_range(key, range) {
+            let cache_key = (contract_id, k);
+            self.storage_slot_cache.insert(cache_key, None);
         }
         Ok(())
     }
 
-    /// Returns length of the value, or 0 if the slot is not found.
     pub(crate) fn storage_read_to_memory(
         &mut self,
         key: Bytes32,
         dst_ptr: u64,
         offset: u64,
         len: u64,
-    ) -> Result<u64, RuntimeError<S::DataError>> {
+    ) -> Result<(), RuntimeError<S::DataError>> {
         let offset = convert::to_usize(offset).ok_or(PanicReason::MemoryOverflow)?;
 
         let len = convert::to_usize(len).ok_or(PanicReason::MemoryOverflow)?;
 
-        let contract_id = self.internal_contract()?;
         let owner = self.ownership_registers();
+        self.registers[RegId::ERR] = self
+            .storage_read_slot::<_, Result<u64, RuntimeError<S::DataError>>>(
+                key,
+                |memory, value| match value {
+                    Some(value) => {
+                        if offset > value.len() {
+                            return Err(RuntimeError::Recoverable(
+                                PanicReason::StorageOutOfBounds,
+                            ));
+                        }
+                        let value = &value[offset..];
 
-        let dst = self.memory.as_mut().write(owner, dst_ptr, len)?;
+                        if len > value.len() {
+                            return Err(RuntimeError::Recoverable(
+                                PanicReason::StorageOutOfBounds,
+                            ));
+                        }
 
-        match StorageRead::<ContractsState>::read_exact(
-            &self.storage,
-            &ContractsStateKey::new(&contract_id, &key),
-            offset,
-            dst,
-        )
-        .map_err(RuntimeError::Storage)?
-        {
-            Ok(total_len) => {
-                self.cache_size_of_slot(contract_id, key, total_len as u64);
-                self.registers[RegId::ERR] = 0;
-                Ok(total_len as u64)
-            }
-            Err(StorageReadError::KeyNotFound) => {
-                self.registers[RegId::ERR] = 1;
-                Ok(0)
-            }
-            Err(StorageReadError::OutOfBounds) => {
-                Err(RuntimeError::Recoverable(PanicReason::StorageOutOfBounds))
-            }
-        }
+                        let value = &value[..len];
+
+                        let dst = memory.write(owner, dst_ptr, len)?;
+                        dst.copy_from_slice(value);
+                        Ok(0)
+                    }
+                    None => Ok(1),
+                },
+            )??;
+        Ok(())
     }
 
     pub(crate) fn storage_write_from_memory(
@@ -127,14 +202,8 @@ where
         src_ptr: u64,
         len: u64,
     ) -> Result<(), RuntimeError<S::DataError>> {
-        let contract_id = self.internal_contract()?;
         let len = convert::to_usize(len).ok_or(PanicReason::MemoryOverflow)?;
-        self.verify_storage_smaller_than_max(len)?;
-        self.cache_size_of_slot(contract_id, key, len as u64);
-        let src = self.memory.as_mut().read(src_ptr, len)?;
-        self.storage
-            .contract_state_insert(&contract_id, &key, src)
-            .map_err(RuntimeError::Storage)
+        self.storage_write_slot_from_memory(key, |memory| Ok(memory.read(src_ptr, len)?))
     }
 
     /// Storage read, subslice update and write back.
@@ -145,16 +214,9 @@ where
         src_ptr: u64,
         offset: u64,
         write_len: u64,
-    ) -> Result<StorageUpdated, RuntimeError<S::DataError>> {
-        let contract_id = self.internal_contract()?;
-        let mut value = self
-            .storage
-            .contract_state(&contract_id, &key)
-            .map_err(RuntimeError::Storage)?
-            .map(|v| v.as_ref().0.clone().into_inner())
-            .unwrap_or_default();
-
-        let total_size_before = value.len() as u64;
+    ) -> Result<(), RuntimeError<S::DataError>> {
+        let mut value =
+            self.storage_read_slot(key, |_, v| v.unwrap_or_default().to_vec())?;
 
         let offset = if offset == u64::MAX {
             value.len()
@@ -170,8 +232,6 @@ where
             convert::to_usize(write_len).ok_or(PanicReason::MemoryOverflow)?;
         let len_after = offset.saturating_add(write_len);
 
-        self.verify_storage_smaller_than_max(len_after)?;
-
         if len_after > value.len() {
             value.resize(len_after, 0);
         }
@@ -179,17 +239,7 @@ where
         value[offset..len_after]
             .copy_from_slice(self.memory.as_mut().read(src_ptr, write_len)?);
 
-        self.storage
-            .contract_state_insert(&contract_id, &key, &value)
-            .map_err(RuntimeError::Storage)?;
-
-        let total_size_after = len_after as u64;
-        self.cache_size_of_slot(contract_id, key, total_size_after);
-
-        Ok(StorageUpdated {
-            total_size_before,
-            total_size_after,
-        })
+        self.storage_write_slot(key, &value)
     }
 
     /// Implementation of SRDD/SRDI opcodes
@@ -201,11 +251,7 @@ where
         len: u64,
     ) -> IoResult<(), S::DataError> {
         let key = Bytes32::from(self.memory().read_bytes(key_ptr)?);
-        let len = self.storage_read_to_memory(key, buffer_ptr, offset, len)?;
-        self.dependent_gas_charge(
-            self.gas_costs().srdd().map_err(PanicReason::from)?,
-            len,
-        )?;
+        self.storage_read_to_memory(key, buffer_ptr, offset, len)?;
         Ok(())
     }
 
@@ -217,19 +263,6 @@ where
         len: u64,
     ) -> IoResult<(), S::DataError> {
         let key = Bytes32::from(self.memory().read_bytes(key_ptr)?);
-        self.dependent_gas_charge(
-            self.gas_costs().swrd().map_err(PanicReason::from)?,
-            len,
-        )?;
-        let size_before = self.get_size_of_slot_cached(key)?;
-        let new_bytes = len.saturating_sub(size_before);
-        if new_bytes > 0 {
-            self.gas_charge(
-                self.gas_costs()
-                    .new_storage_per_byte()
-                    .saturating_mul(new_bytes),
-            )?;
-        }
         self.storage_write_from_memory(key, value_ptr, len)?;
         Ok(())
     }
@@ -243,18 +276,7 @@ where
         len: u64,
     ) -> IoResult<(), S::DataError> {
         let key = Bytes32::from(self.memory().read_bytes(key_ptr)?);
-        let update = self.storage_update_from_memory(key, value_ptr, offset, len)?;
-        self.dependent_gas_charge(
-            self.gas_costs().supd().map_err(PanicReason::from)?,
-            update.transfer_charge(),
-        )?;
-        if update.new_bytes() > 0 {
-            self.gas_charge(
-                self.gas_costs()
-                    .new_storage_per_byte()
-                    .saturating_mul(update.new_bytes()),
-            )?;
-        }
+        self.storage_update_from_memory(key, value_ptr, offset, len)?;
         Ok(())
     }
 
@@ -263,47 +285,29 @@ where
         &mut self,
         r_dst_len: RegId,
         key: Bytes32,
-    ) -> Result<u64, RuntimeError<S::DataError>> {
-        let contract_id = self.internal_contract()?;
-        let value = self
-            .storage
-            .contract_state(&contract_id, &key)
-            .map_err(RuntimeError::Storage)?;
-
-        let len = if let Some(value) = value {
-            self.registers[RegId::ERR] = 0;
-            let dst = self.memory.as_mut().storage_preload_mut();
-            *dst = value.as_ref().as_ref().to_vec();
-            let len = dst.len() as u64;
-            self.cache_size_of_slot(contract_id, key, len);
-            len
-        } else {
-            self.registers[RegId::ERR] = 1;
-            0
-        };
-
-        self.write_user_register(r_dst_len, len)?;
-        self.dependent_gas_charge(
-            self.gas_costs().spld().map_err(PanicReason::from)?,
-            len,
-        )?;
-        Ok(len)
+    ) -> Result<(), RuntimeError<S::DataError>> {
+        match self.storage_read_slot(key, |_, v| v.map(|data| data.len()))? {
+            Some(len) => {
+                self.registers[RegId::ERR] = 0;
+                self.write_user_register(r_dst_len, len as u64)?;
+                Ok(())
+            }
+            None => {
+                self.registers[RegId::ERR] = 1;
+                self.write_user_register(r_dst_len, 0)?;
+                Ok(())
+            }
+        }
     }
 }
 
-pub(crate) struct StorageUpdated {
-    total_size_before: u64,
-    total_size_after: u64,
-}
-impl StorageUpdated {
-    /// The amount to for dynamic gas charge.
-    /// We use max here to be conservative.
-    pub fn transfer_charge(&self) -> u64 {
-        self.total_size_after.max(self.total_size_before)
-    }
+pub fn key_range(start_key: Bytes32, range: usize) -> impl Iterator<Item = Bytes32> {
+    // TODO: check overflow behavior, etc
+    let start_key = primitive_types::U256::from_big_endian(&*start_key);
 
-    /// The amount of new bytes added to storage, used for new storage gas charge.
-    pub fn new_bytes(&self) -> u64 {
-        self.total_size_after.saturating_sub(self.total_size_before)
-    }
+    (0..range).map(move |i| {
+        let incr = primitive_types::U256::from(i);
+        let key = start_key.checked_add(incr).expect("TODO: handle this");
+        Bytes32::new(key.into())
+    })
 }

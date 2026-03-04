@@ -203,9 +203,6 @@ impl RetCtx<'_> {
 
             let fp = registers[RegId::FP];
             set_frame_pointer(context, registers.fp_mut(), fp);
-
-            // Clear storage preload area
-            self.memory.as_mut().storage_preload_mut().clear();
         }
 
         self.receipts.push(receipt)?;
@@ -617,9 +614,6 @@ impl<S, V> PrepareCallCtx<'_, S, V> {
         *self.registers.system_registers.is = *self.registers.system_registers.pc;
         *self.registers.system_registers.cgas = forward_gas_amount;
         *self.registers.system_registers.flag = 0;
-
-        // Clear storage preload area
-        self.memory.as_mut().storage_preload_mut().clear();
 
         let receipt = Receipt::call(
             id,

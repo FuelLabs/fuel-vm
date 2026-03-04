@@ -113,7 +113,7 @@ where
             ecal_state: self.ecal_state,
             verifier: self.verifier,
             owner_ptr: self.owner_ptr,
-            storage_slot_size_cache: self.storage_slot_size_cache,
+            storage_slot_cache: self.storage_slot_cache,
         }
     }
 
@@ -205,7 +205,7 @@ where
             ecal_state: self.ecal_state,
             verifier: self.verifier,
             owner_ptr: self.owner_ptr,
-            storage_slot_size_cache: self.storage_slot_size_cache,
+            storage_slot_cache: self.storage_slot_cache,
         }
     }
 

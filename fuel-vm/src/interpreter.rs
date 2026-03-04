@@ -136,21 +136,9 @@ pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal, V = verification:
     verifier: V,
     /// Pointer to the memory, where the owner of the transaction lies.
     owner_ptr: Option<Word>,
-    /// Storage slot size cache for speeding up dynamic storage writes by cachin
-    /// the size of the storage slot for each accessed key.
-    /// Note that CLEARING A SLOT DOES NOT ZERO THIS. This is because if the same slot
-    /// is written again, there's no need to charge for the new bytes.
-    /// Writes still set this unconditionally instead of preferring the max of (old,
-    /// new), for simplicity and performance reasons. Since making opcodes use less
-    /// gas in the future is not a breaking chnage, this is completely fine.
-    ///
-    /// This also doesn't currently interact with legacy storage opocodes, only the
-    /// dynamic storage.
-    ///
-    /// This could be later extended to cache the contents of slots on read,
-    /// so that re-reading a slot that was already read before doesn't require another
-    /// storage read.
-    storage_slot_size_cache: alloc::collections::BTreeMap<(ContractId, Bytes32), u64>,
+    /// TODO: write docs for this
+    storage_slot_cache:
+        alloc::collections::BTreeMap<(ContractId, Bytes32), Option<Vec<u8>>>,
 }
 
 /// Interpreter parameters

@@ -156,6 +156,19 @@ where
         self.registers[reg] = val;
         Ok(())
     }
+
+    pub(crate) fn write_user_register_legacy(
+        &mut self,
+        reg: RegId,
+        val: Word,
+    ) -> SimpleResult<()> {
+        if reg < RegId::WRITABLE {
+            return Err(PanicReason::ReservedRegisterNotWritable.into());
+        }
+
+        self.registers[reg] = val;
+        Ok(())
+    }
 }
 
 pub(crate) fn clear_err(mut err: RegMut<ERR>) {

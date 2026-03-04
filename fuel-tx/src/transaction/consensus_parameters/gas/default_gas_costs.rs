@@ -174,43 +174,6 @@ pub fn default_gas_costs() -> GasCostsValues {
             base: 29,
             units_per_gas: 62,
         },
-        srwq: DependentCost::LightOperation {
-            base: 47,
-            units_per_gas: 5,
-        },
-        scwq: DependentCost::LightOperation {
-            base: 13,
-            units_per_gas: 5,
-        },
-        swwq: DependentCost::LightOperation {
-            base: 44,
-            units_per_gas: 5,
-        },
-
-        sclr: DependentCost::HeavyOperation {
-            base: 7,
-            gas_per_unit: 20,
-        },
-        srdd: DependentCost::LightOperation {
-            base: 2513,
-            units_per_gas: 39,
-        },
-        swrd: DependentCost::LightOperation {
-            base: 10,
-            units_per_gas: 406,
-        },
-        supd: DependentCost::LightOperation {
-            base: 2513,
-            units_per_gas: 35,
-        },
-        spld: DependentCost::LightOperation {
-            base: 3427,
-            units_per_gas: 2,
-        },
-        spcp: DependentCost::LightOperation {
-            base: 1,
-            units_per_gas: 3333,
-        },
 
         bsiz: DependentCost::LightOperation {
             base: 17,
@@ -219,6 +182,24 @@ pub fn default_gas_costs() -> GasCostsValues {
         bldd: DependentCost::LightOperation {
             base: 15,
             units_per_gas: 272,
+        },
+
+        // Storage micro-operation costs
+        storage_read_cold: DependentCost::LightOperation {
+            base: 10,
+            units_per_gas: 123,
+        },
+        storage_read_hot: DependentCost::LightOperation {
+            base: 10,
+            units_per_gas: 123,
+        },
+        storage_write: DependentCost::LightOperation {
+            base: 10,
+            units_per_gas: 1234,
+        },
+        storage_clear: DependentCost::LightOperation {
+            base: 10,
+            units_per_gas: 4,
         },
 
         // Non-opcode costs

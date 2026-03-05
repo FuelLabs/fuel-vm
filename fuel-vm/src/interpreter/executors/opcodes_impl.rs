@@ -1412,7 +1412,7 @@ where
         // memory size anyway
         let ret_addr =
             interpreter.registers[RegId::PC].saturating_add(Instruction::SIZE as u64);
-        interpreter.set_user_reg_or_discard(reg_ret_addr, ret_addr)?;
+        interpreter.write_user_register(reg_ret_addr, ret_addr)?;
 
         interpreter.jump(
             JumpArgs::new(JumpMode::Assign)

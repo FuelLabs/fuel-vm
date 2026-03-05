@@ -23,6 +23,9 @@ use crate::{
     },
 };
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,

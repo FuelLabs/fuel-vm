@@ -2235,6 +2235,7 @@ where
 
         let mut all_previously_set = true;
         for key in key_range(key, range) {
+            let key = key.ok_or(PanicReason::TooManySlots)?;
             let was_set = interpreter.storage_read_slot(key, |_, v| v.is_some())?;
             if !was_set {
                 all_previously_set = false;
@@ -2325,6 +2326,7 @@ where
 
         let mut all_previously_set = true;
         for (i, key) in key_range(key, range).enumerate() {
+            let key = key.ok_or(PanicReason::TooManySlots)?;
             interpreter.storage_read_slot(key, |memory, v| {
                 let dst_ptr = start_ptr.saturating_add((i as u64).saturating_mul(32));
                 let dst = memory.write(owner, dst_ptr, 32u64)?;
@@ -2402,6 +2404,7 @@ where
 
         let mut num_previously_unset = 0u64;
         for (i, key) in key_range(key, range).enumerate() {
+            let key = key.ok_or(PanicReason::TooManySlots)?;
             let previously_set =
                 interpreter.storage_read_slot(key, |_, v| v.is_some())?;
             #[allow(clippy::arithmetic_side_effects)] // Safety: it's an u64

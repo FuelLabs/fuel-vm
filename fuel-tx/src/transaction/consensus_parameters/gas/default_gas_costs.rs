@@ -185,7 +185,7 @@ pub fn default_gas_costs() -> GasCostsValues {
 
         // Storage micro-operation costs
         storage_read_cold: DependentCost::LightOperation {
-            base: 10,
+            base: 100,
             units_per_gas: 123,
         },
         storage_read_hot: DependentCost::LightOperation {

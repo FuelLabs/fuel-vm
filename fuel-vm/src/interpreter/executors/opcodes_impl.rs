@@ -2241,7 +2241,7 @@ where
             }
         }
 
-        interpreter.write_user_register_legacy(b, all_previously_set as Word)?;
+        interpreter.write_user_register_legacy(b, all_previously_set.into())?;
         interpreter.storage_clear_slot_range(key, range)?;
         inc_pc(interpreter.registers.pc_mut());
         Ok(ExecuteState::Proceed)
@@ -2278,13 +2278,12 @@ where
                 let offset_bytes = offset.saturating_mul(8);
                 let end_bytes = offset_bytes.saturating_add(8);
 
-                let data = bytes.as_ref().as_ref();
-                if (data.len() as u64) < (end_bytes as u64) {
+                if (bytes.len() as u64) < (end_bytes as u64) {
                     return Err(PanicReason::StorageOutOfBounds);
                 }
 
                 let mut buf = [0u8; 8];
-                buf.copy_from_slice(&data[offset_bytes..end_bytes]);
+                buf.copy_from_slice(&bytes[offset_bytes..end_bytes]);
                 Ok(Some(Word::from_be_bytes(buf)))
             }
             None => Ok(None),
@@ -2346,7 +2345,7 @@ where
             })??;
         }
 
-        interpreter.write_user_register_legacy(b, all_previously_set as Word)?;
+        interpreter.write_user_register_legacy(b, all_previously_set.into())?;
         inc_pc(interpreter.registers.pc_mut());
         Ok(ExecuteState::Proceed)
     }
@@ -2375,7 +2374,7 @@ where
         let created_new = interpreter.storage_read_slot(key, |_, v| v.is_none())?;
         interpreter.storage_write_slot(key, value.to_vec())?;
 
-        interpreter.write_user_register_legacy(b, created_new as Word)?;
+        interpreter.write_user_register_legacy(b, created_new.into())?;
         inc_pc(interpreter.registers.pc_mut());
         Ok(ExecuteState::Proceed)
     }
@@ -2401,10 +2400,11 @@ where
         let range = crate::convert::to_usize(interpreter.registers[d])
             .ok_or(PanicReason::TooManySlots)?;
 
-        let mut num_previously_unset = 0;
+        let mut num_previously_unset = 0u64;
         for (i, key) in key_range(key, range).enumerate() {
             let previously_set =
                 interpreter.storage_read_slot(key, |_, v| v.is_some())?;
+            #[allow(clippy::arithmetic_side_effects)] // Safety: it's an u64
             if !previously_set {
                 num_previously_unset += 1;
             }
@@ -2415,7 +2415,7 @@ where
             })?;
         }
 
-        interpreter.write_user_register_legacy(b, num_previously_unset as Word)?;
+        interpreter.write_user_register_legacy(b, num_previously_unset)?;
         inc_pc(interpreter.registers.pc_mut());
         Ok(ExecuteState::Proceed)
     }

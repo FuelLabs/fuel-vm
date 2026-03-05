@@ -72,7 +72,6 @@ pub fn default_gas_costs() -> GasCostsValues {
         sub: 1,
         subi: 1,
         sw: 1,
-        sww: 67,
         time: 1,
         tr: 105,
         tro: 60,

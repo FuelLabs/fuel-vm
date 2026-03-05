@@ -891,15 +891,15 @@ impl GasCostsValues {
         }
     }
 
-    pub fn sww(&self) -> Word {
+    pub fn sww(&self) -> Result<Word, GasCostNotDefined> {
         match self {
-            GasCostsValues::V1(v1) => v1.sww,
-            GasCostsValues::V2(v2) => v2.sww,
-            GasCostsValues::V3(v3) => v3.sww,
-            GasCostsValues::V4(v4) => v4.sww,
-            GasCostsValues::V5(v5) => v5.sww,
-            GasCostsValues::V6(v6) => v6.sww,
-            GasCostsValues::V7(v7) => v7.sww,
+            GasCostsValues::V1(v1) => Ok(v1.sww),
+            GasCostsValues::V2(v2) => Ok(v2.sww),
+            GasCostsValues::V3(v3) => Ok(v3.sww),
+            GasCostsValues::V4(v4) => Ok(v4.sww),
+            GasCostsValues::V5(v5) => Ok(v5.sww),
+            GasCostsValues::V6(v6) => Ok(v6.sww),
+            GasCostsValues::V7(_) => Err(GasCostNotDefined),
         }
     }
 
@@ -2424,7 +2424,6 @@ pub struct GasCostsValuesV7 {
     pub sub: Word,
     pub subi: Word,
     pub sw: Word,
-    pub sww: Word,
     pub time: Word,
     pub tr: Word,
     pub tro: Word,
@@ -4065,7 +4064,6 @@ impl GasCostsValuesV7 {
             sub: 0,
             subi: 0,
             sw: 0,
-            sww: 0,
             time: 0,
             tr: 0,
             tro: 0,
@@ -4192,7 +4190,6 @@ impl GasCostsValuesV7 {
             sub: 1,
             subi: 1,
             sw: 1,
-            sww: 1,
             time: 1,
             tr: 1,
             tro: 1,

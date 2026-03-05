@@ -2226,6 +2226,7 @@ where
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge(interpreter.gas_costs().noop())?;
         let (a, b, c) = self.unpack();
         let key =
             Bytes32::new(interpreter.memory().read_bytes(interpreter.registers[a])?);
@@ -2259,6 +2260,7 @@ where
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge(interpreter.gas_costs().noop())?;
         let (a, b, c, d) = self.unpack();
         let key =
             Bytes32::new(interpreter.memory().read_bytes(interpreter.registers[c])?);
@@ -2313,6 +2315,7 @@ where
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge(interpreter.gas_costs().noop())?;
         let (a, b, c, d) = self.unpack();
         let start_ptr = interpreter.registers[a];
         let key =
@@ -2361,7 +2364,7 @@ where
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpreter.gas_charge(interpreter.gas_costs().sww())?;
+        interpreter.gas_charge(interpreter.gas_costs().noop())?;
         let (a, b, c) = self.unpack();
         let key =
             Bytes32::new(interpreter.memory().read_bytes(interpreter.registers[a])?);
@@ -2390,6 +2393,7 @@ where
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge(interpreter.gas_costs().noop())?;
         let (a, b, c, d) = self.unpack();
         let key =
             Bytes32::new(interpreter.memory().read_bytes(interpreter.registers[a])?);
@@ -2783,6 +2787,7 @@ where
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge(interpreter.gas_costs().noop())?;
         let (r_key_ptr, r_num_slots) = self.unpack();
         let start_key = Bytes32::from(
             interpreter
@@ -2810,6 +2815,7 @@ where
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge(interpreter.gas_costs().noop())?;
         let (r_buffer_ptr, r_key_ptr, r_offset, r_len) = self.unpack();
         interpreter.dynamic_storage_read(
             interpreter.registers[r_buffer_ptr],
@@ -2835,6 +2841,7 @@ where
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge(interpreter.gas_costs().noop())?;
         let (r_buffer_ptr, r_key_ptr, r_offset, imm_len) = self.unpack();
         interpreter.dynamic_storage_read(
             interpreter.registers[r_buffer_ptr],
@@ -2860,6 +2867,7 @@ where
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge(interpreter.gas_costs().noop())?;
         let (r_key_ptr, r_value_ptr, r_len) = self.unpack();
         interpreter.dynamic_storage_write(
             interpreter.registers[r_key_ptr],
@@ -2884,6 +2892,7 @@ where
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge(interpreter.gas_costs().noop())?;
         let (r_key_ptr, r_value_ptr, imm_len) = self.unpack();
         interpreter.dynamic_storage_write(
             interpreter.registers[r_key_ptr],
@@ -2908,6 +2917,7 @@ where
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge(interpreter.gas_costs().noop())?;
         let (r_key_ptr, r_value_ptr, r_offset, r_len) = self.unpack();
         interpreter.dynamic_storage_update(
             interpreter.registers[r_key_ptr],
@@ -2933,6 +2943,7 @@ where
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge(interpreter.gas_costs().noop())?;
         let (r_key_ptr, r_value_ptr, r_offset, imm_len) = self.unpack();
         interpreter.dynamic_storage_update(
             interpreter.registers[r_key_ptr],
@@ -2958,6 +2969,7 @@ where
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge(interpreter.gas_costs().noop())?;
         let (r_dst_len, r_key_ptr) = self.unpack();
         let key = Bytes32::from(
             interpreter

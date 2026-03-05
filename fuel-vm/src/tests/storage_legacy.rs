@@ -524,6 +524,38 @@ fn srwq_unset_slots_read_as_zeroes_with_false_status() {
     assert!(found_status && found_data);
 }
 
+/// SRWQ reports status=1 when reading a single slot that was previously written.
+/// This is the direct counterpart to `srwq_unset_slots_read_as_zeroes_with_false_status`.
+#[test]
+fn srwq_status_is_true_for_single_set_slot() {
+    let receipts = call_contract_once(vec![
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(KEY, RegId::HP),
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(BUF, RegId::HP),
+        // Write one slot so it is "set"
+        op::swwq(KEY, STATUS, BUF, RegId::ONE),
+        // Re-use BUF for the read (contents don't matter here)
+        op::srwq(BUF, STATUS, KEY, RegId::ONE),
+        op::log(STATUS, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::ret(RegId::ONE),
+    ]);
+
+    assert_success(&receipts);
+
+    let Some(Receipt::Log { ra, .. }) =
+        receipts.iter().find(|r| matches!(r, Receipt::Log { .. }))
+    else {
+        panic!("Missing Log receipt");
+    };
+    assert_eq!(
+        *ra, 1,
+        "SRWQ status should be 1 when the single slot is set"
+    );
+}
+
 /// SRWQ status is 1 only when ALL slots in the range are set; 0 if any is unset.
 #[test]
 fn srwq_status_true_only_when_all_slots_set() {

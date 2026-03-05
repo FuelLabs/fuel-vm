@@ -146,6 +146,7 @@ where
         self.frames.clear();
         self.receipts.clear();
         self.memory_mut().reset();
+        self.storage_slot_cache.clear();
 
         // Optimized for memset
         self.registers.iter_mut().for_each(|r| *r = 0);

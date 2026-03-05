@@ -72,7 +72,7 @@ where
     pub(crate) fn storage_write_slot(
         &mut self,
         key: Bytes32,
-        value: &[u8],
+        value: Vec<u8>,
     ) -> Result<(), RuntimeError<S::DataError>> {
         let old_len =
             self.storage_read_slot(key, |_, data| data.unwrap_or_default().len())?;
@@ -83,11 +83,10 @@ where
         let contract_id = self.internal_contract()?;
         let cache_key = (contract_id, key);
         self.storage
-            .contract_state_insert(&contract_id, &key, value)
+            .contract_state_insert(&contract_id, &key, &value)
             .map_err(RuntimeError::Storage)?;
         let gas_charge_units = value.len() as u64;
-        self.storage_slot_cache
-            .insert(cache_key, Some(value.to_vec()));
+        self.storage_slot_cache.insert(cache_key, Some(value));
         self.dependent_gas_charge(
             self.gas_costs()
                 .storage_write()
@@ -110,33 +109,10 @@ where
     where
         F: FnOnce(&MemoryInstance) -> Result<&[u8], RuntimeError<S::DataError>>,
     {
-        let old_len =
-            self.storage_read_slot(key, |_, data| data.unwrap_or_default().len())?;
-        let value = f(self.memory.as_ref())?;
-        let max_size = self.interpreter_params.max_storage_slot_length;
-        if (value.len() as u64) > max_size {
-            return Err(RuntimeError::Recoverable(PanicReason::StorageOutOfBounds));
-        }
-        let contract_id = self.internal_contract()?;
-        let cache_key = (contract_id, key);
-        self.storage
-            .contract_state_insert(&contract_id, &key, value)
-            .map_err(RuntimeError::Storage)?;
-        let gas_charge_units = value.len() as u64;
-        self.storage_slot_cache
-            .insert(cache_key, Some(value.to_vec()));
-        self.dependent_gas_charge(
-            self.gas_costs()
-                .storage_write()
-                .map_err(PanicReason::from)?,
-            gas_charge_units,
-        )?;
-        self.gas_charge(
-            self.gas_costs()
-                .new_storage_per_byte()
-                .saturating_mul(gas_charge_units.saturating_sub(old_len as u64)),
-        )?;
-        Ok(())
+        // Copy to an owned buffer so the immutable borrow of `self.memory`
+        // ends before the mutable borrow required by `storage_write_slot`.
+        let value = f(self.memory.as_ref())?.to_vec();
+        self.storage_write_slot(key, value)
     }
 
     pub(crate) fn storage_clear_slot_range(
@@ -246,7 +222,7 @@ where
         value[offset..len_after]
             .copy_from_slice(self.memory.as_mut().read(src_ptr, write_len)?);
 
-        self.storage_write_slot(key, &value)
+        self.storage_write_slot(key, value)
     }
 
     /// Implementation of SRDD/SRDI opcodes

@@ -2373,7 +2373,7 @@ where
         value.as_mut()[..8].copy_from_slice(&interpreter.registers[c].to_be_bytes());
 
         let created_new = interpreter.storage_read_slot(key, |_, v| v.is_none())?;
-        interpreter.storage_write_slot(key, value.as_ref())?;
+        interpreter.storage_write_slot(key, value.to_vec())?;
 
         interpreter.write_user_register_legacy(b, created_new as Word)?;
         inc_pc(interpreter.registers.pc_mut());

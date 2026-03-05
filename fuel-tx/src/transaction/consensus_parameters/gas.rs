@@ -843,15 +843,15 @@ impl GasCostsValues {
         }
     }
 
-    pub fn srw(&self) -> Word {
+    pub fn srw(&self) -> Result<Word, GasCostNotDefined> {
         match self {
-            GasCostsValues::V1(v1) => v1.srw,
-            GasCostsValues::V2(v2) => v2.srw,
-            GasCostsValues::V3(v3) => v3.srw,
-            GasCostsValues::V4(v4) => v4.srw,
-            GasCostsValues::V5(v5) => v5.srw,
-            GasCostsValues::V6(v6) => v6.srw,
-            GasCostsValues::V7(v7) => v7.srw,
+            GasCostsValues::V1(v1) => Ok(v1.srw),
+            GasCostsValues::V2(v2) => Ok(v2.srw),
+            GasCostsValues::V3(v3) => Ok(v3.srw),
+            GasCostsValues::V4(v4) => Ok(v4.srw),
+            GasCostsValues::V5(v5) => Ok(v5.srw),
+            GasCostsValues::V6(v6) => Ok(v6.srw),
+            GasCostsValues::V7(_) => Err(GasCostNotDefined),
         }
     }
 
@@ -2420,7 +2420,6 @@ pub struct GasCostsValuesV7 {
     pub slli: Word,
     pub srl: Word,
     pub srli: Word,
-    pub srw: Word,
     pub sub: Word,
     pub subi: Word,
     pub sw: Word,
@@ -4060,7 +4059,6 @@ impl GasCostsValuesV7 {
             slli: 0,
             srl: 0,
             srli: 0,
-            srw: 0,
             sub: 0,
             subi: 0,
             sw: 0,
@@ -4186,7 +4184,6 @@ impl GasCostsValuesV7 {
             slli: 1,
             srl: 1,
             srli: 1,
-            srw: 1,
             sub: 1,
             subi: 1,
             sw: 1,

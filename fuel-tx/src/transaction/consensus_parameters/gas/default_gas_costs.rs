@@ -68,7 +68,6 @@ pub fn default_gas_costs() -> GasCostsValues {
         slli: 1,
         srl: 1,
         srli: 1,
-        srw: 12,
         sub: 1,
         subi: 1,
         sw: 1,

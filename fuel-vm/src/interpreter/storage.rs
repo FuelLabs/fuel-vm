@@ -128,7 +128,7 @@ where
             range as u64,
         )?;
         self.storage
-            .contract_state_remove_range_nostatus(&contract_id, &key, range)
+            .contract_state_remove_range(&contract_id, &key, range)
             .map_err(RuntimeError::Storage)?;
         for key in key_range(key, range) {
             let key = key.ok_or(PanicReason::TooManySlots)?;

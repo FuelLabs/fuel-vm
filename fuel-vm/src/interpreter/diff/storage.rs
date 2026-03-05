@@ -501,35 +501,12 @@ where
         self.0.set_state_transition_bytecode(version, hash)
     }
 
-    fn contract_state_range(
-        &self,
-        id: &ContractId,
-        start_key: &Bytes32,
-        range: usize,
-    ) -> Result<Vec<Option<alloc::borrow::Cow<'_, ContractsStateData>>>, Self::DataError>
-    {
-        self.0.contract_state_range(id, start_key, range)
-    }
-
-    fn contract_state_insert_range<'a, I>(
-        &mut self,
-        contract: &ContractId,
-        start_key: &Bytes32,
-        values: I,
-    ) -> Result<usize, Self::DataError>
-    where
-        I: Iterator<Item = &'a [u8]>,
-    {
-        self.0
-            .contract_state_insert_range(contract, start_key, values)
-    }
-
     fn contract_state_remove_range(
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
         range: usize,
-    ) -> Result<Option<()>, S::DataError> {
+    ) -> Result<(), S::DataError> {
         self.0
             .contract_state_remove_range(contract, start_key, range)
     }

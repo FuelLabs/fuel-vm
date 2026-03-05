@@ -11,6 +11,7 @@ use fuel_tx::{
 };
 use fuel_types::{
     AssetId,
+    Bytes32,
     ContractId,
 };
 use test_case::test_case;
@@ -23,7 +24,11 @@ use crate::{
         SP,
     },
     consts::*,
-    storage::MemoryStorage,
+    storage::{
+        ContractsState,
+        ContractsStateKey,
+        MemoryStorage,
+    },
 };
 
 use super::*;
@@ -297,4 +302,108 @@ fn reset_vm_txns() {
     assert_ne!(desired, latest);
     latest.reset_vm_state(&diff);
     assert_eq!(desired, latest);
+}
+
+/// When a storage slot is modified, `reset_vm_state` must update the cache so it
+/// reflects the value carried by the diff, not a stale pre-reset value.
+#[test]
+fn reset_vm_state_updates_cache_for_modified_slot() {
+    use crate::interpreter::InterpreterParams;
+
+    let interpreter_params = InterpreterParams::new(0, ConsensusParameters::standard());
+
+    let mut latest = Interpreter::<_, _, Script>::with_storage(
+        crate::interpreter::MemoryInstance::new(),
+        Record::new(MemoryStorage::default()),
+        interpreter_params.clone(),
+    );
+
+    let contract_id = ContractId::default();
+    let slot_key = Bytes32::default();
+    let cache_key = (contract_id, slot_key);
+    let v1 = alloc::vec![0xAAu8; 32];
+
+    // Insert v1 via the Record wrapper so the change is recorded.
+    <Record<MemoryStorage> as StorageMutate<ContractsState>>::insert(
+        &mut latest.storage,
+        &ContractsStateKey::new(&contract_id, &slot_key),
+        &v1,
+    )
+    .unwrap();
+
+    // Poison the cache with a stale value to simulate the pre-fix bug.
+    let v_stale = alloc::vec![0xFFu8; 32];
+    latest.storage_slot_cache.insert(cache_key, Some(v_stale));
+
+    // Build the diff: storage_diff captures "slot was None → v1".
+    // After converting to InitialVmState the change carries v1 as the target.
+    let storage_diff: Diff<InitialVmState> = latest.storage_diff().into();
+    let desired = Interpreter::<_, _, Script>::with_storage(
+        crate::interpreter::MemoryInstance::new(),
+        Record::new(MemoryStorage::default()),
+        interpreter_params,
+    );
+    let mut diff: Diff<InitialVmState> = latest.rollback_to(&desired).into();
+    diff.changes.extend(storage_diff.changes);
+
+    latest.reset_vm_state(&diff);
+
+    // The cache must now hold v1, not the stale value.
+    assert_eq!(latest.storage_slot_cache.get(&cache_key), Some(&Some(v1)));
+}
+
+/// When a storage slot that was *absent* in the initial state is marked as such by
+/// the diff (value = None), `reset_vm_state` must set the cache entry to None,
+/// not leave a stale Some(_) behind.
+#[test]
+fn reset_vm_state_removes_newly_created_slot_from_cache() {
+    use crate::interpreter::InterpreterParams;
+
+    let interpreter_params = InterpreterParams::new(0, ConsensusParameters::standard());
+
+    let contract_id = ContractId::default();
+    let slot_key = Bytes32::default();
+    let cache_key = (contract_id, slot_key);
+    let v1 = alloc::vec![0xBBu8; 32];
+
+    // Pre-populate backing storage with v1 *before* wrapping in Record.
+    let mut backing = MemoryStorage::default();
+    <MemoryStorage as StorageMutate<ContractsState>>::insert(
+        &mut backing,
+        &ContractsStateKey::new(&contract_id, &slot_key),
+        &v1,
+    )
+    .unwrap();
+
+    let mut latest = Interpreter::<_, _, Script>::with_storage(
+        crate::interpreter::MemoryInstance::new(),
+        Record::new(backing),
+        interpreter_params.clone(),
+    );
+
+    // Delete the slot via the Record wrapper so the Take is recorded.
+    <Record<MemoryStorage> as StorageMutate<ContractsState>>::take(
+        &mut latest.storage,
+        &ContractsStateKey::new(&contract_id, &slot_key),
+    )
+    .unwrap();
+
+    // Poison the cache with a stale Some(v1) to simulate the pre-fix bug.
+    latest.storage_slot_cache.insert(cache_key, Some(v1));
+
+    // Build the diff: the recorded Take produces "slot v1 → absent".
+    // After converting to InitialVmState the change carries None as the target.
+    let storage_diff: Diff<InitialVmState> = latest.storage_diff().into();
+    let desired = Interpreter::<_, _, Script>::with_storage(
+        crate::interpreter::MemoryInstance::new(),
+        Record::new(MemoryStorage::default()),
+        interpreter_params,
+    );
+    let mut diff: Diff<InitialVmState> = latest.rollback_to(&desired).into();
+    diff.changes.extend(storage_diff.changes);
+
+    latest.reset_vm_state(&diff);
+
+    // Cache must now be None (slot absent), not the stale Some(v1).
+    assert_eq!(latest.storage_slot_cache.get(&cache_key), Some(&None));
 }

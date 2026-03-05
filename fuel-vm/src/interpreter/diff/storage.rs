@@ -219,6 +219,7 @@ where
             if let Change::Storage(Previous(from)) = change {
                 match from {
                     StorageState::State(MappableState { key, value }) => {
+                        let cache_key = (*key.contract_id(), *key.state_key());
                         if let Some(value) = value {
                             StorageMutate::<ContractsState>::insert(
                                 &mut self.storage,
@@ -226,6 +227,15 @@ where
                                 value.as_ref(),
                             )
                             .unwrap();
+                            self.storage_slot_cache
+                                .insert(cache_key, Some(value.as_ref().to_vec()));
+                        } else {
+                            // The slot didn't exist in the initial state; delete it.
+                            let _ = StorageMutate::<ContractsState>::take(
+                                &mut self.storage,
+                                key,
+                            );
+                            self.storage_slot_cache.insert(cache_key, None);
                         }
                     }
                     StorageState::Assets(MappableState { key, value }) => {

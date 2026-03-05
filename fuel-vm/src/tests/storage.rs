@@ -731,6 +731,47 @@ fn swrd_exceeding_slot_max_length_panics() {
     assert_panics(&receipts, PanicReason::StorageOutOfBounds);
 }
 
+/// Regression test: `storage_update_from_memory` must check `len_after` against
+/// `max_storage_slot_length` *before* calling `Vec::resize`.  Without that check,
+/// a large `write_len` register value causes an enormous allocation that OOMs the
+/// process before any other guard can fire.
+///
+/// The distinguishing property: on an empty slot with a small source buffer,
+/// the fixed code returns `StorageOutOfBounds` immediately.  The unfixed code
+/// instead calls `resize(limit + 1)` first (cheap here, catastrophic for larger
+/// values), then fails at `memory.read(src, limit + 1)` with `MemoryOverflow` —
+/// a different panic reason, so the assertion below catches the regression.
+#[test]
+fn supd_write_len_exceeding_limit_on_empty_slot_panics_before_resize() {
+    const SLOT_KEY: RegId = RegId::new(0x38);
+
+    let limit = ConsensusParameters::default()
+        .script_params()
+        .max_storage_slot_length();
+
+    // Allocate a 32-byte key (all zeros) and a 32-byte source buffer.
+    // The source is intentionally far smaller than `limit + 1` so that
+    // without the early size check the subsequent `memory.read` would
+    // return MemoryOverflow rather than StorageOutOfBounds.
+    let mut program = vec![
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        // HP now points to the 32-byte source buffer.
+    ];
+    // Load write_len = limit + 1 into register 0x10.
+    program.extend(set_full_word(0x10, limit + 1));
+    program.extend([
+        op::supd(SLOT_KEY, RegId::HP, RegId::ZERO, 0x10),
+        op::ret(RegId::ONE),
+    ]);
+
+    let receipts = call_contract_once(program);
+    assert_panics(&receipts, PanicReason::StorageOutOfBounds);
+}
+
 #[rstest::rstest]
 fn supd_supi_exceeding_slot_max_length_panics(
     #[values(true, false)] imm: bool, // use immediate instruction variant

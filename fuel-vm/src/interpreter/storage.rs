@@ -216,6 +216,11 @@ where
             convert::to_usize(write_len).ok_or(PanicReason::MemoryOverflow)?;
         let len_after = offset.saturating_add(write_len);
 
+        let max_size = self.interpreter_params.max_storage_slot_length;
+        if (len_after as u64) > max_size {
+            return Err(RuntimeError::Recoverable(PanicReason::StorageOutOfBounds));
+        }
+
         if len_after > value.len() {
             value.resize(len_after, 0);
         }

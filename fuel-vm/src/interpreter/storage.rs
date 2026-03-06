@@ -158,23 +158,12 @@ where
                 key,
                 |memory, value| match value {
                     Some(value) => {
-                        if offset > value.len() {
-                            return Err(RuntimeError::Recoverable(
-                                PanicReason::StorageOutOfBounds,
-                            ));
-                        }
-                        let value = &value[offset..];
-
-                        if len > value.len() {
-                            return Err(RuntimeError::Recoverable(
-                                PanicReason::StorageOutOfBounds,
-                            ));
-                        }
-
-                        let value = &value[..len];
+                        let src = value.get(offset..offset.saturating_add(len)).ok_or(
+                            RuntimeError::Recoverable(PanicReason::StorageOutOfBounds),
+                        )?;
 
                         let dst = memory.write(owner, dst_ptr, len)?;
-                        dst.copy_from_slice(value);
+                        dst.copy_from_slice(src);
                         Ok(0)
                     }
                     None => Ok(1),

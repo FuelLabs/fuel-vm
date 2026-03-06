@@ -34,6 +34,8 @@ mod predicate;
 mod receipts;
 mod spec;
 mod storage;
+mod storage_hot_cold;
+mod storage_legacy;
 mod upgrade;
 mod upload;
 mod validation;

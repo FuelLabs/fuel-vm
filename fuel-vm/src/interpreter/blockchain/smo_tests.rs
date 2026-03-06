@@ -7,6 +7,7 @@ use alloc::{
 use core::convert::Infallible;
 
 use crate::{
+    consts::*,
     interpreter::contract::balance as contract_balance,
     storage::MemoryStorage,
 };

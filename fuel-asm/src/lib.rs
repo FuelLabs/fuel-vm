@@ -378,10 +378,8 @@ impl_instructions! {
     0xc5 SUPD supd [key_ptr: RegId value_ptr: RegId offset: RegId len: RegId]
     "Update a storage slot (read+write) (immedidate length)"
     0xc6 SUPI supi [key_ptr: RegId value_ptr: RegId offset: RegId len: Imm06]
-    "Storage preload"
+    "Storage preload (get slot size)"
     0xc7 SPLD spld [len_dst: RegId key_ptr: RegId]
-    "Copy from preloaded storage slot"
-    0xc8 SPCP spcp [dst: RegId offset: RegId len_reg: RegId len_imm: Imm06]
 }
 
 impl Instruction {
@@ -1031,8 +1029,9 @@ fn check_predicate_allowed() {
             let should_allow = match repr {
                 BAL | BHEI | BHSH | BURN | CALL | CB | CCP | CROO | CSIZ | LOG | LOGD
                 | MINT | RETD | RVRT | SMO | SCWQ | SRW | SRWQ | SWW | SWWQ | SCLR
-                | SRDD | SRDI | SWRD | SWRI | SUPD | SUPI | SPLD | SPCP | TIME | TR
-                | TRO => false,
+                | SRDD | SRDI | SWRD | SWRI | SUPD | SUPI | SPLD | TIME | TR | TRO => {
+                    false
+                }
                 _ => true,
             };
             assert_eq!(should_allow, repr.is_predicate_allowed());

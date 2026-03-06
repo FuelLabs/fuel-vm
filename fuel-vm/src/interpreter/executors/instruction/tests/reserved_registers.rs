@@ -267,7 +267,6 @@ fn writes_to_ra(opcode: Opcode) -> bool {
         Opcode::SUPD => false,
         Opcode::SUPI => false,
         Opcode::SPLD => true,
-        Opcode::SPCP => false,
     }
 }
 
@@ -401,6 +400,5 @@ fn writes_to_rb(opcode: Opcode) -> bool {
         Opcode::SUPD => false,
         Opcode::SUPI => false,
         Opcode::SPLD => false,
-        Opcode::SPCP => false,
     }
 }

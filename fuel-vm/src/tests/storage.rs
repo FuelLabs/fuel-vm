@@ -31,7 +31,7 @@ use fuel_types::{
 };
 
 /// Helper to deploy and call a contract once.
-fn call_contract_once(program: Vec<Instruction>) -> Vec<Receipt> {
+pub fn call_contract_once(program: Vec<Instruction>) -> Vec<Receipt> {
     let mut test_context = TestBuilder::new(2322u64);
 
     let contract_id = test_context.setup_contract(program, None, None).contract_id;
@@ -49,7 +49,7 @@ fn call_contract_once(program: Vec<Instruction>) -> Vec<Receipt> {
 
     let result = test_context
         .start_script(script_call.clone(), script_call_data)
-        .script_gas_limit(1_000_000)
+        .script_gas_limit(10_000_000)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)
@@ -60,7 +60,7 @@ fn call_contract_once(program: Vec<Instruction>) -> Vec<Receipt> {
 }
 
 #[test]
-fn srwq_panics_on_empty_slot() {
+fn srwq_panics_on_zero_length_slot() {
     const DISCARD: RegId = RegId::new(0x39);
     const SLOT_KEY: RegId = RegId::new(0x38);
     const BUFFER: RegId = RegId::new(0x37);
@@ -71,7 +71,7 @@ fn srwq_panics_on_empty_slot() {
         op::aloc(0x15),
         op::move_(SLOT_KEY, RegId::HP),
         op::move_(BUFFER, RegId::HP),
-        // Create empty slot
+        // Create slot with no bytes
         op::swri(SLOT_KEY, BUFFER, 0),
         // Attempt read using SRWQ, should panic
         op::movi(0x10, 1),
@@ -731,6 +731,47 @@ fn swrd_exceeding_slot_max_length_panics() {
     assert_panics(&receipts, PanicReason::StorageOutOfBounds);
 }
 
+/// Regression test: `storage_update_from_memory` must check `len_after` against
+/// `max_storage_slot_length` *before* calling `Vec::resize`.  Without that check,
+/// a large `write_len` register value causes an enormous allocation that OOMs the
+/// process before any other guard can fire.
+///
+/// The distinguishing property: on an empty slot with a small source buffer,
+/// the fixed code returns `StorageOutOfBounds` immediately.  The unfixed code
+/// instead calls `resize(limit + 1)` first (cheap here, catastrophic for larger
+/// values), then fails at `memory.read(src, limit + 1)` with `MemoryOverflow` —
+/// a different panic reason, so the assertion below catches the regression.
+#[test]
+fn supd_write_len_exceeding_limit_on_empty_slot_panics_before_resize() {
+    const SLOT_KEY: RegId = RegId::new(0x38);
+
+    let limit = ConsensusParameters::default()
+        .script_params()
+        .max_storage_slot_length();
+
+    // Allocate a 32-byte key (all zeros) and a 32-byte source buffer.
+    // The source is intentionally far smaller than `limit + 1` so that
+    // without the early size check the subsequent `memory.read` would
+    // return MemoryOverflow rather than StorageOutOfBounds.
+    let mut program = vec![
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(SLOT_KEY, RegId::HP),
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        // HP now points to the 32-byte source buffer.
+    ];
+    // Load write_len = limit + 1 into register 0x10.
+    program.extend(set_full_word(0x10, limit + 1));
+    program.extend([
+        op::supd(SLOT_KEY, RegId::HP, RegId::ZERO, 0x10),
+        op::ret(RegId::ONE),
+    ]);
+
+    let receipts = call_contract_once(program);
+    assert_panics(&receipts, PanicReason::StorageOutOfBounds);
+}
+
 #[rstest::rstest]
 fn supd_supi_exceeding_slot_max_length_panics(
     #[values(true, false)] imm: bool, // use immediate instruction variant
@@ -1108,275 +1149,78 @@ fn spld_reports_nonexisting_slots_in_err() {
     panic!("Missing Log receipt");
 }
 
-#[rstest::rstest]
-fn spcp_copies_whole_value(#[values(0, 1, 2, 63, 100)] len: u8) {
+#[test]
+fn storage_new_bytes_charge_only_performed_for_actually_added_bytes() {
     const SLOT_KEY: RegId = RegId::new(0x38);
     const BUFFER: RegId = RegId::new(0x37);
 
-    let mut program = vec![
+    const BYTES_TO_WRITE: u64 = 8;
+
+    let program = vec![
         op::movi(0x15, 32),
         op::aloc(0x15),
         op::move_(SLOT_KEY, RegId::HP),
-    ];
-    program.extend(create_example_buffer());
-    program.extend([
-        op::move_(BUFFER, RegId::HP),
-        op::swri(SLOT_KEY, BUFFER, len as _),
-        op::spld(0x11, SLOT_KEY),
-        op::mcli(BUFFER, 256),
-        op::spcp(BUFFER, RegId::ZERO, 0x11, 0),
-        op::movi(0x10, 256),
-        op::logd(RegId::ZERO, RegId::ZERO, BUFFER, 0x10),
-        op::ret(RegId::ONE),
-    ]);
-
-    let receipts = call_contract_once(program);
-    assert_success(&receipts);
-
-    let example_data: [u8; 256] = array::from_fn(|i| i as u8);
-    let mut expected = [0u8; 256];
-    expected[..(len as usize)].copy_from_slice(&example_data[..len as usize]);
-
-    for r in receipts {
-        let Receipt::LogData { data, .. } = r else {
-            continue;
-        };
-        let data = data.as_ref().unwrap();
-        assert_eq!(**data, expected);
-        return;
-    }
-
-    panic!("Missing LogData receipt");
-}
-
-#[rstest::rstest]
-fn spcp_copies_correct_subslice(
-    #[values(0, 1, 2, 63, 100)] offset: u8,
-    #[values(0, 1, 2, 63, 100)] len: u8,
-) {
-    const DISCARD: RegId = RegId::new(0x39);
-    const SLOT_KEY: RegId = RegId::new(0x38);
-    const BUFFER: RegId = RegId::new(0x37);
-
-    let mut program = vec![
-        op::movi(0x15, 32),
         op::aloc(0x15),
-        op::move_(SLOT_KEY, RegId::HP),
-    ];
-    program.extend(create_example_buffer());
-    program.extend([
         op::move_(BUFFER, RegId::HP),
-        op::swri(SLOT_KEY, BUFFER, 256),
-        op::spld(DISCARD, SLOT_KEY),
-        op::mcli(RegId::HP, 256),
-        op::movi(0x10, offset as _),
-        op::movi(0x11, len as _),
-        op::spcp(BUFFER, 0x10, 0x11, 0),
-        op::movi(0x10, 256),
-        op::logd(RegId::ZERO, RegId::ZERO, BUFFER, 0x10),
+        op::swri(SLOT_KEY, BUFFER, BYTES_TO_WRITE as _),
         op::ret(RegId::ONE),
-    ]);
+    ];
 
-    let receipts = call_contract_once(program);
-    assert_success(&receipts);
+    let mut test_context = TestBuilder::new(2322u64);
 
-    let example_data: [u8; 256] = array::from_fn(|i| i as u8);
-    let mut expected = [0u8; 256];
-    expected[..(len as usize)].copy_from_slice(
-        &example_data[(offset as usize)..(offset as usize + len as usize)],
+    let contract_id = test_context.setup_contract(program, None, None).contract_id;
+
+    let (script_call, _) = script_with_data_offset!(
+        data_offset,
+        vec![
+            op::movi(0x10, data_offset as Immediate18),
+            op::call(0x10, RegId::ZERO, 0x10, RegId::CGAS),
+            op::ret(RegId::ONE),
+        ],
+        test_context.get_tx_params().tx_offset()
     );
+    let script_call_data = Call::new(contract_id, 0, 0).to_bytes();
 
-    for r in receipts {
-        let Receipt::LogData { data, .. } = r else {
-            continue;
-        };
-        let data = data.as_ref().unwrap();
-        assert_eq!(**data, expected);
-        return;
-    }
+    // Call the contract twice. The first call should charge gas for writing 8 new bytes,
+    // while the second call should charge less since it is overwriting existing data.
 
-    panic!("Missing LogData receipt");
-}
+    let result = test_context
+        .start_script(script_call.clone(), script_call_data.clone())
+        .script_gas_limit(1_000_000)
+        .contract_input(contract_id)
+        .fee_input()
+        .contract_output(&contract_id)
+        .variable_output(AssetId::zeroed())
+        .execute();
+    let receipts1 = result.receipts().to_vec();
+    assert_success(&receipts1);
 
-#[rstest::rstest]
-fn spcp_panics_if_preloaded_data_range_is_invalid(
-    #[values(
-        StorageOverflowCase::Length,
-        StorageOverflowCase::Offset,
-        StorageOverflowCase::OffsetPlusLength
-    )]
-    case: StorageOverflowCase,
-) {
-    const DISCARD: RegId = RegId::new(0x39);
-    const SLOT_KEY: RegId = RegId::new(0x38);
-    const BUFFER: RegId = RegId::new(0x37);
+    let result = test_context
+        .start_script(script_call.clone(), script_call_data)
+        .script_gas_limit(1_000_000)
+        .contract_input(contract_id)
+        .fee_input()
+        .contract_output(&contract_id)
+        .variable_output(AssetId::zeroed())
+        .execute();
+    let receipts2 = result.receipts().to_vec();
+    assert_success(&receipts2);
 
-    let (offset, len): (u16, u16) = match case {
-        StorageOverflowCase::Length => (0, 33),
-        StorageOverflowCase::Offset => (33, 0),
-        StorageOverflowCase::OffsetPlusLength => (16, 17),
+    let Some(Receipt::ScriptResult {
+        gas_used: gas_used_1,
+        ..
+    }) = receipts1.last()
+    else {
+        panic!("Missing ScriptResult receipt");
     };
 
-    let receipts = call_contract_once(vec![
-        op::movi(0x15, 32),
-        op::aloc(0x15),
-        op::move_(SLOT_KEY, RegId::HP),
-        op::movi(0x15, 64),
-        op::aloc(0x15),
-        op::move_(BUFFER, RegId::HP),
-        op::swri(SLOT_KEY, BUFFER, 32),
-        op::spld(DISCARD, SLOT_KEY),
-        op::movi(0x10, offset as _),
-        op::movi(0x11, len as _),
-        op::spcp(BUFFER, 0x10, 0x11, 0),
-        op::ret(RegId::ONE),
-    ]);
-    assert_panics(&receipts, PanicReason::StorageOutOfBounds);
-}
+    let Some(Receipt::ScriptResult {
+        gas_used: gas_used_2,
+        ..
+    }) = receipts2.last()
+    else {
+        panic!("Missing ScriptResult receipt");
+    };
 
-#[rstest::rstest]
-fn spcp_panics_if_dst_range_is_invalid(
-    #[values(
-        MemoryOverflowCase::OffByOne,
-        MemoryOverflowCase::Outside,
-        MemoryOverflowCase::Overflow
-    )]
-    case: MemoryOverflowCase,
-) {
-    const DISCARD: RegId = RegId::new(0x39);
-    const SLOT_KEY: RegId = RegId::new(0x38);
-    const BUFFER: RegId = RegId::new(0x37);
-
-    let mut program = set_full_word(0x20, VM_MAX_RAM);
-    program.push(match case {
-        MemoryOverflowCase::OffByOne => op::addi(0x10, 0x20, 0),
-        MemoryOverflowCase::Outside => op::addi(0x10, 0x20, 1),
-        MemoryOverflowCase::Overflow => op::not(0x10, RegId::ZERO),
-    });
-    program.extend([
-        op::movi(0x15, 32),
-        op::aloc(0x15),
-        op::move_(SLOT_KEY, RegId::HP),
-        op::move_(BUFFER, RegId::HP),
-        op::swri(SLOT_KEY, BUFFER, 32),
-        op::spld(DISCARD, SLOT_KEY),
-        op::spcp(0x10, RegId::ZERO, RegId::ONE, 0),
-        op::ret(RegId::ONE),
-    ]);
-
-    let receipts = call_contract_once(program);
-    assert_panics(&receipts, PanicReason::MemoryOverflow);
-}
-
-#[test]
-fn spcp_panics_if_length_field_sum_overflows() {
-    const DISCARD: RegId = RegId::new(0x39);
-    const SLOT_KEY: RegId = RegId::new(0x38);
-    const BUFFER: RegId = RegId::new(0x37);
-
-    let receipts = call_contract_once(vec![
-        op::movi(0x15, 32),
-        op::aloc(0x15),
-        op::move_(SLOT_KEY, RegId::HP),
-        op::move_(BUFFER, RegId::HP),
-        op::swri(SLOT_KEY, BUFFER, 32),
-        op::spld(DISCARD, SLOT_KEY),
-        op::not(0x10, RegId::ZERO),
-        op::spcp(BUFFER, RegId::ZERO, 0x10, 1),
-        op::ret(RegId::ONE),
-    ]);
-    assert_panics(&receipts, PanicReason::MemoryOverflow);
-}
-
-#[test]
-fn preload_is_cleared_on_contract_call() {
-    const DISCARD: RegId = RegId::new(0x39);
-    const SLOT_KEY: RegId = RegId::new(0x38);
-    const IS_NESTED: RegId = RegId::new(0x36);
-
-    let receipts = call_contract_once(vec![
-        // If in nested context, attempt to copy from the preloaded data
-        // which should now be empty and thus cause a panic.
-        // Just before panicing instruction, log something to make sure we
-        // got here.
-        op::jnef(IS_NESTED, RegId::ONE, RegId::ZERO, 5),
-        op::movi(0x15, 32),
-        op::aloc(0x15),
-        op::log(RegId::ONE, RegId::ZERO, RegId::ZERO, RegId::ZERO),
-        op::spcp(RegId::HP, RegId::ZERO, RegId::ONE, 0),
-        op::ret(RegId::ONE),
-        // Allocate zeroed slot key
-        op::movi(0x15, 32),
-        op::aloc(0x15),
-        op::move_(SLOT_KEY, RegId::HP),
-        // Write dummy value and preload it back
-        op::swri(SLOT_KEY, SLOT_KEY, 32),
-        op::spld(DISCARD, SLOT_KEY),
-        // Call this contract recursively
-        op::movi(IS_NESTED, 1),
-        op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
-        op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
-        // Unreachable
-        op::divi(RegId::ZERO, RegId::ZERO, 0),
-    ]);
-    assert_panics(&receipts, PanicReason::StorageOutOfBounds);
-
-    for r in receipts {
-        let Receipt::Log { ra, rb, .. } = r else {
-            continue;
-        };
-        assert!(ra == 1 && rb == 0, "Should have reached nested context");
-        return;
-    }
-
-    panic!("Missing Log receipt");
-}
-
-#[rstest::rstest]
-fn preload_is_cleared_on_contract_return(
-    #[values(true, false)] return_data: bool, // test retd instead of ret instruction
-) {
-    const DISCARD: RegId = RegId::new(0x39);
-    const SLOT_KEY: RegId = RegId::new(0x38);
-    const IS_NESTED: RegId = RegId::new(0x36);
-
-    let receipts = call_contract_once(vec![
-        // Allocate zeroed slot key
-        op::movi(0x15, 32),
-        op::aloc(0x15),
-        op::move_(SLOT_KEY, RegId::HP),
-        // If in nested context, write the a dummy value, preload it and return
-        // immediately
-        op::jnef(IS_NESTED, RegId::ONE, RegId::ZERO, 3),
-        op::swri(SLOT_KEY, SLOT_KEY, 32),
-        op::spld(DISCARD, SLOT_KEY),
-        if return_data {
-            op::retd(RegId::ZERO, RegId::ONE)
-        } else {
-            op::ret(RegId::ONE)
-        },
-        // Call this contract recursively
-        op::movi(IS_NESTED, 1),
-        op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
-        op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
-        // Now in the outer context, try to copy from preloaded data
-        // which should be empty and thus cause a panic.
-        // Just before panicing instruction, log something to make sure we
-        // got here.
-        op::log(RegId::ONE, RegId::ZERO, RegId::ZERO, RegId::ZERO),
-        op::spcp(RegId::HP, RegId::ZERO, RegId::ONE, 0),
-        // Unreachable
-        op::divi(RegId::ZERO, RegId::ZERO, 0),
-    ]);
-    assert_panics(&receipts, PanicReason::StorageOutOfBounds);
-
-    for r in receipts {
-        let Receipt::Log { ra, rb, .. } = r else {
-            continue;
-        };
-        assert!(ra == 1 && rb == 0, "Should have reached nested context");
-        return;
-    }
-
-    panic!("Missing Log receipt");
+    assert_eq!(*gas_used_1, *gas_used_2 + BYTES_TO_WRITE,);
 }

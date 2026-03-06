@@ -268,7 +268,6 @@ where
         Opcode::SUPD => execute_op!(SUPD),
         Opcode::SUPI => execute_op!(SUPI),
         Opcode::SPLD => execute_op!(SPLD),
-        Opcode::SPCP => execute_op!(SPCP),
     }
 }
 

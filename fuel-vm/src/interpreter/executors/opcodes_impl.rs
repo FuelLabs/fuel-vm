@@ -2232,18 +2232,20 @@ where
             Bytes32::new(interpreter.memory().read_bytes(interpreter.registers[a])?);
         let range = crate::convert::to_usize(interpreter.registers[c])
             .ok_or(PanicReason::TooManySlots)?;
+        let contract_id = interpreter.internal_contract()?;
 
         let mut all_previously_set = true;
         for key in key_range(key, range) {
             let key = key.ok_or(PanicReason::TooManySlots)?;
-            let was_set = interpreter.storage_read_slot(key, |_, v| v.is_some())?;
+            let was_set =
+                interpreter.storage_read_slot(contract_id, key, |_, v| v.is_some())?;
             if !was_set {
                 all_previously_set = false;
             }
         }
 
         interpreter.write_user_register_legacy(b, all_previously_set.into())?;
-        interpreter.storage_clear_slot_range(key, range)?;
+        interpreter.storage_clear_slot_range(contract_id, key, range)?;
         inc_pc(interpreter.registers.pc_mut());
         Ok(ExecuteState::Proceed)
     }
@@ -2266,6 +2268,7 @@ where
         let key =
             Bytes32::new(interpreter.memory().read_bytes(interpreter.registers[c])?);
         let offset = d.to_u8() as usize;
+        let contract_id = interpreter.internal_contract()?;
 
         if a == b {
             // The error is weirdly named, but this is the previous behavior too.
@@ -2274,21 +2277,22 @@ where
             ));
         }
 
-        let result = interpreter.storage_read_slot(key, |_, v| match v {
-            Some(bytes) => {
-                let offset_bytes = offset.saturating_mul(8);
-                let end_bytes = offset_bytes.saturating_add(8);
+        let result =
+            interpreter.storage_read_slot(contract_id, key, |_, v| match v {
+                Some(bytes) => {
+                    let offset_bytes = offset.saturating_mul(8);
+                    let end_bytes = offset_bytes.saturating_add(8);
 
-                if (bytes.len() as u64) < (end_bytes as u64) {
-                    return Err(PanicReason::StorageOutOfBounds);
+                    if (bytes.len() as u64) < (end_bytes as u64) {
+                        return Err(PanicReason::StorageOutOfBounds);
+                    }
+
+                    let mut buf = [0u8; 8];
+                    buf.copy_from_slice(&bytes[offset_bytes..end_bytes]);
+                    Ok(Some(Word::from_be_bytes(buf)))
                 }
-
-                let mut buf = [0u8; 8];
-                buf.copy_from_slice(&bytes[offset_bytes..end_bytes]);
-                Ok(Some(Word::from_be_bytes(buf)))
-            }
-            None => Ok(None),
-        })??;
+                None => Ok(None),
+            })??;
 
         if let Some(value) = result {
             interpreter.write_user_register_legacy(a, value)?;
@@ -2322,12 +2326,13 @@ where
             Bytes32::new(interpreter.memory().read_bytes(interpreter.registers[c])?);
         let range = crate::convert::to_usize(interpreter.registers[d])
             .ok_or(PanicReason::TooManySlots)?;
+        let contract_id = interpreter.internal_contract()?;
         let owner = interpreter.ownership_registers();
 
         let mut all_previously_set = true;
         for (i, key) in key_range(key, range).enumerate() {
             let key = key.ok_or(PanicReason::TooManySlots)?;
-            interpreter.storage_read_slot(key, |memory, v| {
+            interpreter.storage_read_slot(contract_id, key, |memory, v| {
                 let dst_ptr = start_ptr.saturating_add((i as u64).saturating_mul(32));
                 let dst = memory.write(owner, dst_ptr, 32u64)?;
                 match v {
@@ -2369,12 +2374,14 @@ where
         let (a, b, c) = self.unpack();
         let key =
             Bytes32::new(interpreter.memory().read_bytes(interpreter.registers[a])?);
+        let contract_id = interpreter.internal_contract()?;
 
         let mut value = Bytes32::zeroed();
         value.as_mut()[..8].copy_from_slice(&interpreter.registers[c].to_be_bytes());
 
-        let created_new = interpreter.storage_read_slot(key, |_, v| v.is_none())?;
-        interpreter.storage_write_slot(key, value.to_vec())?;
+        let created_new =
+            interpreter.storage_read_slot(contract_id, key, |_, v| v.is_none())?;
+        interpreter.storage_write_slot(contract_id, key, value.to_vec())?;
 
         interpreter.write_user_register_legacy(b, created_new.into())?;
         inc_pc(interpreter.registers.pc_mut());
@@ -2401,18 +2408,19 @@ where
         let start_ptr = interpreter.registers[c];
         let range = crate::convert::to_usize(interpreter.registers[d])
             .ok_or(PanicReason::TooManySlots)?;
+        let contract_id = interpreter.internal_contract()?;
 
         let mut num_previously_unset = 0u64;
         for (i, key) in key_range(key, range).enumerate() {
             let key = key.ok_or(PanicReason::TooManySlots)?;
             let previously_set =
-                interpreter.storage_read_slot(key, |_, v| v.is_some())?;
+                interpreter.storage_read_slot(contract_id, key, |_, v| v.is_some())?;
             #[allow(clippy::arithmetic_side_effects)] // Safety: it's an u64
             if !previously_set {
                 num_previously_unset += 1;
             }
 
-            interpreter.storage_write_slot_from_memory(key, |memory| {
+            interpreter.storage_write_slot_from_memory(contract_id, key, |memory| {
                 let src_ptr = start_ptr.saturating_add((i as u64).saturating_mul(32));
                 Ok(memory.read(src_ptr, 32u64)?)
             })?;
@@ -2799,7 +2807,8 @@ where
         );
         let num_slots = crate::convert::to_usize(interpreter.registers[r_num_slots])
             .ok_or(PanicReason::TooManySlots)?;
-        interpreter.storage_clear_slot_range(start_key, num_slots)?;
+        let contract_id = interpreter.internal_contract()?;
+        interpreter.storage_clear_slot_range(contract_id, start_key, num_slots)?;
         let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
         inc_pc(pc);
         Ok(ExecuteState::Proceed)

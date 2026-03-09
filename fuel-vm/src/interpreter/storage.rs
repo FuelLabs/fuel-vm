@@ -73,15 +73,45 @@ where
         Ok(r)
     }
 
+    /// Returns the byte length of the current value for a storage slot **without
+    /// charging gas**.
+    ///
+    /// Checks the in-memory cache first (a single `BTreeMap` lookup with no I/O).
+    /// On a cold miss it fetches from backing storage and populates the cache so
+    /// that any subsequent charged read is hot.
+    ///
+    /// This is used by [`Self::storage_write_slot`] to determine `old_len` for
+    /// the `new_storage_per_byte` charge.  Callers such as `SWW` and `SWWQ`
+    /// already perform a charged `storage_read_slot` before calling
+    /// `storage_write_slot`, which warms the cache.  Using this helper instead
+    /// of a second `storage_read_slot` avoids the extra `storage_read_hot`
+    /// charge that would otherwise be incurred on every write.
+    fn storage_slot_len_no_gas(
+        &mut self,
+        contract_id: ContractId,
+        key: Bytes32,
+    ) -> Result<usize, RuntimeError<S::DataError>> {
+        let cache_key = (contract_id, key);
+        if let Some(v) = self.storage_slot_cache.get(&cache_key) {
+            return Ok(v.as_ref().map(|d| d.len()).unwrap_or(0));
+        }
+        let value = StorageRead::<ContractsState>::read_alloc(
+            &self.storage,
+            &ContractsStateKey::new(&contract_id, &key),
+        )
+        .map_err(RuntimeError::Storage)?;
+        let len = value.as_ref().map(|d| d.len()).unwrap_or(0);
+        self.storage_slot_cache.insert(cache_key, value);
+        Ok(len)
+    }
+
     pub(crate) fn storage_write_slot(
         &mut self,
         contract_id: ContractId,
         key: Bytes32,
         value: Vec<u8>,
     ) -> Result<(), RuntimeError<S::DataError>> {
-        let old_len = self.storage_read_slot(contract_id, key, |_, data| {
-            data.unwrap_or_default().len()
-        })?;
+        let old_len = self.storage_slot_len_no_gas(contract_id, key)?;
         let max_size = self.interpreter_params.max_storage_slot_length;
         if (value.len() as u64) > max_size {
             return Err(RuntimeError::Recoverable(PanicReason::StorageOutOfBounds));

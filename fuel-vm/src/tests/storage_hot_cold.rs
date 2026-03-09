@@ -262,6 +262,95 @@ fn cache_not_shared_across_contracts() {
     );
 }
 
+/// SCWQ's pre-read loop warms the slot cache, so a read that immediately
+/// follows a clear is served from cache (hot) rather than from backing storage
+/// (cold).
+///
+/// Both programs: SWWQ K1 (write 1 slot), SCWQ K1 (clear 1 slot), then read.
+///
+/// * **hot program** – reads K1 after clearing → cache holds `None` → hot
+/// * **cold program** – reads K2 (never accessed) → cold miss
+///
+/// | operation                       | hot program | cold program |
+/// |---------------------------------|-------------|--------------|
+/// | swwq K1 pre-read (cold miss)    | 100         | 100          |
+/// | scwq K1 pre-read (cache hit)    |   1         |   1          |
+/// | srdi (K1 hot / K2 cold)         |   1         | 100          |
+/// | **total**                       | **102**     | **201**      |
+///
+/// If SCWQ's pre-read loop did not populate the cache, the read after the
+/// clear would be a cold miss and the totals would both be 201.
+#[test]
+fn scwq_clears_populate_cache() {
+    const STATUS: RegId = RegId::new(0x25);
+
+    // Common prefix: allocate K1 (zeros), K2 (last byte = 1), a 32-byte write
+    // buffer (zeros), write 1 slot to K1, then clear it via SCWQ.
+    let common: Vec<Instruction> = vec![
+        // KEY1 – all-zero 32-byte key
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(KEY1, RegId::HP),
+        // KEY2 – 32-byte key with last byte = 1 (a distinct, untouched key)
+        op::movi(0x15, 32),
+        op::aloc(0x15),
+        op::move_(KEY2, RegId::HP),
+        op::movi(0x10, 1),
+        op::sb(KEY2, 0x10, 31),
+        // BUF – 32-byte source buffer (all zeros)
+        op::movi(0x15, SLOT_LEN as _),
+        op::aloc(0x15),
+        op::move_(BUF, RegId::HP),
+        // SWWQ: write 1 slot to K1.
+        //   → pre-read K1: cold miss, charges COLD_BASE; warms cache.
+        //   → internal storage_slot_len_no_gas: cache hit, no gas.
+        op::swwq(KEY1, STATUS, BUF, RegId::ONE),
+        // SCWQ: clear 1 slot starting at K1.
+        //   → pre-read K1: cache hit, charges HOT_BASE.
+        //   → storage_clear_slot_range: sets cache[K1] = None.
+        op::scwq(KEY1, STATUS, RegId::ONE),
+        // DST – destination buffer for the upcoming read
+        op::movi(0x15, SLOT_LEN as _),
+        op::aloc(0x15),
+        op::move_(DST, RegId::HP),
+    ];
+
+    // Hot: read K1 — in cache as None after the clear → HOT_BASE.
+    let hot_program: Vec<Instruction> = common
+        .iter()
+        .cloned()
+        .chain([
+            op::srdi(DST, KEY1, RegId::ZERO, SLOT_LEN),
+            op::ret(RegId::ONE),
+        ])
+        .collect();
+
+    // Cold: read K2 — never accessed, cold miss → COLD_BASE.
+    let cold_program: Vec<Instruction> = common
+        .into_iter()
+        .chain([
+            op::srdi(DST, KEY2, RegId::ZERO, SLOT_LEN),
+            op::ret(RegId::ONE),
+        ])
+        .collect();
+
+    let gas_costs = hot_cold_gas_costs();
+    let receipts_hot = run_contract(hot_program, gas_costs.clone());
+    let receipts_cold = run_contract(cold_program, gas_costs);
+
+    assert_success(&receipts_hot);
+    assert_success(&receipts_cold);
+
+    let hot = gas_used(&receipts_hot);
+    let cold = gas_used(&receipts_cold);
+
+    assert_eq!(
+        cold - hot,
+        COLD_BASE - HOT_BASE,
+        "After SCWQ, reading a cleared slot should be a hot cache hit"
+    );
+}
+
 /// The slot cache persists across the call–return boundary within a single
 /// transaction.  Calling the same contract twice and reading the same key in
 /// each call: the first call is a cold miss, the second is a hot hit.

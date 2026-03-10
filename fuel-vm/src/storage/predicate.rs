@@ -37,7 +37,6 @@ use super::{
     ContractsAssets,
     ContractsRawCode,
     ContractsState,
-    ContractsStateData,
     UploadedBytecodes,
     interpreter::ContractsAssetsStorage,
 };
@@ -487,33 +486,12 @@ where
         Err(Self::DataError::UnsupportedStorageOperation)
     }
 
-    fn contract_state_range(
-        &self,
-        _id: &ContractId,
-        _start_key: &Bytes32,
-        _range: usize,
-    ) -> Result<Vec<Option<Cow<'_, ContractsStateData>>>, Self::DataError> {
-        Err(Self::DataError::UnsupportedStorageOperation)
-    }
-
-    fn contract_state_insert_range<'a, I>(
-        &mut self,
-        _: &ContractId,
-        _: &Bytes32,
-        _: I,
-    ) -> Result<usize, Self::DataError>
-    where
-        I: Iterator<Item = &'a [u8]>,
-    {
-        Err(Self::DataError::UnsupportedStorageOperation)
-    }
-
     fn contract_state_remove_range(
         &mut self,
         _contract: &ContractId,
         _start_key: &Bytes32,
         _range: usize,
-    ) -> Result<Option<()>, Self::DataError> {
+    ) -> Result<(), Self::DataError> {
         Err(Self::DataError::UnsupportedStorageOperation)
     }
 }

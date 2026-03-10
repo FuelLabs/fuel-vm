@@ -35,10 +35,7 @@ use crate::{
         UploadedBytecodes,
     },
 };
-use alloc::{
-    borrow::Cow,
-    vec::Vec,
-};
+use alloc::borrow::Cow;
 use core::ops::{
     Deref,
     DerefMut,
@@ -203,63 +200,13 @@ pub trait InterpreterStorage:
         Ok(())
     }
 
-    /// Insert a key-value mapping into a contract storage.
-    fn contract_state_replace(
-        &mut self,
-        contract: &ContractId,
-        key: &Bytes32,
-        value: &[u8],
-    ) -> Result<Option<Vec<u8>>, Self::DataError> {
-        StorageWrite::<ContractsState>::replace_bytes(
-            self,
-            &(contract, key).into(),
-            value,
-        )
-    }
-
-    /// Fetch a range of values from a key-value mapping in a contract storage.
-    /// Returns the full range requested using optional values in case
-    /// a requested slot is unset.  
-    fn contract_state_range(
-        &self,
-        id: &ContractId,
-        start_key: &Bytes32,
-        range: usize,
-    ) -> Result<Vec<Option<Cow<'_, ContractsStateData>>>, Self::DataError>;
-
-    /// Insert a range of key-value mappings into contract storage.
-    /// Returns the number of keys that were previously unset but are now set.
-    fn contract_state_insert_range<'a, I>(
-        &mut self,
-        contract: &ContractId,
-        start_key: &Bytes32,
-        values: I,
-    ) -> Result<usize, Self::DataError>
-    where
-        I: Iterator<Item = &'a [u8]>;
-
     /// Remove a range of key-values from contract storage.
-    /// Returns None if any of the keys in the range were already unset.
     fn contract_state_remove_range(
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
         range: usize,
-    ) -> Result<Option<()>, Self::DataError>;
-
-    /// Remove a range of key-values from contract storage.
-    /// Unlike `contract_state_remove_range`, this method does not return
-    /// information about whether the keys were previously set or not.
-    fn contract_state_remove_range_nostatus(
-        &mut self,
-        contract: &ContractId,
-        start_key: &Bytes32,
-        range: usize,
-    ) -> Result<(), Self::DataError> {
-        // Default impl that just calls the possibly less efficient version
-        self.contract_state_remove_range(contract, start_key, range)
-            .map(|_| ())
-    }
+    ) -> Result<(), Self::DataError>;
 }
 
 /// Storage operations for contract assets.
@@ -371,43 +318,12 @@ where
         <S as InterpreterStorage>::storage_contract_size(self.deref(), id)
     }
 
-    fn contract_state_range(
-        &self,
-        id: &ContractId,
-        start_key: &Bytes32,
-        range: usize,
-    ) -> Result<Vec<Option<Cow<'_, ContractsStateData>>>, Self::DataError> {
-        <S as InterpreterStorage>::contract_state_range(
-            self.deref(),
-            id,
-            start_key,
-            range,
-        )
-    }
-
-    fn contract_state_insert_range<'a, I>(
-        &mut self,
-        contract: &ContractId,
-        start_key: &Bytes32,
-        values: I,
-    ) -> Result<usize, Self::DataError>
-    where
-        I: Iterator<Item = &'a [u8]>,
-    {
-        <S as InterpreterStorage>::contract_state_insert_range(
-            self.deref_mut(),
-            contract,
-            start_key,
-            values,
-        )
-    }
-
     fn contract_state_remove_range(
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
         range: usize,
-    ) -> Result<Option<()>, Self::DataError> {
+    ) -> Result<(), Self::DataError> {
         <S as InterpreterStorage>::contract_state_remove_range(
             self.deref_mut(),
             contract,

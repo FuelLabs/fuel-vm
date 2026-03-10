@@ -19,7 +19,6 @@ use fuel_crypto::Hasher;
 use fuel_storage::{
     Mappable,
     StorageAsMut,
-    StorageAsRef,
     StorageInspect,
     StorageMutate,
     StorageRead,
@@ -711,75 +710,12 @@ impl InterpreterStorage for MemoryStorage {
             .insert(version, *bytecode))
     }
 
-    fn contract_state_range(
-        &self,
-        id: &ContractId,
-        start_key: &Bytes32,
-        range: usize,
-    ) -> Result<Vec<Option<Cow<'_, ContractsStateData>>>, Self::DataError> {
-        let mut key = primitive_types::U256::from_big_endian(start_key.as_ref());
-        let mut state_key = Bytes32::zeroed();
-
-        let mut results = Vec::new();
-        for i in 0..range {
-            if i != 0 {
-                key.increase().unwrap();
-            }
-            key.to_big_endian(state_key.as_mut());
-            let multikey = ContractsStateKey::new(id, &state_key);
-            results.push(self.storage::<ContractsState>().get(&multikey)?);
-        }
-        Ok(results)
-    }
-
-    fn contract_state_insert_range<'a, I>(
-        &mut self,
-        contract: &ContractId,
-        start_key: &Bytes32,
-        values: I,
-    ) -> Result<usize, Self::DataError>
-    where
-        I: Iterator<Item = &'a [u8]>,
-    {
-        let values: Vec<_> = values.collect();
-        let mut current_key = U256::from_big_endian(start_key.as_ref());
-
-        // verify key is in range
-        current_key
-            .checked_add(U256::from(values.len().saturating_sub(1)))
-            .ok_or_else(|| anyhow!("range op exceeded available keyspace"))
-            .unwrap();
-
-        let mut key_bytes = Bytes32::zeroed();
-        let mut found_unset = 0u32;
-        for (idx, value) in values.iter().enumerate() {
-            if idx != 0 {
-                current_key.increase().unwrap();
-            }
-            current_key.to_big_endian(key_bytes.as_mut());
-
-            let option = self
-                .storage_as_mut::<ContractsState>()
-                .replace(&(contract, &key_bytes).into(), value)?;
-
-            if option.is_none() {
-                found_unset = found_unset
-                    .checked_add(1)
-                    .expect("We've checked it above via `values.len()`");
-            }
-        }
-
-        Ok(found_unset as usize)
-    }
-
     fn contract_state_remove_range(
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
         range: usize,
-    ) -> Result<Option<()>, Self::DataError> {
-        let mut found_unset = false;
-
+    ) -> Result<(), Self::DataError> {
         let mut current_key = U256::from_big_endian(start_key.as_ref());
 
         let mut key_bytes = Bytes32::zeroed();
@@ -789,14 +725,10 @@ impl InterpreterStorage for MemoryStorage {
             }
             current_key.to_big_endian(key_bytes.as_mut());
 
-            let option = self
-                .storage_as_mut::<ContractsState>()
-                .take(&(contract, &key_bytes).into())?;
-
-            found_unset |= option.is_none();
+            self.storage_as_mut::<ContractsState>()
+                .remove(&(contract, &key_bytes).into())?;
         }
-
-        if found_unset { Ok(None) } else { Ok(Some(())) }
+        Ok(())
     }
 }
 
@@ -811,39 +743,6 @@ mod tests {
     use super::*;
     use alloc::vec;
     use test_case::test_case;
-
-    const fn key(k: u8) -> [u8; 32] {
-        [
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, k,
-        ]
-    }
-
-    #[test_case(&[&[0u8; 32]], &[0u8; 32], 1 => vec![Some([0; 32].to_vec().into())])]
-    #[test_case(&[&[0u8; 32]], &[0u8; 32], 0 => Vec::<Option<ContractsStateData>>::with_capacity(0))]
-    #[test_case(&[], &[0u8; 32], 1 => vec![None])]
-    #[test_case(&[], &[1u8; 32], 1 => vec![None])]
-    #[test_case(&[&[0u8; 32]], &key(1), 2 => vec![None, None])]
-    #[test_case(&[&key(1), &key(3)], &[0u8; 32], 4 => vec![None, Some([0; 32].to_vec().into()), None, Some([0; 32].to_vec().into())])]
-    #[test_case(&[&[0u8; 32], &key(1)], &[0u8; 32], 1 => vec![Some([0; 32].to_vec().into())])]
-    fn test_contract_state_range(
-        store: &[&[u8; 32]],
-        start: &[u8; 32],
-        range: usize,
-    ) -> Vec<Option<ContractsStateData>> {
-        let mut mem = MemoryStorage::default();
-        for k in store {
-            mem.memory.contract_state.insert(
-                (&ContractId::default(), &(**k).into()).into(),
-                [0; 32].to_vec().into(),
-            );
-        }
-        mem.contract_state_range(&ContractId::default(), &(*start).into(), range)
-            .unwrap()
-            .into_iter()
-            .map(|v| v.map(|v| v.into_owned()))
-            .collect()
-    }
 
     #[test_case(0, 32 => Ok(32))]
     #[test_case(4, 32 => Ok(32))]

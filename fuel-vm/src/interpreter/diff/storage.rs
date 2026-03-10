@@ -113,6 +113,7 @@ where
             ecal_state: self.ecal_state,
             verifier: self.verifier,
             owner_ptr: self.owner_ptr,
+            storage_slot_cache: self.storage_slot_cache,
         }
     }
 
@@ -204,6 +205,7 @@ where
             ecal_state: self.ecal_state,
             verifier: self.verifier,
             owner_ptr: self.owner_ptr,
+            storage_slot_cache: self.storage_slot_cache,
         }
     }
 
@@ -217,6 +219,7 @@ where
             if let Change::Storage(Previous(from)) = change {
                 match from {
                     StorageState::State(MappableState { key, value }) => {
+                        let cache_key = (*key.contract_id(), *key.state_key());
                         if let Some(value) = value {
                             StorageMutate::<ContractsState>::insert(
                                 &mut self.storage,
@@ -224,6 +227,15 @@ where
                                 value.as_ref(),
                             )
                             .unwrap();
+                            self.storage_slot_cache
+                                .insert(cache_key, Some(value.as_ref().to_vec()));
+                        } else {
+                            // The slot didn't exist in the initial state; delete it.
+                            let _ = StorageMutate::<ContractsState>::take(
+                                &mut self.storage,
+                                key,
+                            );
+                            self.storage_slot_cache.insert(cache_key, None);
                         }
                     }
                     StorageState::Assets(MappableState { key, value }) => {
@@ -499,35 +511,12 @@ where
         self.0.set_state_transition_bytecode(version, hash)
     }
 
-    fn contract_state_range(
-        &self,
-        id: &ContractId,
-        start_key: &Bytes32,
-        range: usize,
-    ) -> Result<Vec<Option<alloc::borrow::Cow<'_, ContractsStateData>>>, Self::DataError>
-    {
-        self.0.contract_state_range(id, start_key, range)
-    }
-
-    fn contract_state_insert_range<'a, I>(
-        &mut self,
-        contract: &ContractId,
-        start_key: &Bytes32,
-        values: I,
-    ) -> Result<usize, Self::DataError>
-    where
-        I: Iterator<Item = &'a [u8]>,
-    {
-        self.0
-            .contract_state_insert_range(contract, start_key, values)
-    }
-
     fn contract_state_remove_range(
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
         range: usize,
-    ) -> Result<Option<()>, S::DataError> {
+    ) -> Result<(), S::DataError> {
         self.0
             .contract_state_remove_range(contract, start_key, range)
     }

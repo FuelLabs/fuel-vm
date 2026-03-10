@@ -358,6 +358,11 @@ pub mod test_helpers {
             self
         }
 
+        pub fn with_gas_costs(&mut self, gas_costs: GasCosts) -> &mut TestBuilder {
+            self.consensus_params.set_gas_costs(gas_costs);
+            self
+        }
+
         pub fn base_asset_id(&mut self, base_asset_id: AssetId) -> &mut TestBuilder {
             self.consensus_params.set_base_asset_id(base_asset_id);
             self

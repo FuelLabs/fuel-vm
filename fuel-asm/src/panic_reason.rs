@@ -125,8 +125,8 @@ enum_from! {
         BalanceOverflow = 0x2b,
         /// Block height value is invalid, typically because it is too large
         InvalidBlockHeight = 0x2c,
-        /// Attempt to use sequential memory instructions with too large slot count,
-        /// typically because it cannot fit into usize
+        /// A sequential storage operation attempts to access past the last slot,
+        /// or the range is too large to be processed in a single instruction.
         TooManySlots = 0x2d,
         /// Caller of this internal context is also expected to be internal,
         /// i.e. $fp->$fp must be non-zero.

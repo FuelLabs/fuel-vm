@@ -279,45 +279,6 @@ pub(crate) fn copy_registers(
     out
 }
 
-impl ProgramRegisters<'_> {
-    /// Get two mutable references to program registers.
-    /// Note they cannot be the same register.
-    pub fn get_mut_two(
-        &mut self,
-        a: WriteRegKey,
-        b: WriteRegKey,
-    ) -> Option<(&mut Word, &mut Word)> {
-        if a == b {
-            // Cannot mutably borrow the same register twice.
-            return None
-        }
-
-        // Order registers
-        let swap = a > b;
-        let (a, b) = if swap { (b, a) } else { (a, b) };
-
-        // Translate the absolute register indices to a program register indeces.
-        let a = a.translate();
-
-        // Subtract a + 1 because because we split the array at `a`.
-        let b = b
-            .translate()
-            .checked_sub(a.saturating_add(1))
-            .expect("Cannot underflow as the values are ordered");
-
-        // Split the array at the first register which is a.
-        let [i, rest @ ..] = &mut self.0[a..] else {
-            return None
-        };
-
-        // Translate the higher absolute register index to a program register index.
-        // Get the `b` register.
-        let j = &mut rest[b];
-
-        Some(if swap { (j, i) } else { (i, j) })
-    }
-}
-
 impl<'a> From<&'a SystemRegisters<'_>> for SystemRegistersRef<'a> {
     fn from(value: &'a SystemRegisters<'_>) -> Self {
         Self {

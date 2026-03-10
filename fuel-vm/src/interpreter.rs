@@ -136,6 +136,12 @@ pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal, V = verification:
     verifier: V,
     /// Pointer to the memory, where the owner of the transaction lies.
     owner_ptr: Option<Word>,
+    /// All storage operations are cached here, so that subsequent read operations
+    /// on the same slot can be charged with `storage_read_hot` cost and avoid the
+    /// overhead of accessing the storage. This is especially important for charging
+    /// for new bytes written.
+    storage_slot_cache:
+        alloc::collections::BTreeMap<(ContractId, Bytes32), Option<Vec<u8>>>,
 }
 
 /// Interpreter parameters

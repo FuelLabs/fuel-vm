@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased (see .changes folder)]
 
+## [Version 0.66.0]
+
+### Breaking
+- [982](https://github.com/FuelLabs/fuel-vm/pull/982): Adds immediate offset operand to SRW instruction. Binary backwards compatibility is retained, as the field was previously required to be zeroed.
+  Reworked `StorageRead` to include the full size of the storage value when it succeeds, and a typed error when it fails due to a caller-handleble reason.
+- [992](https://github.com/FuelLabs/fuel-vm/pull/992): Bumped rust version to 1.93.
+- [996](https://github.com/FuelLabs/fuel-vm/pull/996): Removed bulk storage methods from InterpreterStorage. Changed remove range to not return the status.
+
+### Added
+- [976](https://github.com/FuelLabs/fuel-vm/pull/976): Add a test case showing minted tokens can be transferred out using tro instruction
+- [982](https://github.com/FuelLabs/fuel-vm/pull/982): New storage opcodes `SCLR`, `SRDD`, `SRDI`, `SWRD`, `SWRI`, `SUPD`, `SUPI` and `SPLD` that allow working with variably-sized storage slots.
+- [989](https://github.com/FuelLabs/fuel-vm/pull/989): Dynamic storage opcodes now charge gas properly for new bytes written.
+- [988](https://github.com/FuelLabs/fuel-vm/pull/988): New ID function exports to TypeScript WASM target.
+
+### Changed
+- [977](https://github.com/FuelLabs/fuel-vm/pull/977): Use more accurate names for instruction constructor parameters in fuel-asm
+- [980](https://github.com/FuelLabs/fuel-vm/pull/980): Use fuel-core storage implementations for memory storage
+- [982](https://github.com/FuelLabs/fuel-vm/pull/982): `SRW` instruction now allows and offset argument. All existing storage operations are internally changed to function with variably sized slots, maintaining full backwards compatibility.
+- [990](https://github.com/FuelLabs/fuel-vm/pull/990): Refactor: Use saturating_add instead of erroring in inc_pc
+- [994](https://github.com/FuelLabs/fuel-vm/pull/994): Optimization: Leverage ggas >= cgas invariant in gas charging.
+- [995](https://github.com/FuelLabs/fuel-vm/pull/995): Optimization: Delay opcode parsing until absolutely necessary
+- [996](https://github.com/FuelLabs/fuel-vm/pull/996): Introduce a storage slot cache and split storage read costs into storage_read_cold (first access, fetches from backing storage) and storage_read_hot (cache hit). All storage opcodes now charge these semantic costs instead of per-opcode flat rates. The cache is keyed by (ContractId, slot), is write-through, and persists across contract calls.
+
 ## [Version 0.65.0]
 
 ### Breaking

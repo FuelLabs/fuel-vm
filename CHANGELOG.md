@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased (see .changes folder)]
 
+## [Version 0.66.1]
+
+### Changed
+- [998](https://github.com/FuelLabs/fuel-vm/pull/998): Pin wasm-bindgen and tooling to 0.2.108 due to breaking changes
+
 ## [Version 0.66.0]
 
 ### Breaking

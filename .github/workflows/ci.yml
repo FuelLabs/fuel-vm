@@ -58,7 +58,7 @@ jobs:
   cargo:
     needs:
       - check-changelog
-    runs-on: buildjet-4vcpu-ubuntu-2204
+    runs-on: warp-ubuntu-latest-x64-4x
     strategy:
       fail-fast: false
       matrix:
@@ -132,7 +132,7 @@ jobs:
 
   publish-codecov:
     name: Publish code coverage report on GitHub pages branch
-    runs-on: buildjet-4vcpu-ubuntu-2204
+    runs-on: warp-ubuntu-latest-x64-4x
     needs:
       - cargo
     permissions: # Write access to push changes to pages
@@ -173,7 +173,7 @@ jobs:
 
 
   rustfmt:
-    runs-on: buildjet-4vcpu-ubuntu-2204
+    runs-on: warp-ubuntu-latest-x64-4x
     steps:
       - uses: actions/checkout@v3
       - name: Install latest nightly
@@ -230,7 +230,7 @@ jobs:
   publish-wasm-packages-check:
     needs:
       - publish-check
-    runs-on: buildjet-4vcpu-ubuntu-2204
+    runs-on: warp-ubuntu-latest-x64-4x
 
     steps:
       - uses: actions/checkout@v3
@@ -270,7 +270,7 @@ jobs:
     needs:
       - verifications-complete
     if: github.event_name == 'release' && github.event.action == 'published'
-    runs-on: buildjet-4vcpu-ubuntu-2204
+    runs-on: warp-ubuntu-latest-x64-4x
 
     steps:
       - uses: actions/checkout@v2
@@ -302,7 +302,7 @@ jobs:
     needs:
       - publish
     if: github.event_name == 'release' && github.event.action == 'published'
-    runs-on: buildjet-4vcpu-ubuntu-2204
+    runs-on: ubuntu-latest-x64-4x # must run on GitHub runner for NPM provenance
     environment: npm-deploy
     permissions:
       id-token: write

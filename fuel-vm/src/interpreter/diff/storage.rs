@@ -230,12 +230,20 @@ where
                             self.storage_slot_cache
                                 .insert(cache_key, Some(value.as_ref().to_vec()));
                         } else {
-                            // The slot didn't exist in the initial state; delete it.
+                            // The slot is absent in the target state; delete it.
                             let _ = StorageMutate::<ContractsState>::take(
                                 &mut self.storage,
                                 key,
                             );
-                            self.storage_slot_cache.insert(cache_key, None);
+                            // Three possible cache states:
+                            //  Some(Some(v)) – stale present value; correct to None.
+                            //  Some(None)    – already a valid warm-absent hit; keep.
+                            //  None          – cold; leave cold so the next read pays
+                            //                  the correct storage_read_cold gas cost.
+                            if let Some(Some(_)) = self.storage_slot_cache.get(&cache_key)
+                            {
+                                self.storage_slot_cache.insert(cache_key, None);
+                            }
                         }
                     }
                     StorageState::Assets(MappableState { key, value }) => {

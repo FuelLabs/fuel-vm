@@ -404,6 +404,134 @@ fn reset_vm_state_removes_newly_created_slot_from_cache() {
 
     latest.reset_vm_state(&diff);
 
-    // Cache must now be None (slot absent), not the stale Some(v1).
+    // The stale Some(v1) must be corrected to None (warm-absent), not left
+    // as a stale present value.
     assert_eq!(latest.storage_slot_cache.get(&cache_key), Some(&None));
+}
+
+/// A slot that was **cold** (never accessed, not in cache) before execution and
+/// is absent in the target state should remain cold (no cache entry) after reset.
+/// Inserting `None` into the cache instead of leaving it uncached silently
+/// converts a cold-absent read into a hot-absent read on the next execution,
+/// which breaks gas determinism.
+#[test]
+fn reset_vm_state_does_not_warm_absent_cold_slot() {
+    use crate::interpreter::InterpreterParams;
+
+    let interpreter_params = InterpreterParams::new(0, ConsensusParameters::standard());
+
+    let contract_id = ContractId::default();
+    let slot_key = Bytes32::default();
+    let cache_key = (contract_id, slot_key);
+    let v1 = alloc::vec![0xAAu8; 32];
+
+    // Pre-populate backing storage with v1 before wrapping in Record,
+    // so a Take during "execution" will be recorded.
+    let mut backing = MemoryStorage::default();
+    <MemoryStorage as StorageMutate<ContractsState>>::insert(
+        &mut backing,
+        &ContractsStateKey::new(&contract_id, &slot_key),
+        &v1,
+    )
+    .unwrap();
+
+    let mut latest = Interpreter::<_, _, Script>::with_storage(
+        crate::interpreter::MemoryInstance::new(),
+        Record::new(backing),
+        interpreter_params.clone(),
+    );
+
+    // Delete the slot via the Record wrapper so the Take is recorded.
+    // Crucially, the slot was never READ, so storage_slot_cache has no entry
+    // for it — it is cold.
+    <Record<MemoryStorage> as StorageMutate<ContractsState>>::take(
+        &mut latest.storage,
+        &ContractsStateKey::new(&contract_id, &slot_key),
+    )
+    .unwrap();
+
+    // Confirm: slot is cold before reset (no cache entry at all).
+    assert_eq!(latest.storage_slot_cache.get(&cache_key), None);
+
+    // Build the diff: the Take produces "slot v1 → absent".
+    // After converting to InitialVmState, Previous(None) is stored for this slot.
+    let storage_diff: Diff<InitialVmState> = latest.storage_diff().into();
+    let desired = Interpreter::<_, _, Script>::with_storage(
+        crate::interpreter::MemoryInstance::new(),
+        Record::new(MemoryStorage::default()),
+        interpreter_params,
+    );
+    let mut diff: Diff<InitialVmState> = latest.rollback_to(&desired).into();
+    diff.changes.extend(storage_diff.changes);
+
+    latest.reset_vm_state(&diff);
+
+    // The slot is absent in storage and was cold before execution.
+    // reset_vm_state should leave it cold (no cache entry), so the next read
+    // is charged storage_read_cold, not storage_read_hot.
+    assert_eq!(
+        latest.storage_slot_cache.get(&cache_key),
+        None,
+        "cold-absent slot must not be warmed by reset_vm_state"
+    );
+}
+
+/// A slot that was already cached as `None` (warm-absent) before execution and
+/// is still absent in the target state should remain a warm-absent cache hit
+/// after reset — evicting it would force an unnecessary cold read.
+#[test]
+fn reset_vm_state_preserves_warm_absent_cache_entry() {
+    use crate::interpreter::InterpreterParams;
+
+    let interpreter_params = InterpreterParams::new(0, ConsensusParameters::standard());
+
+    let contract_id = ContractId::default();
+    let slot_key = Bytes32::default();
+    let cache_key = (contract_id, slot_key);
+    let v1 = alloc::vec![0xCCu8; 32];
+
+    // Pre-populate backing storage with v1 before wrapping in Record.
+    let mut backing = MemoryStorage::default();
+    <MemoryStorage as StorageMutate<ContractsState>>::insert(
+        &mut backing,
+        &ContractsStateKey::new(&contract_id, &slot_key),
+        &v1,
+    )
+    .unwrap();
+
+    let mut latest = Interpreter::<_, _, Script>::with_storage(
+        crate::interpreter::MemoryInstance::new(),
+        Record::new(backing),
+        interpreter_params.clone(),
+    );
+
+    // Delete the slot via the Record wrapper so the Take is recorded.
+    <Record<MemoryStorage> as StorageMutate<ContractsState>>::take(
+        &mut latest.storage,
+        &ContractsStateKey::new(&contract_id, &slot_key),
+    )
+    .unwrap();
+
+    // Simulate the slot already being cached as absent (warm-absent) before reset.
+    latest.storage_slot_cache.insert(cache_key, None);
+
+    // Build the diff: the recorded Take produces "slot v1 → absent".
+    let storage_diff: Diff<InitialVmState> = latest.storage_diff().into();
+    let desired = Interpreter::<_, _, Script>::with_storage(
+        crate::interpreter::MemoryInstance::new(),
+        Record::new(MemoryStorage::default()),
+        interpreter_params,
+    );
+    let mut diff: Diff<InitialVmState> = latest.rollback_to(&desired).into();
+    diff.changes.extend(storage_diff.changes);
+
+    latest.reset_vm_state(&diff);
+
+    // The warm-absent entry must be preserved: the slot is still absent and
+    // the cache correctly reflects that, so the next read should be hot.
+    assert_eq!(
+        latest.storage_slot_cache.get(&cache_key),
+        Some(&None),
+        "warm-absent cache entry must be preserved by reset_vm_state"
+    );
 }

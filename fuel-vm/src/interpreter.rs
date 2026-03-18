@@ -14,7 +14,10 @@ use crate::{
     verification,
 };
 use alloc::{
-    collections::BTreeSet,
+    collections::{
+        BTreeMap,
+        BTreeSet,
+    },
     vec::Vec,
 };
 use core::{
@@ -243,6 +246,26 @@ impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
     /// Returns mutable access to the registers
     pub fn registers_mut(&mut self) -> &mut [Word] {
         &mut self.registers
+    }
+
+    /// Access to storage slot cache for benchmarking purposes.
+    /// ## Warning
+    /// This function is excempt from semver guarantees and may be
+    /// removed or changed without a major version bump.
+    pub const fn bench_storage_slot_cache(
+        &self,
+    ) -> &BTreeMap<(ContractId, Bytes32), Option<Vec<u8>>> {
+        &self.storage_slot_cache
+    }
+
+    /// Access to storage slot cache for benchmarking purposes.
+    /// ## Warning
+    /// This function is excempt from semver guarantees and may be
+    /// removed or changed without a major version bump.
+    pub fn bench_storage_slot_cache_mut(
+        &mut self,
+    ) -> &mut BTreeMap<(ContractId, Bytes32), Option<Vec<u8>>> {
+        &mut self.storage_slot_cache
     }
 
     pub(crate) fn call_stack(&self) -> &[CallFrame] {

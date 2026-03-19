@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased (see .changes folder)]
 
+## [Version 0.66.2]
+
+### Changed
+- [1002](https://github.com/FuelLabs/fuel-vm/pull/1002): Expose methods for accessing `storage_slot_cache` for benchmarking purposes
+
+### Fixed
+- [1002](https://github.com/FuelLabs/fuel-vm/pull/1002): Fixed `reset_vm_state` not resetting slot cache correctly
+
 ## [Version 0.66.1]
 
 ### Changed

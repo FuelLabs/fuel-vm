@@ -6,7 +6,10 @@ use crate::{
     ValidityError,
     Witness,
     field::ChargeableBody,
-    policies::Policies,
+    policies::{
+        Policies,
+        PoliciesDeserializeMetadata,
+    },
     transaction::{
         Chargeable,
         field::{
@@ -29,7 +32,13 @@ use fuel_types::{
     Bytes32,
     ChainId,
     bytes,
-    canonical::Serialize,
+    canonical::{
+        Deserialize,
+        DeserializeForwardCompatible,
+        Error,
+        Input as CanonicalInput,
+        Serialize,
+    },
 };
 use hashbrown::HashMap;
 
@@ -450,5 +459,100 @@ mod field {
                 None
             }
         }
+    }
+}
+
+impl<Body, MetadataBody> DeserializeForwardCompatible
+    for ChargeableTransaction<Body, MetadataBody>
+where
+    Body: BodyConstraints + Deserialize,
+{
+    type Metadata = PoliciesDeserializeMetadata;
+
+    fn decode_static_forward_compatible<I: CanonicalInput + ?Sized>(
+        buffer: &mut I,
+    ) -> Result<(Self, Self::Metadata), Error> {
+        let body = Body::decode_static(buffer)?;
+        let (policies, policies_metadata) =
+            Policies::decode_static_forward_compatible(buffer)?;
+        let inputs = Vec::<crate::Input>::decode_static(buffer)?;
+        let outputs = Vec::<crate::Output>::decode_static(buffer)?;
+        let witnesses = Vec::<Witness>::decode_static(buffer)?;
+
+        Ok((
+            Self {
+                body,
+                policies,
+                inputs,
+                outputs,
+                witnesses,
+                metadata: None,
+            },
+            policies_metadata,
+        ))
+    }
+
+    fn decode_dynamic_forward_compatible<I: CanonicalInput + ?Sized>(
+        &mut self,
+        buffer: &mut I,
+        metadata: &mut Self::Metadata,
+    ) -> Result<(), Error> {
+        self.body.decode_dynamic(buffer)?;
+        self.policies
+            .decode_dynamic_forward_compatible(buffer, metadata)?;
+        self.inputs.decode_dynamic(buffer)?;
+        self.outputs.decode_dynamic(buffer)?;
+        self.witnesses.decode_dynamic(buffer)?;
+        Ok(())
+    }
+}
+
+impl<Body, MetadataBody> ChargeableTransaction<Body, MetadataBody>
+where
+    Body: BodyConstraints + Serialize,
+{
+    /// Serializes the transaction preserving unknown policy bits and values.
+    #[cfg(feature = "alloc")]
+    pub fn to_bytes_forward_compatible(
+        &self,
+        metadata: &PoliciesDeserializeMetadata,
+    ) -> Vec<u8> {
+        let mut buffer = Vec::new();
+
+        // Encode static parts first (matches derived Serialize behavior)
+        self.body
+            .encode_static(&mut buffer)
+            .expect("encoding should work");
+        self.policies
+            .encode_static_forward_compatible(&mut buffer, metadata)
+            .expect("encoding should work");
+        self.inputs
+            .encode_static(&mut buffer)
+            .expect("encoding should work");
+        self.outputs
+            .encode_static(&mut buffer)
+            .expect("encoding should work");
+        self.witnesses
+            .encode_static(&mut buffer)
+            .expect("encoding should work");
+
+        // Then encode dynamic parts
+        self.body
+            .encode_dynamic(&mut buffer)
+            .expect("encoding should work");
+        self.policies
+            .encode_dynamic_forward_compatible(&mut buffer, metadata)
+            .expect("encoding should work");
+        self.inputs
+            .encode_dynamic(&mut buffer)
+            .expect("encoding should work");
+        self.outputs
+            .encode_dynamic(&mut buffer)
+            .expect("encoding should work");
+        self.witnesses
+            .encode_dynamic(&mut buffer)
+            .expect("encoding should work");
+
+        buffer
     }
 }

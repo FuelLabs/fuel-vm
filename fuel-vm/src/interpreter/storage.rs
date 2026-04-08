@@ -157,6 +157,15 @@ where
         key: Bytes32,
         range: usize,
     ) -> Result<(), RuntimeError<S::DataError>> {
+        // Ensure the key range doesn't overflow U256. A range of 0 or 1 starting at
+        // any key is always valid; for larger ranges we check that
+        // start_key + (range - 1) doesn't wrap around.
+        if range > 1 {
+            let start = primitive_types::U256::from_big_endian(&*key);
+            start
+                .checked_add(primitive_types::U256::from(range - 1))
+                .ok_or(PanicReason::TooManySlots)?;
+        }
         self.dependent_gas_charge(
             self.gas_costs()
                 .storage_clear()

@@ -411,6 +411,61 @@ fn sclr_clears_correct_number_of_slots(
     assert_eq!(slots_after, expected);
 }
 
+/// Builds a program that sets the key buffer at $hp to all 0xFF bytes (U256::MAX).
+fn set_key_to_max(program: &mut Vec<Instruction>) {
+    program.extend([op::movi(0x15, 32), op::aloc(0x15), op::movi(0x11, 0xFF)]);
+    for i in 0..32u16 {
+        program.push(op::sb(RegId::HP, 0x11, i));
+    }
+}
+
+#[test]
+fn sclr_with_max_key_and_overflowing_range_panics_with_too_many_slots() {
+    // key = U256::MAX, range = 2 → key+1 overflows U256
+    let mut program = vec![];
+    set_key_to_max(&mut program);
+    program.extend([
+        op::movi(0x10, 2),
+        op::sclr(RegId::HP, 0x10),
+        op::ret(RegId::ONE),
+    ]);
+
+    let receipts = call_contract_once(program);
+    assert_panics(&receipts, PanicReason::TooManySlots);
+}
+
+#[test]
+fn sclr_with_max_key_and_range_one_succeeds() {
+    // key = U256::MAX, range = 1 → only slot U256::MAX itself, no overflow
+    let mut program = vec![];
+    set_key_to_max(&mut program);
+    program.extend([
+        op::movi(0x10, 1),
+        op::sclr(RegId::HP, 0x10),
+        op::ret(RegId::ONE),
+    ]);
+
+    let receipts = call_contract_once(program);
+    assert_success(&receipts);
+}
+
+#[test]
+fn scwq_with_max_key_and_overflowing_range_panics_with_too_many_slots() {
+    // Verify SCWQ has the same consistent behaviour as SCLR once the fix is in place.
+    // key = U256::MAX, range = 2 → key+1 overflows U256
+    const DISCARD: RegId = RegId::new(0x39);
+    let mut program = vec![];
+    set_key_to_max(&mut program);
+    program.extend([
+        op::movi(0x10, 2),
+        op::scwq(RegId::HP, DISCARD, 0x10),
+        op::ret(RegId::ONE),
+    ]);
+
+    let receipts = call_contract_once(program);
+    assert_panics(&receipts, PanicReason::TooManySlots);
+}
+
 /// Allocates and initalizes a 256 byte array with elements from 0 to 255.
 fn create_example_buffer() -> Vec<Instruction> {
     let mut ops = vec![op::movi(0x39, 256), op::aloc(0x39)];

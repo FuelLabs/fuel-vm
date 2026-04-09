@@ -162,6 +162,8 @@ where
         // start_key + (range - 1) doesn't wrap around.
         if range > 1 {
             let start = primitive_types::U256::from_big_endian(&*key);
+            // Safety: checked above in if condition
+            #[allow(clippy::arithmetic_side_effects)]
             start
                 .checked_add(primitive_types::U256::from(range - 1))
                 .ok_or(PanicReason::TooManySlots)?;

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased (see .changes folder)]
 
+## [Version 0.66.3]
+
+### Fixed
+- [1004](https://github.com/FuelLabs/fuel-vm/pull/1004): SCLR now correctly validates that the U256 key will not overflow
+
 ## [Version 0.66.2]
 
 ### Changed

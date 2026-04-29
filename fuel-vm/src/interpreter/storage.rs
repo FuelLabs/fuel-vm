@@ -41,9 +41,7 @@ where
     where
         F: FnOnce(&mut MemoryInstance, Option<&[u8]>) -> R,
     {
-        let cache_key = (contract_id, key);
-
-        if let Some(v) = self.storage_slot_cache.get(&cache_key) {
+        if let Some(v) = self.storage_slot_cache.get(&contract_id).and_then(|m| m.get(&key)) {
             // Cache hit
             let gas_charge_units = v.as_ref().map(|data| data.len() as u64).unwrap_or(0);
             let r = f(self.memory.as_mut(), v.as_deref());
@@ -69,7 +67,7 @@ where
                 .map_err(PanicReason::from)?,
             gas_charge_units,
         )?;
-        self.storage_slot_cache.insert(cache_key, value);
+        self.storage_slot_cache.entry(contract_id).or_default().insert(key, value);
         Ok(r)
     }
 
@@ -91,8 +89,7 @@ where
         contract_id: ContractId,
         key: Bytes32,
     ) -> Result<usize, RuntimeError<S::DataError>> {
-        let cache_key = (contract_id, key);
-        if let Some(v) = self.storage_slot_cache.get(&cache_key) {
+        if let Some(v) = self.storage_slot_cache.get(&contract_id).and_then(|m| m.get(&key)) {
             return Ok(v.as_ref().map(|d| d.len()).unwrap_or(0));
         }
         let value = StorageRead::<ContractsState>::read_alloc(
@@ -101,7 +98,7 @@ where
         )
         .map_err(RuntimeError::Storage)?;
         let len = value.as_ref().map(|d| d.len()).unwrap_or(0);
-        self.storage_slot_cache.insert(cache_key, value);
+        self.storage_slot_cache.entry(contract_id).or_default().insert(key, value);
         Ok(len)
     }
 
@@ -116,12 +113,11 @@ where
         if (value.len() as u64) > max_size {
             return Err(RuntimeError::Recoverable(PanicReason::StorageOutOfBounds));
         }
-        let cache_key = (contract_id, key);
         self.storage
             .contract_state_insert(&contract_id, &key, &value)
             .map_err(RuntimeError::Storage)?;
         let gas_charge_units = value.len() as u64;
-        self.storage_slot_cache.insert(cache_key, Some(value));
+        self.storage_slot_cache.entry(contract_id).or_default().insert(key, Some(value));
         self.dependent_gas_charge(
             self.gas_costs()
                 .storage_write()
@@ -179,8 +175,7 @@ where
             .map_err(RuntimeError::Storage)?;
         for key in key_range(key, range) {
             let key = key.ok_or(PanicReason::TooManySlots)?;
-            let cache_key = (contract_id, key);
-            self.storage_slot_cache.insert(cache_key, None);
+            self.storage_slot_cache.entry(contract_id).or_default().insert(key, None);
         }
         Ok(())
     }

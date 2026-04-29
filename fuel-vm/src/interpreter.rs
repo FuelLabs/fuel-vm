@@ -14,10 +14,7 @@ use crate::{
     verification,
 };
 use alloc::{
-    collections::{
-        BTreeMap,
-        BTreeSet,
-    },
+    collections::BTreeSet,
     vec::Vec,
 };
 use core::{
@@ -143,8 +140,10 @@ pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal, V = verification:
     /// on the same slot can be charged with `storage_read_hot` cost and avoid the
     /// overhead of accessing the storage. This is especially important for charging
     /// for new bytes written.
-    storage_slot_cache:
-        alloc::collections::BTreeMap<(ContractId, Bytes32), Option<Vec<u8>>>,
+    storage_slot_cache: hashbrown::HashMap<
+        ContractId,
+        hashbrown::HashMap<Bytes32, Option<Vec<u8>>>,
+    >,
 }
 
 /// Interpreter parameters
@@ -252,9 +251,9 @@ impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
     /// ## Warning
     /// This function is excempt from semver guarantees and may be
     /// removed or changed without a major version bump.
-    pub const fn bench_storage_slot_cache(
+    pub fn bench_storage_slot_cache(
         &self,
-    ) -> &BTreeMap<(ContractId, Bytes32), Option<Vec<u8>>> {
+    ) -> &hashbrown::HashMap<ContractId, hashbrown::HashMap<Bytes32, Option<Vec<u8>>>> {
         &self.storage_slot_cache
     }
 
@@ -264,7 +263,7 @@ impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
     /// removed or changed without a major version bump.
     pub fn bench_storage_slot_cache_mut(
         &mut self,
-    ) -> &mut BTreeMap<(ContractId, Bytes32), Option<Vec<u8>>> {
+    ) -> &mut hashbrown::HashMap<ContractId, hashbrown::HashMap<Bytes32, Option<Vec<u8>>>> {
         &mut self.storage_slot_cache
     }
 

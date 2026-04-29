@@ -219,7 +219,6 @@ where
             if let Change::Storage(Previous(from)) = change {
                 match from {
                     StorageState::State(MappableState { key, value }) => {
-                        let cache_key = (*key.contract_id(), *key.state_key());
                         if let Some(value) = value {
                             StorageMutate::<ContractsState>::insert(
                                 &mut self.storage,
@@ -228,7 +227,9 @@ where
                             )
                             .unwrap();
                             self.storage_slot_cache
-                                .insert(cache_key, Some(value.as_ref().to_vec()));
+                                .entry(*key.contract_id())
+                                .or_default()
+                                .insert(*key.state_key(), Some(value.as_ref().to_vec()));
                         } else {
                             // The slot is absent in the target state; delete it.
                             let _ = StorageMutate::<ContractsState>::take(
@@ -240,9 +241,16 @@ where
                             //  Some(None)    – already a valid warm-absent hit; keep.
                             //  None          – cold; leave cold so the next read pays
                             //                  the correct storage_read_cold gas cost.
-                            if let Some(Some(_)) = self.storage_slot_cache.get(&cache_key)
-                            {
-                                self.storage_slot_cache.insert(cache_key, None);
+                            if matches!(
+                                self.storage_slot_cache
+                                    .get(key.contract_id())
+                                    .and_then(|m| m.get(key.state_key())),
+                                Some(Some(_))
+                            ) {
+                                self.storage_slot_cache
+                                    .entry(*key.contract_id())
+                                    .or_default()
+                                    .insert(*key.state_key(), None);
                             }
                         }
                     }

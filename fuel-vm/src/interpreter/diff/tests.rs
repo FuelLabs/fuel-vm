@@ -320,7 +320,7 @@ fn reset_vm_state_updates_cache_for_modified_slot() {
 
     let contract_id = ContractId::default();
     let slot_key = Bytes32::default();
-    let cache_key = (contract_id, slot_key);
+
     let v1 = alloc::vec![0xAAu8; 32];
 
     // Insert v1 via the Record wrapper so the change is recorded.
@@ -333,7 +333,11 @@ fn reset_vm_state_updates_cache_for_modified_slot() {
 
     // Poison the cache with a stale value to simulate the pre-fix bug.
     let v_stale = alloc::vec![0xFFu8; 32];
-    latest.storage_slot_cache.insert(cache_key, Some(v_stale));
+    latest
+        .storage_slot_cache
+        .entry(contract_id)
+        .or_default()
+        .insert(slot_key, Some(v_stale));
 
     // Build the diff: storage_diff captures "slot was None → v1".
     // After converting to InitialVmState the change carries v1 as the target.
@@ -349,7 +353,13 @@ fn reset_vm_state_updates_cache_for_modified_slot() {
     latest.reset_vm_state(&diff);
 
     // The cache must now hold v1, not the stale value.
-    assert_eq!(latest.storage_slot_cache.get(&cache_key), Some(&Some(v1)));
+    assert_eq!(
+        latest
+            .storage_slot_cache
+            .get(&contract_id)
+            .and_then(|m| m.get(&slot_key)),
+        Some(&Some(v1))
+    );
 }
 
 /// When a storage slot that was *absent* in the initial state is marked as such by
@@ -363,7 +373,7 @@ fn reset_vm_state_removes_newly_created_slot_from_cache() {
 
     let contract_id = ContractId::default();
     let slot_key = Bytes32::default();
-    let cache_key = (contract_id, slot_key);
+
     let v1 = alloc::vec![0xBBu8; 32];
 
     // Pre-populate backing storage with v1 *before* wrapping in Record.
@@ -389,7 +399,11 @@ fn reset_vm_state_removes_newly_created_slot_from_cache() {
     .unwrap();
 
     // Poison the cache with a stale Some(v1) to simulate the pre-fix bug.
-    latest.storage_slot_cache.insert(cache_key, Some(v1));
+    latest
+        .storage_slot_cache
+        .entry(contract_id)
+        .or_default()
+        .insert(slot_key, Some(v1));
 
     // Build the diff: the recorded Take produces "slot v1 → absent".
     // After converting to InitialVmState the change carries None as the target.
@@ -406,7 +420,13 @@ fn reset_vm_state_removes_newly_created_slot_from_cache() {
 
     // The stale Some(v1) must be corrected to None (warm-absent), not left
     // as a stale present value.
-    assert_eq!(latest.storage_slot_cache.get(&cache_key), Some(&None));
+    assert_eq!(
+        latest
+            .storage_slot_cache
+            .get(&contract_id)
+            .and_then(|m| m.get(&slot_key)),
+        Some(&None)
+    );
 }
 
 /// A slot that was **cold** (never accessed, not in cache) before execution and
@@ -422,7 +442,7 @@ fn reset_vm_state_does_not_warm_absent_cold_slot() {
 
     let contract_id = ContractId::default();
     let slot_key = Bytes32::default();
-    let cache_key = (contract_id, slot_key);
+
     let v1 = alloc::vec![0xAAu8; 32];
 
     // Pre-populate backing storage with v1 before wrapping in Record,
@@ -451,7 +471,13 @@ fn reset_vm_state_does_not_warm_absent_cold_slot() {
     .unwrap();
 
     // Confirm: slot is cold before reset (no cache entry at all).
-    assert_eq!(latest.storage_slot_cache.get(&cache_key), None);
+    assert_eq!(
+        latest
+            .storage_slot_cache
+            .get(&contract_id)
+            .and_then(|m| m.get(&slot_key)),
+        None
+    );
 
     // Build the diff: the Take produces "slot v1 → absent".
     // After converting to InitialVmState, Previous(None) is stored for this slot.
@@ -470,7 +496,10 @@ fn reset_vm_state_does_not_warm_absent_cold_slot() {
     // reset_vm_state should leave it cold (no cache entry), so the next read
     // is charged storage_read_cold, not storage_read_hot.
     assert_eq!(
-        latest.storage_slot_cache.get(&cache_key),
+        latest
+            .storage_slot_cache
+            .get(&contract_id)
+            .and_then(|m| m.get(&slot_key)),
         None,
         "cold-absent slot must not be warmed by reset_vm_state"
     );
@@ -487,7 +516,7 @@ fn reset_vm_state_preserves_warm_absent_cache_entry() {
 
     let contract_id = ContractId::default();
     let slot_key = Bytes32::default();
-    let cache_key = (contract_id, slot_key);
+
     let v1 = alloc::vec![0xCCu8; 32];
 
     // Pre-populate backing storage with v1 before wrapping in Record.
@@ -513,7 +542,11 @@ fn reset_vm_state_preserves_warm_absent_cache_entry() {
     .unwrap();
 
     // Simulate the slot already being cached as absent (warm-absent) before reset.
-    latest.storage_slot_cache.insert(cache_key, None);
+    latest
+        .storage_slot_cache
+        .entry(contract_id)
+        .or_default()
+        .insert(slot_key, None);
 
     // Build the diff: the recorded Take produces "slot v1 → absent".
     let storage_diff: Diff<InitialVmState> = latest.storage_diff().into();
@@ -530,7 +563,10 @@ fn reset_vm_state_preserves_warm_absent_cache_entry() {
     // The warm-absent entry must be preserved: the slot is still absent and
     // the cache correctly reflects that, so the next read should be hot.
     assert_eq!(
-        latest.storage_slot_cache.get(&cache_key),
+        latest
+            .storage_slot_cache
+            .get(&contract_id)
+            .and_then(|m| m.get(&slot_key)),
         Some(&None),
         "warm-absent cache entry must be preserved by reset_vm_state"
     );

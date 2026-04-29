@@ -15,7 +15,7 @@ use fuel_types::Word;
 /// show what version of `fuel-core` was used
 /// to generate the costs.
 #[allow(dead_code)]
-mod default_gas_costs;
+mod default_gas_costs_for_tests;
 
 /// Gas costings for every op.
 /// The inner values are wrapped in an [`Arc`]
@@ -65,7 +65,7 @@ impl Default for GasCostsValues {
     fn default() -> Self {
         // The default values for gas costs
         // are generated from fuel-core-benches.
-        default_gas_costs::default_gas_costs()
+        default_gas_costs_for_tests::default_gas_costs()
     }
 }
 

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased (see .changes folder)]
 
+## [Version 0.66.4]
+
+### Changed
+- [1008](https://github.com/FuelLabs/fuel-vm/pull/1008): Skip zero-amount burns and clear empty asset slots
+- [1009](https://github.com/FuelLabs/fuel-vm/pull/1009): Do not modify storage for zero-amount mints
+- [1010](https://github.com/FuelLabs/fuel-vm/pull/1010): Storage cache: Use HashMap, group by ContractId
+- [1011](https://github.com/FuelLabs/fuel-vm/pull/1011): Rename default_gas_costs to default_gas_costs_for_tests
+
 ## [Version 0.66.3]
 
 ### Fixed

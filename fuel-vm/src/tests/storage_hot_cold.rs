@@ -416,24 +416,20 @@ fn cache_persists_across_calls() {
     );
 }
 
-/// SCLR on cold slots must charge `storage_read_cold` (base fee) per new cache
-/// entry, and must leave those slots warm-absent so subsequent reads are hot.
+/// SCLR charges `storage_read_hot` (base fee) per slot and leaves those slots
+/// warm-absent so subsequent reads are hot.
 ///
 /// Both programs allocate KEY1 (zeros) and KEY2 (last byte = 1) and a DST
 /// buffer. The hot program clears K1 via SCLR then reads K1; the cold program
 /// skips the clear and reads K2 (never touched).
 ///
-/// | operation                            | hot program | cold program |
-/// |--------------------------------------|-------------|--------------|
-/// | sclr K1, count=1 (cold → warm-None) | 100 (cold)  | —            |
-/// | srdi (K1 hot / K2 cold)             |   1 (hot)   | 100 (cold)   |
-/// | **total**                            | **101**     | **100**      |
-///
-/// Before the fix SCLR charged nothing for cold cache entries, so the hot
-/// program would have totalled 1 instead of 101 — and, critically, any number
-/// of slots could have been inserted into the cache for free.
+/// | operation                    | hot program | cold program |
+/// |------------------------------|-------------|--------------|
+/// | sclr K1, count=1            |   1 (hot)   | —            |
+/// | srdi (K1 hot / K2 cold)     |   1 (hot)   | 100 (cold)   |
+/// | **total**                    | **2**       | **100**      |
 #[test]
-fn sclr_cold_slot_charges_cold_gas_and_warms_cache() {
+fn sclr_charges_hot_base_per_slot_and_warms_cache() {
     const COUNT: RegId = RegId::new(0x26);
 
     let common: Vec<Instruction> = vec![
@@ -455,12 +451,11 @@ fn sclr_cold_slot_charges_cold_gas_and_warms_cache() {
         op::move_(DST, RegId::HP),
     ];
 
-    // Hot: SCLR K1 (cold → warm-absent, charges COLD_BASE), then read K1 (hot).
+    // Hot: SCLR K1 (charges HOT_BASE, warms cache), then read K1 (hot).
     let hot_program: Vec<Instruction> = common
         .iter()
         .cloned()
         .chain([
-            // SCLR charges cold-read gas for K1 (never accessed before).
             op::sclr(KEY1, COUNT),
             // K1 is now warm-absent in the cache → hot read.
             op::srdi(DST, KEY1, RegId::ZERO, SLOT_LEN),
@@ -487,12 +482,12 @@ fn sclr_cold_slot_charges_cold_gas_and_warms_cache() {
     let hot = gas_used(&receipts_hot);
     let cold = gas_used(&receipts_cold);
 
-    // hot  = COLD_BASE (sclr cold charge) + HOT_BASE (srdi cache hit) = 101
-    // cold = COLD_BASE (srdi cold miss)                                = 100
+    // hot  = HOT_BASE (sclr charge) + HOT_BASE (srdi cache hit) = 2
+    // cold = COLD_BASE (srdi cold miss)                         = 100
     assert_eq!(
         hot,
-        COLD_BASE + HOT_BASE,
-        "SCLR on a cold slot must charge COLD_BASE, and the subsequent read must be hot"
+        HOT_BASE + HOT_BASE,
+        "SCLR must charge HOT_BASE per slot, and the subsequent read must be a hot cache hit"
     );
     assert_eq!(
         cold, COLD_BASE,
@@ -500,16 +495,16 @@ fn sclr_cold_slot_charges_cold_gas_and_warms_cache() {
     );
 }
 
-/// Slots that are already warm when SCLR runs must NOT be charged the cold fee
-/// again — the cold cost was already paid when the slot was first read.
+/// When SCLR runs on a slot already in the cache it charges `storage_read_hot`
+/// (base fee) — the cold cost was already paid when the slot was first read.
 ///
 /// | operation                         | gas         |
 /// |-----------------------------------|-------------|
 /// | srdi K1 (cold miss, warms cache)  | 100 (cold)  |
-/// | sclr K1, count=1 (already warm)   |   0 (free)  |
-/// | **total**                         | **100**     |
+/// | sclr K1, count=1 (already warm)   |   1 (hot)   |
+/// | **total**                         | **101**     |
 #[test]
-fn sclr_warm_slot_does_not_double_charge_cold() {
+fn sclr_warm_slot_charges_hot_base() {
     const COUNT: RegId = RegId::new(0x26);
 
     let program: Vec<Instruction> = vec![
@@ -525,7 +520,7 @@ fn sclr_warm_slot_does_not_double_charge_cold() {
         op::move_(DST, RegId::HP),
         // Read K1 first → cold miss, charges COLD_BASE, warms cache.
         op::srdi(DST, KEY1, RegId::ZERO, SLOT_LEN),
-        // SCLR K1 → K1 is already warm, must NOT charge cold fee.
+        // SCLR K1 → K1 is already warm, charges HOT_BASE.
         op::sclr(KEY1, COUNT),
         op::ret(RegId::ONE),
     ];
@@ -535,10 +530,10 @@ fn sclr_warm_slot_does_not_double_charge_cold() {
 
     assert_success(&receipts);
 
-    // Only the initial cold read should be charged; SCLR on a warm slot is free.
+    // srdi K1 cold miss (COLD_BASE) + SCLR hot charge (HOT_BASE) = 101.
     assert_eq!(
         gas_used(&receipts),
-        COLD_BASE,
-        "SCLR on an already-warm slot must not re-charge the cold fee"
+        COLD_BASE + HOT_BASE,
+        "SCLR on an already-warm slot must charge HOT_BASE, not cold gas"
     );
 }

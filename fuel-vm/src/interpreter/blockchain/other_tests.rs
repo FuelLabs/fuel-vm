@@ -73,7 +73,7 @@ fn test_burn(
     let result = storage
         .contract_asset_id_balance(&contract_id, &asset_id)
         .unwrap()
-        .unwrap();
+        .unwrap_or(0);
     assert_eq!(result, initialize.unwrap_or(0) - amount);
     assert_eq!(receipts.len(), 1);
     assert_eq!(

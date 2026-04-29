@@ -253,6 +253,15 @@ pub trait ContractsAssetsStorage: StorageMutate<ContractsAssets> {
             &value,
         )
     }
+
+    /// Remove the balance of an asset ID in a contract storage.
+    fn contract_asset_id_balance_remove(
+        &mut self,
+        contract: &ContractId,
+        asset_id: &AssetId,
+    ) -> Result<(), Self::Error> {
+        StorageMutate::<ContractsAssets>::remove(self, &(contract, asset_id).into())
+    }
 }
 
 impl<S> ContractsAssetsStorage for &mut S where S: ContractsAssetsStorage {}

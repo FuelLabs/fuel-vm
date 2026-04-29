@@ -2808,25 +2808,15 @@ where
         let num_slots = crate::convert::to_usize(interpreter.registers[r_num_slots])
             .ok_or(PanicReason::TooManySlots)?;
         let contract_id = interpreter.internal_contract()?;
-        // Charge cold-access gas for slots not already in the cache. Without
-        // this, SCLR could flood the cache with `None` entries for slots that
-        // were never read, bypassing the cold-read fee that normally gates new
-        // cache allocations and enabling a memory-exhaustion attack.
-        for key in key_range(start_key, num_slots) {
-            let key = key.ok_or(PanicReason::TooManySlots)?;
-            if !interpreter
-                .storage_slot_cache
-                .contains_key(&(contract_id, key))
-            {
-                interpreter.dependent_gas_charge(
-                    interpreter
-                        .gas_costs()
-                        .storage_read_cold()
-                        .map_err(PanicReason::from)?,
-                    0, // slot is absent — no data bytes, only the base fee applies
-                )?;
-            }
-        }
+        // Charge gas for setting storage cache slots to `None`
+        interpreter.gas_charge(
+            interpreter
+                .gas_costs()
+                .storage_read_hot()
+                .map_err(PanicReason::from)?
+                .base()
+                .saturating_mul(num_slots as u64),
+        )?;
         interpreter.storage_clear_slot_range(contract_id, start_key, num_slots)?;
         let (SystemRegisters { pc, .. }, _) = split_registers(&mut interpreter.registers);
         inc_pc(pc);

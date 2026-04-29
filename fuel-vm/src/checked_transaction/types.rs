@@ -176,11 +176,11 @@ pub mod script {
             initial_free_balances,
         },
     };
-    use crate::checked_transaction::{
+    use crate::{checked_transaction::{
         CheckError,
         NonRetryableFreeBalances,
         RetryableAmount,
-    };
+    }, immutable_transaction::Immutable};
     use fuel_tx::{
         Cacheable,
         Chargeable,
@@ -243,6 +243,41 @@ pub mod script {
             };
 
             Ok(Checked::basic(self, metadata))
+        }
+    }
+
+    impl IntoChecked for Immutable<Script> {
+        type Metadata = CheckedMetadata;
+
+        fn into_checked_basic(
+                self,
+                block_height: BlockHeight,
+                consensus_params: &ConsensusParameters,
+            ) -> Result<Checked<Self>, CheckError> {
+                let Immutable { tx } = self;
+                tx.check_without_signatures(block_height, consensus_params)?;
+
+                // validate fees and compute free balances
+                let AvailableBalances {
+                    non_retryable_balances,
+                    retryable_balance,
+                } = initial_free_balances(&tx, consensus_params.base_asset_id())?;
+    
+                let metadata = CheckedMetadata {
+                    base_asset_id: *consensus_params.base_asset_id(),
+                    non_retryable_balances: NonRetryableFreeBalances(non_retryable_balances),
+                    retryable_balance: RetryableAmount {
+                        amount: retryable_balance,
+                        base_asset_id: *consensus_params.base_asset_id(),
+                    },
+                    block_height,
+                    min_gas: tx
+                        .min_gas(consensus_params.gas_costs(), consensus_params.fee_params()),
+                    max_gas: tx
+                        .max_gas(consensus_params.gas_costs(), consensus_params.fee_params()),
+                };
+    
+                Ok(Checked::basic(tx, metadata))
         }
     }
 }

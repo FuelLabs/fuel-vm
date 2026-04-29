@@ -631,23 +631,21 @@ impl<S> BurnCtx<'_, S>
 where
     S: ContractsAssetsStorage,
 {
-    pub(crate) fn burn(self, amount: Word, sub_id_addr: Word) -> IoResult<(), S::Error> {
+    pub(crate) fn burn(self, a: Word, b: Word) -> IoResult<(), S::Error> {
         let contract_id = internal_contract(self.context, self.fp, self.memory)?;
-        let sub_id = SubAssetId::new(self.memory.read_bytes(sub_id_addr)?);
+        let sub_id = SubAssetId::new(self.memory.read_bytes(b)?);
         let asset_id = contract_id.asset_id(&sub_id);
 
-        if amount != 0 {
-            let balance = balance(self.storage, &contract_id, &asset_id)?;
-            let balance = balance
-                .checked_sub(amount)
-                .ok_or(PanicReason::NotEnoughBalance)?;
+        let balance = balance(self.storage, &contract_id, &asset_id)?;
+        let balance = balance
+            .checked_sub(a)
+            .ok_or(PanicReason::NotEnoughBalance)?;
 
-            self.storage
-                .contract_asset_id_balance_insert(&contract_id, &asset_id, balance)
-                .map_err(RuntimeError::Storage)?;
-        }
+        self.storage
+            .contract_asset_id_balance_insert(&contract_id, &asset_id, balance)
+            .map_err(RuntimeError::Storage)?;
 
-        let receipt = Receipt::burn(sub_id, contract_id, amount, *self.pc, *self.is);
+        let receipt = Receipt::burn(sub_id, contract_id, a, *self.pc, *self.is);
 
         self.receipts.push(receipt)?;
 
@@ -674,29 +672,31 @@ impl<S> MintCtx<'_, S>
 where
     S: ContractsAssetsStorage,
 {
-    pub(crate) fn mint(self, a: Word, b: Word) -> Result<(), RuntimeError<S::Error>> {
+    pub(crate) fn mint(self, amount: Word, sub_id_addr: Word) -> Result<(), RuntimeError<S::Error>> {
         let contract_id = internal_contract(self.context, self.fp, self.memory)?;
-        let sub_id = SubAssetId::new(self.memory.read_bytes(b)?);
+        let sub_id = SubAssetId::new(self.memory.read_bytes(sub_id_addr)?);
         let asset_id = contract_id.asset_id(&sub_id);
 
-        let balance = balance(self.storage, &contract_id, &asset_id)?;
-        let balance = balance.checked_add(a).ok_or(PanicReason::BalanceOverflow)?;
+        if amount != 0 {
+            let balance = balance(self.storage, &contract_id, &asset_id)?;
+            let balance = balance.checked_add(amount).ok_or(PanicReason::BalanceOverflow)?;
+    
+            let old_value = self
+                .storage
+                .contract_asset_id_balance_replace(&contract_id, &asset_id, balance)
+                .map_err(RuntimeError::Storage)?;
+    
+            if old_value.is_none() {
+                // New data was written, charge gas for it
+                gas_charge(
+                    self.cgas,
+                    self.ggas,
+                    (BALANCE_ENTRY_SIZE as u64).saturating_mul(self.new_storage_gas_per_byte),
+                )?;
+            }
+        }    
 
-        let old_value = self
-            .storage
-            .contract_asset_id_balance_replace(&contract_id, &asset_id, balance)
-            .map_err(RuntimeError::Storage)?;
-
-        if old_value.is_none() {
-            // New data was written, charge gas for it
-            gas_charge(
-                self.cgas,
-                self.ggas,
-                (BALANCE_ENTRY_SIZE as u64).saturating_mul(self.new_storage_gas_per_byte),
-            )?;
-        }
-
-        let receipt = Receipt::mint(sub_id, contract_id, a, *self.pc, *self.is);
+        let receipt = Receipt::mint(sub_id, contract_id, amount, *self.pc, *self.is);
 
         self.receipts.push(receipt)?;
 

@@ -10,7 +10,10 @@ use crate::{
             MessageDataPredicate,
         },
     },
-    policies::Policies,
+    policies::{
+        Policies,
+        PoliciesDeserializeMetadata,
+    },
 };
 use fuel_crypto::{
     Hasher,
@@ -26,6 +29,7 @@ use fuel_types::{
     Word,
     canonical::{
         Deserialize,
+        DeserializeForwardCompatible,
         Error,
         Serialize,
     },
@@ -736,6 +740,145 @@ impl Deserialize for Transaction {
             Self::Upgrade(tx) => tx.decode_dynamic(buffer),
             Self::Upload(tx) => tx.decode_dynamic(buffer),
             Self::Blob(tx) => tx.decode_dynamic(buffer),
+        }
+    }
+}
+
+/// Metadata for forward-compatible deserialization of transactions.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct TransactionDeserializeMetadata {
+    /// Metadata for policies (only present for chargeable transactions).
+    pub policies_metadata: PoliciesDeserializeMetadata,
+}
+
+impl Transaction {
+    /// Serializes the transaction preserving unknown policy bits and values.
+    pub fn to_bytes_forward_compatible(
+        &self,
+        metadata: &TransactionDeserializeMetadata,
+    ) -> Vec<u8> {
+        match self {
+            Self::Script(tx) => {
+                tx.to_bytes_forward_compatible(&metadata.policies_metadata)
+            }
+            Self::Create(tx) => {
+                tx.to_bytes_forward_compatible(&metadata.policies_metadata)
+            }
+            Self::Mint(tx) => tx.to_bytes(),
+            Self::Upgrade(tx) => {
+                tx.to_bytes_forward_compatible(&metadata.policies_metadata)
+            }
+            Self::Upload(tx) => {
+                tx.to_bytes_forward_compatible(&metadata.policies_metadata)
+            }
+            Self::Blob(tx) => tx.to_bytes_forward_compatible(&metadata.policies_metadata),
+        }
+    }
+}
+
+impl DeserializeForwardCompatible for Transaction {
+    type Metadata = TransactionDeserializeMetadata;
+
+    fn decode_static_forward_compatible<I: fuel_types::canonical::Input + ?Sized>(
+        buffer: &mut I,
+    ) -> Result<(Self, Self::Metadata), Error> {
+        let mut discriminant_buffer = [0u8; 8];
+        buffer.peek(&mut discriminant_buffer)?;
+
+        let discriminant =
+            <TransactionRepr as Deserialize>::decode(&mut &discriminant_buffer[..])?;
+
+        match discriminant {
+            TransactionRepr::Script => {
+                let (tx, metadata) =
+                    <Script as DeserializeForwardCompatible>::decode_static_forward_compatible(buffer)?;
+                Ok((
+                    tx.into(),
+                    TransactionDeserializeMetadata {
+                        policies_metadata: metadata,
+                    },
+                ))
+            }
+            TransactionRepr::Create => {
+                let (tx, metadata) =
+                    <Create as DeserializeForwardCompatible>::decode_static_forward_compatible(buffer)?;
+                Ok((
+                    tx.into(),
+                    TransactionDeserializeMetadata {
+                        policies_metadata: metadata,
+                    },
+                ))
+            }
+            TransactionRepr::Mint => {
+                // Mint doesn't have policies, use standard deserialization
+                Ok((
+                    <Mint as Deserialize>::decode_static(buffer)?.into(),
+                    TransactionDeserializeMetadata::default(),
+                ))
+            }
+            TransactionRepr::Upgrade => {
+                let (tx, metadata) =
+                    <Upgrade as DeserializeForwardCompatible>::decode_static_forward_compatible(buffer)?;
+                Ok((
+                    tx.into(),
+                    TransactionDeserializeMetadata {
+                        policies_metadata: metadata,
+                    },
+                ))
+            }
+            TransactionRepr::Upload => {
+                let (tx, metadata) =
+                    <Upload as DeserializeForwardCompatible>::decode_static_forward_compatible(buffer)?;
+                Ok((
+                    tx.into(),
+                    TransactionDeserializeMetadata {
+                        policies_metadata: metadata,
+                    },
+                ))
+            }
+            TransactionRepr::Blob => {
+                let (tx, metadata) =
+                    <Blob as DeserializeForwardCompatible>::decode_static_forward_compatible(buffer)?;
+                Ok((
+                    tx.into(),
+                    TransactionDeserializeMetadata {
+                        policies_metadata: metadata,
+                    },
+                ))
+            }
+        }
+    }
+
+    fn decode_dynamic_forward_compatible<I: fuel_types::canonical::Input + ?Sized>(
+        &mut self,
+        buffer: &mut I,
+        metadata: &mut Self::Metadata,
+    ) -> Result<(), Error> {
+        match self {
+            Self::Script(tx) => tx.decode_dynamic_forward_compatible(
+                buffer,
+                &mut metadata.policies_metadata,
+            ),
+            Self::Create(tx) => tx.decode_dynamic_forward_compatible(
+                buffer,
+                &mut metadata.policies_metadata,
+            ),
+            Self::Mint(tx) => {
+                // Mint doesn't have policies, use standard deserialization
+                tx.decode_dynamic(buffer)
+            }
+            Self::Upgrade(tx) => tx.decode_dynamic_forward_compatible(
+                buffer,
+                &mut metadata.policies_metadata,
+            ),
+            Self::Upload(tx) => tx.decode_dynamic_forward_compatible(
+                buffer,
+                &mut metadata.policies_metadata,
+            ),
+            Self::Blob(tx) => tx.decode_dynamic_forward_compatible(
+                buffer,
+                &mut metadata.policies_metadata,
+            ),
         }
     }
 }

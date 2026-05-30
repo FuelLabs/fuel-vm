@@ -73,27 +73,24 @@ pub type BlockFn = unsafe extern "C" fn(*const JitCtx) -> u64;
 
 // ---- JIT v2 scaffolding: host-fn (thunk) inlining of non-ALU ops --------------
 // A compiled block v2 receives a `*const JitCtx` instead of the bare regs pointer, so
-// it can both (a) do native ALU on the register array and (b) call back into the
-// interpreter (`step`) for ops we don't emit as IR — staying in native code across them
-// instead of returning to the dispatcher. Registers live in memory (the shared array),
-// so a `step` call needs no register marshalling.
+// it can both (a) do native ALU/memory work on the register array and (b) call back into
+// the interpreter via a specialized thunk (`spec`) for ops we don't emit as IR — staying
+// in native code across them instead of returning to the dispatcher. Registers live in
+// memory (the shared array), so a thunk call needs no register marshalling.
 #[repr(C)]
 pub struct JitCtx {
     /// `&mut interpreter.registers[0]` — the live `[u64; 64]` array.
     pub regs: *mut u64,
     /// Type-erased `&mut Interpreter<..>`, passed back to `step`.
     pub interp: *mut core::ffi::c_void,
-    /// Caller-owned slot the thunk writes a non-`Proceed`/error result into. Typed as
+    /// Caller-owned slot a thunk writes a non-`Proceed`/error result into. Typed as
     /// `*mut Option<Result<ExecuteState, InterpreterError<S::DataError>>>` by the runner
-    /// (`step_thunk` knows the concrete `S`). Type-erased here so `JitCtx` stays
+    /// (the specialized thunk knows the concrete `S`). Type-erased here so `JitCtx` stays
     /// non-generic — and so no `'static` bound leaks into the public API.
     pub exit_out: *mut core::ffi::c_void,
-    /// Monomorphized thunk that runs ONE instruction via the interpreter (generic
-    /// fallback; the specialized table below is the hot path).
-    pub step: StepFn,
     /// Base pointer of the per-monomorphization [`SpecThunkFn`] table (see `spec_table`).
     /// A compiled `Thunk`/`Term` step loads `spec[idx]` and calls it — skipping the
-    /// opcode re-decode + dispatch match the generic `step` would do.
+    /// opcode re-decode + dispatch match `Interpreter::instruction` would do.
     pub spec: *const SpecThunkFn,
     /// `&interpreter.memory` (the live [`MemoryInstance`]). Native bounds-checked loads
     /// (LW/LB/LQW/LHW) re-read the stack/heap `Vec` base+len and `hp` watermark from this
@@ -102,65 +99,19 @@ pub struct JitCtx {
     pub mem: *const crate::interpreter::MemoryInstance,
 }
 
-/// Runs one instruction (reading `interp`/`exit_out` from the passed `JitCtx`); returns 0
-/// on `Proceed`, or [`EXIT_SENTINEL`] when the op produced a non-`Proceed`/error result
-/// (written into `ctx.exit_out`).
-pub type StepFn = unsafe extern "C" fn(*const JitCtx, u32) -> u64;
-
 /// Block return value with this bit set ⇒ a thunk exited the block; the result is in the
 /// caller's `exit_out` slot. Otherwise the value is the number of instructions run.
 pub const EXIT_SENTINEL: u64 = 1 << 63;
 
-/// Monomorphized per concrete `Interpreter<..>`: runs one decoded instruction, writing any
-/// non-`Proceed`/error result into the caller's typed `exit_out` slot.
-///
-/// # Safety
-/// `(*ctx).interp` must be a valid `&mut Interpreter<M,S,Tx,Ecal,V>` and `(*ctx).exit_out`
-/// a valid `*mut Option<Result<ExecuteState, InterpreterError<S::DataError>>>`. Only
-/// called with the matching monomorphization (the fn pointer is stored in `JitCtx.step`
-/// by code that knows the concrete type).
-pub unsafe extern "C" fn step_thunk<M, S, Tx, Ecal, V>(
-    ctx: *const JitCtx,
-    raw: u32,
-) -> u64
-where
-    M: super::Memory,
-    S: crate::storage::InterpreterStorage,
-    Tx: super::ExecutableTransaction,
-    Ecal: super::EcalHandler,
-    V: crate::verification::Verifier,
-{
-    type Exit<S> = Option<
-        Result<
-            crate::state::ExecuteState,
-            crate::error::InterpreterError<<S as crate::storage::InterpreterStorage>::DataError>,
-        >,
-    >;
-    // SAFETY: caller guarantees `ctx` and its `interp`/`exit_out` match this
-    // monomorphization.
-    let interp = unsafe {
-        &mut *((*ctx).interp as *mut super::Interpreter<M, S, Tx, Ecal, V>)
-    };
-    match interp.instruction::<u32, false>(raw) {
-        Ok(crate::state::ExecuteState::Proceed) => 0,
-        other => {
-            // SAFETY: `exit_out` is a `*mut Exit<S>` for this same `S`.
-            unsafe {
-                *((*ctx).exit_out as *mut Exit<S>) = Some(other);
-            }
-            EXIT_SENTINEL
-        }
-    }
-}
-
-
-/// A *specialized* thunk: like [`StepFn`] but bound to one concrete opcode, so it skips
-/// the per-execution `Opcode::try_from` + the ~80-arm dispatch match that
-/// `Interpreter::instruction` walks. Takes the raw instruction word; runs that opcode's
-/// audited `op::X::from_raw_args(..).execute(..)` directly. Same ABI as [`StepFn`].
+/// A *specialized* thunk bound to one concrete opcode (and one `Interpreter<..>`
+/// monomorphization), so it skips the per-execution `Opcode::try_from` + the ~80-arm
+/// dispatch match that `Interpreter::instruction` walks. ABI:
+/// `extern "C" fn(*const JitCtx, u32) -> u64`; takes the raw instruction word, runs that
+/// opcode's audited `op::X::from_raw_args(..).execute(..)` directly, returns 0 on `Proceed`
+/// or [`EXIT_SENTINEL`] after stashing a non-`Proceed`/error result into `ctx.exit_out`.
 pub type SpecThunkFn = unsafe extern "C" fn(*const JitCtx, u32) -> u64;
 
-/// The exit-stash type written through `JitCtx.exit_out` (must match `step_thunk`'s).
+/// The exit-stash type written through `JitCtx.exit_out`.
 type SpecExit<S> = Option<
     Result<
         crate::state::ExecuteState,
@@ -195,8 +146,8 @@ macro_rules! define_spec_thunks {
                 V: crate::verification::Verifier,
             {
                 use crate::interpreter::executors::instruction::Execute;
-                // SAFETY: same contract as `step_thunk` — `interp`/`exit_out` match this
-                // monomorphization (the table pointer was built from it).
+                // SAFETY: `interp`/`exit_out` match this monomorphization (the table
+                // pointer in `ctx.spec` was built from it).
                 let interp = unsafe {
                     &mut *((*ctx).interp as *mut super::Interpreter<M, S, Tx, Ecal, V>)
                 };
@@ -866,8 +817,8 @@ fn decode_op(instr: Instruction, g: &GasCosts) -> Option<DecodedOp> {
 /// are simply split across consecutive blocks.
 const MAX_BLOCK_OPS: usize = 256;
 
-/// One step of a compiled block: either native ALU IR, or a callback into the
-/// interpreter (`step_thunk`) for an op we don't emit as IR but which is safe to run
+/// One step of a compiled block: either native ALU/memory IR, or a callback into the
+/// interpreter (a specialized thunk) for an op we don't emit as IR but which is safe to run
 /// mid-block (advances PC by 4, no control-flow / no frame push / no code-window change).
 #[derive(Clone, Copy, Debug)]
 enum BlockStep {
@@ -1143,14 +1094,15 @@ impl JitRuntime {
             b.seal_block(entry);
             let ctx = b.block_params(entry)[0];
             let flags = MemFlags::trusted();
-            // regs = ctx.regs (offset 0); step loaded per-thunk (offset 24).
+            // JitCtx (repr(C)) = { regs@0, interp@8, exit_out@16, spec@24, mem@32 }.
+            // regs = ctx.regs (offset 0).
             let regs = b.ins().load(ptr_ty, flags, ctx, 0);
-            // mem = ctx.mem (offset 40): the live `MemoryInstance`. Native loads re-read
+            // mem = ctx.mem (offset 32): the live `MemoryInstance`. Native loads re-read
             // its stack/heap Vec base+len + hp from this on every access (the struct's
             // address is stable; the Vecs inside reallocate on growth). Unused (DCE'd) for
             // blocks with no native loads.
-            let mem = b.ins().load(ptr_ty, flags, ctx, 40);
-            // Signature of `StepFn`: extern "C" fn(*const JitCtx, u32) -> u64.
+            let mem = b.ins().load(ptr_ty, flags, ctx, 32);
+            // Signature of a specialized thunk: extern "C" fn(*const JitCtx, u32) -> u64.
             let thunk_sig = {
                 let mut sig = cranelift_codegen::ir::Signature::new(call_conv);
                 sig.params.push(AbiParam::new(ptr_ty));
@@ -1201,7 +1153,6 @@ impl JitRuntime {
                 let op = match *step {
                     BlockStep::Native(o) => o,
                     BlockStep::Thunk { spec, raw } => {
-                        // `JitCtx` = { regs@0, interp@8, exit_out@16, step@24, spec@32 }.
                         // Load the specialized thunk `spec_base[spec]` and call it; it
                         // reads `interp`/`exit_out` from `ctx`, so pass `ctx` first.
                         emit_thunk_call(&mut b, ptr_ty, flags, thunk_sig, ctx, spec, raw);
@@ -1514,7 +1465,7 @@ impl JitRuntime {
 /// Emit a call to the specialized thunk `ctx.spec[spec]` with `(ctx, raw)`. On a non-zero
 /// (EXIT_SENTINEL) result the block returns immediately (the thunk stashed the exit);
 /// otherwise the builder is left positioned in the fall-through block so the caller can
-/// continue emitting. `ctx.spec` is at byte offset 32; entries are 8-byte fn pointers.
+/// continue emitting. `ctx.spec` is at byte offset 24; entries are 8-byte fn pointers.
 #[allow(clippy::too_many_arguments)]
 fn emit_thunk_call(
     b: &mut FunctionBuilder,
@@ -1525,7 +1476,7 @@ fn emit_thunk_call(
     spec: u32,
     raw: u32,
 ) {
-    let spec_base = b.ins().load(ptr_ty, flags, ctx, 32);
+    let spec_base = b.ins().load(ptr_ty, flags, ctx, 24);
     let f = b.ins().load(ptr_ty, flags, spec_base, (spec * 8) as i32);
     let rawv = b.ins().iconst(types::I32, raw as i64);
     let call = b.ins().call_indirect(thunk_sig, f, &[ctx, rawv]);

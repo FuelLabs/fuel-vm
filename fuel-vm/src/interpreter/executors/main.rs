@@ -958,7 +958,6 @@ where
         let interp = core::ptr::from_mut(self).cast::<core::ffi::c_void>();
         let exit_out =
             core::ptr::from_mut(&mut exit_slot).cast::<core::ffi::c_void>();
-        let step = crate::interpreter::jit::step_thunk::<M, S, Tx, Ecal, V>;
         // Per-monomorphization specialized-thunk table. The array is constant for this
         // monomorphization, so the compiler promotes it to static rodata — building it
         // here is free and `spec_table.as_ptr()` is a stable address valid for the block
@@ -973,12 +972,11 @@ where
             regs,
             interp,
             exit_out,
-            step,
             spec: spec_table.as_ptr(),
             mem,
         };
         // SAFETY: no Rust borrow of `self` is live here (window owned, get_block borrows
-        // ended). The block reads regs/interp/exit_out/step from `ctx`; thunks
+        // ended). The block reads regs/interp/exit_out/spec/mem from `ctx`; thunks
         // reconstruct `&mut Interpreter<M,S,Tx,Ecal,V>` from `interp` and write into
         // `exit_out` (a `*mut Option<Result<.., S::DataError>>`) — the matching
         // monomorphization.

@@ -45,6 +45,17 @@ use cranelift_module::{Linkage, Module};
 use fuel_asm::{Instruction, Opcode, RegId};
 use fuel_tx::GasCosts;
 
+use crate::{consts::MEM_SIZE, interpreter::MemoryInstance};
+
+// `Vec`'s in-memory header layout is not a stable language guarantee; on the toolchain
+// this was built against (rustc 1.96, post-`RawVecInner` refactor) it is `{cap@0, ptr@8,
+// len@16}` on 64-bit. Both offsets are pinned by `tests::vec_layout_matches_jit_assumption`
+// — a layout change fails that gate loudly instead of miscompiling loads into OOB reads.
+/// Byte offset of `Vec`'s data pointer within its header.
+const VEC_PTR_OFF: i32 = 8;
+/// Byte offset of `Vec`'s `len` within its header.
+const VEC_LEN_OFF: i32 = 16;
+
 // Register file indices (these are just offsets into `registers: [u64; 64]`).
 const R_OF: u32 = RegId::OF.to_u8() as u32;
 const R_PC: u32 = RegId::PC.to_u8() as u32;
@@ -84,6 +95,11 @@ pub struct JitCtx {
     /// A compiled `Thunk`/`Term` step loads `spec[idx]` and calls it — skipping the
     /// opcode re-decode + dispatch match the generic `step` would do.
     pub spec: *const SpecThunkFn,
+    /// `&interpreter.memory` (the live [`MemoryInstance`]). Native bounds-checked loads
+    /// (LW/LB/LQW/LHW) re-read the stack/heap `Vec` base+len and `hp` watermark from this
+    /// on every access — the struct address is stable for the block, but the `Vec`s
+    /// inside reallocate on growth, so a base captured once would go stale mid-block.
+    pub mem: *const crate::interpreter::MemoryInstance,
 }
 
 /// Runs one instruction (reading `interp`/`exit_out` from the passed `JitCtx`); returns 0
@@ -536,6 +552,17 @@ enum OpKind {
     },
     /// NOOP: alu_clear (OF=0, ERR=0, no dest write).
     Noop,
+    /// Native bounds-checked memory load (LB/LQW/LHW/LW): `dest = mem[base + offset]`,
+    /// `nbytes` wide, big-endian, zero-extended. Bails to the interpreter (preserving the
+    /// exact panic) for anything not trivially in-bounds. Does NOT touch OF/ERR.
+    Load {
+        dest: u8,
+        base: u8,
+        /// `imm * nbytes`, precomputed (≤ 4095*8, never overflows a Word).
+        offset: u64,
+        /// 1 (LB), 2 (LQW), 4 (LHW), or 8 (LW).
+        nbytes: u8,
+    },
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -561,6 +588,17 @@ fn decode_op(instr: Instruction, g: &GasCosts) -> Option<DecodedOp> {
     fn w(reg: RegId) -> Option<u8> {
         let r = reg.to_u8();
         (r >= FIRST_WRITABLE).then_some(r)
+    }
+
+    // Build a `Load` op. `offset = imm * nbytes` exactly as the interpreter's `store_load!`
+    // macro computes it (`imm * size_of::<$t>()`); imm is u12, so this never overflows.
+    fn load_kind(dest: u8, base: u8, imm: fuel_asm::Imm12, nbytes: u8) -> OpKind {
+        OpKind::Load {
+            dest,
+            base,
+            offset: u64::from(imm) * nbytes as u64,
+            nbytes,
+        }
     }
 
     let (kind, gas) = match instr {
@@ -799,6 +837,26 @@ fn decode_op(instr: Instruction, g: &GasCosts) -> Option<DecodedOp> {
             )
         }
         I::NOOP(_) => (OpKind::Noop, g.noop()),
+        // Native bounds-checked loads. `dest` must be a writable program register (the
+        // interpreter's `WriteRegKey::try_from` errors otherwise); if not, we return
+        // `None` here and the op is run via its thunk, which raises that exact error.
+        // nbytes & gas mirror the interpreter: LB→u8/lb(), LQW→u16, LHW→u32, LW→u64/lw().
+        I::LB(op) => {
+            let (a, b, imm) = op.unpack();
+            (load_kind(w(a)?, b.to_u8(), imm, 1), g.lb())
+        }
+        I::LQW(op) => {
+            let (a, b, imm) = op.unpack();
+            (load_kind(w(a)?, b.to_u8(), imm, 2), g.lw())
+        }
+        I::LHW(op) => {
+            let (a, b, imm) = op.unpack();
+            (load_kind(w(a)?, b.to_u8(), imm, 4), g.lw())
+        }
+        I::LW(op) => {
+            let (a, b, imm) = op.unpack();
+            (load_kind(w(a)?, b.to_u8(), imm, 8), g.lw())
+        }
         _ => return None,
     };
     Some(DecodedOp { kind, gas })
@@ -908,6 +966,8 @@ fn gas_fingerprint(g: &GasCosts) -> u64 {
         g.add(), g.addi(), g.sub(), g.subi(), g.and(), g.andi(), g.or(), g.ori(),
         g.xor(), g.xori(), g.not(), g.move_op(), g.movi(), g.eq_(), g.lt(), g.gt(),
         g.sll(), g.slli(), g.srl(), g.srli(), g.noop(),
+        // memory loads emitted as native IR (LB uses lb(); LQW/LHW/LW use lw())
+        g.lb(), g.lw(),
     ];
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
     for c in costs {
@@ -1085,6 +1145,11 @@ impl JitRuntime {
             let flags = MemFlags::trusted();
             // regs = ctx.regs (offset 0); step loaded per-thunk (offset 24).
             let regs = b.ins().load(ptr_ty, flags, ctx, 0);
+            // mem = ctx.mem (offset 40): the live `MemoryInstance`. Native loads re-read
+            // its stack/heap Vec base+len + hp from this on every access (the struct's
+            // address is stable; the Vecs inside reallocate on growth). Unused (DCE'd) for
+            // blocks with no native loads.
+            let mem = b.ins().load(ptr_ty, flags, ctx, 40);
             // Signature of `StepFn`: extern "C" fn(*const JitCtx, u32) -> u64.
             let thunk_sig = {
                 let mut sig = cranelift_codegen::ir::Signature::new(call_conv);
@@ -1197,6 +1262,116 @@ impl JitRuntime {
                     continue;
                 }
 
+                // --- native bounds-checked load (LB/LQW/LHW/LW) ---
+                // Bails to the interpreter for anything not trivially in-bounds, so the
+                // exact `MemoryOverflow`/`UninitializedMemoryAccess` panic is preserved.
+                if let OpKind::Load {
+                    dest,
+                    base,
+                    offset,
+                    nbytes,
+                } = op.kind
+                {
+                    let int_ty = match nbytes {
+                        1 => types::I8,
+                        2 => types::I16,
+                        4 => types::I32,
+                        _ => types::I64,
+                    };
+                    // VM-memory loads are at arbitrary (unaligned) addresses; non-trapping
+                    // because we have just bounds-checked the access.
+                    let mem_flags = MemFlags::new().with_notrap();
+
+                    // addr = regs[base] + offset, with the interpreter's `checked_add` —
+                    // bail on wrap (would be `MemoryOverflow`).
+                    let bv = load(&mut b, base as u32);
+                    let off_v = b.ins().iconst(types::I64, offset as i64);
+                    let addr = b.ins().iadd(bv, off_v);
+                    let carry = b.ins().icmp(IntCC::UnsignedLessThan, addr, bv);
+                    let cont0 = b.create_block();
+                    let bail0 = b.create_block();
+                    b.ins().brif(carry, bail0, &[], cont0, &[]);
+                    b.switch_to_block(bail0);
+                    b.seal_block(bail0);
+                    bail(&mut b, i);
+                    b.switch_to_block(cont0);
+                    b.seal_block(cont0);
+
+                    // Require addr + nbytes <= MEM_SIZE (mirrors verify()'s end>MEM_SIZE →
+                    // Overflow) so addr+nbytes can't wrap and spuriously pass a bound.
+                    let max_addr =
+                        b.ins().iconst(types::I64, (MEM_SIZE - nbytes as usize) as i64);
+                    let in_ram = b.ins().icmp(IntCC::UnsignedLessThanOrEqual, addr, max_addr);
+                    let cont1 = b.create_block();
+                    let bail1 = b.create_block();
+                    b.ins().brif(in_ram, cont1, &[], bail1, &[]);
+                    b.switch_to_block(bail1);
+                    b.seal_block(bail1);
+                    bail(&mut b, i);
+                    b.switch_to_block(cont1);
+                    b.seal_block(cont1);
+
+                    // Re-read the LIVE stack/heap Vec base+len and hp (they move on growth).
+                    let s_off = MemoryInstance::JIT_STACK_OFFSET as i32;
+                    let h_off = MemoryInstance::JIT_HEAP_OFFSET as i32;
+                    let hp_off = MemoryInstance::JIT_HP_OFFSET as i32;
+                    let stack_ptr = b.ins().load(ptr_ty, flags, mem, s_off + VEC_PTR_OFF);
+                    let stack_len = b.ins().load(types::I64, flags, mem, s_off + VEC_LEN_OFF);
+                    let heap_ptr = b.ins().load(ptr_ty, flags, mem, h_off + VEC_PTR_OFF);
+                    let heap_len = b.ins().load(types::I64, flags, mem, h_off + VEC_LEN_OFF);
+                    let hp = b.ins().load(types::I64, flags, mem, hp_off);
+
+                    // verify(): valid iff `end <= stack.len()` (stack) or `start >= hp`
+                    // (heap). read() prefers the stack branch when both hold.
+                    let nb = b.ins().iconst(types::I64, nbytes as i64);
+                    let end = b.ins().iadd(addr, nb);
+                    let stack_hit =
+                        b.ins().icmp(IntCC::UnsignedLessThanOrEqual, end, stack_len);
+                    let heap_hit =
+                        b.ins().icmp(IntCC::UnsignedGreaterThanOrEqual, addr, hp);
+                    let valid = b.ins().bor(stack_hit, heap_hit);
+                    let cont2 = b.create_block();
+                    let bail2 = b.create_block();
+                    b.ins().brif(valid, cont2, &[], bail2, &[]);
+                    b.switch_to_block(bail2);
+                    b.seal_block(bail2);
+                    bail(&mut b, i);
+                    b.switch_to_block(cont2);
+                    b.seal_block(cont2);
+
+                    // Charge gas after the bounds check (the read is side-effect-free; the
+                    // interpreter charges gas before the read, but bailing on OOG defers the
+                    // whole instruction to it, so any ordering is preserved).
+                    emit_gas_or_bail(&mut b, regs, flags, cost, &bail, i);
+
+                    // Effective byte pointer. Stack: base+addr. Heap: base+(addr-heap_off),
+                    // heap_off = MEM_SIZE - heap.len(). Both computed branchlessly; `select`
+                    // takes the live one (heap arm is dead arithmetic when stack_hit).
+                    let stack_eff = b.ins().iadd(stack_ptr, addr);
+                    let mem_size_v = b.ins().iconst(types::I64, MEM_SIZE as i64);
+                    let heap_base = b.ins().isub(mem_size_v, heap_len);
+                    let heap_idx = b.ins().isub(addr, heap_base);
+                    let heap_eff = b.ins().iadd(heap_ptr, heap_idx);
+                    let eff = b.ins().select(stack_hit, stack_eff, heap_eff);
+
+                    // `$t::from_be_bytes(..) as u64`: native (LE) load, byte-swap to
+                    // big-endian, zero-extend to 64 bits.
+                    let raw = b.ins().load(int_ty, mem_flags, eff, 0);
+                    let val = if nbytes == 1 {
+                        b.ins().uextend(types::I64, raw)
+                    } else {
+                        let swapped = b.ins().bswap(raw);
+                        if nbytes == 8 {
+                            swapped
+                        } else {
+                            b.ins().uextend(types::I64, swapped)
+                        }
+                    };
+                    store(&mut b, dest as u32, val);
+                    // Load touches neither OF nor ERR.
+                    continue;
+                }
+
                 // --- pure ops: gas check, then compute + commit ---
                 emit_gas_or_bail(&mut b, regs, flags, cost, &bail, i);
 
@@ -1300,7 +1475,9 @@ impl JitRuntime {
                         store(&mut b, R_OF, zero);
                         store(&mut b, R_ERR, zero);
                     }
-                    OpKind::AddSub { .. } => unreachable!("handled above"),
+                    OpKind::AddSub { .. } | OpKind::Load { .. } => {
+                        unreachable!("handled above")
+                    }
                 }
             }
 
@@ -1390,4 +1567,30 @@ fn emit_gas_or_bail(
     let new_ggas = b.ins().isub(ggas, cost_v);
     b.ins().store(flags, new_cgas, regs, (R_CGAS * 8) as i32);
     b.ins().store(flags, new_ggas, regs, (R_GGAS * 8) as i32);
+}
+
+#[cfg(test)]
+mod tests {
+    /// The native-load codegen reads a `Vec`'s data pointer at byte 0 and `len` at byte 16
+    /// of its header (64-bit: `ptr, cap, len`). That layout is not a language guarantee, so
+    /// pin it here: any future `Vec` layout change fails this (a required gate) loudly
+    /// instead of miscompiling LW/LB/LQW/LHW into out-of-bounds native reads.
+    #[test]
+    fn vec_layout_matches_jit_assumption() {
+        let mut v: alloc::vec::Vec<u8> = alloc::vec::Vec::with_capacity(8);
+        v.push(0xAB);
+        v.push(0xCD);
+        v.push(0xEF);
+        let base = core::ptr::from_ref(&v).cast::<u8>();
+        // SAFETY: reading the machine words backing the `Vec` header in-place, at the byte
+        // offsets the native-load codegen uses.
+        let (raw_ptr, raw_len) = unsafe {
+            (
+                base.add(super::VEC_PTR_OFF as usize).cast::<usize>().read(),
+                base.add(super::VEC_LEN_OFF as usize).cast::<usize>().read(),
+            )
+        };
+        assert_eq!(raw_ptr, v.as_ptr() as usize, "Vec data ptr not at VEC_PTR_OFF");
+        assert_eq!(raw_len, v.len(), "Vec len not at VEC_LEN_OFF");
+    }
 }

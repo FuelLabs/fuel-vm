@@ -116,6 +116,20 @@ impl AsMut<MemoryInstance> for MemoryInstance {
 }
 
 impl MemoryInstance {
+    /// Byte offsets of the `stack` / `heap` / `hp` fields within `MemoryInstance`, used by
+    /// the JIT's native bounds-checked loads. The JIT re-reads these from the *live*
+    /// instance on every access because the `stack`/`heap` `Vec`s reallocate on growth
+    /// (ALOC/CFEI/PSH*), so a base/len captured at block entry can go stale mid-block.
+    /// `offset_of!` can see the private fields here. The JIT additionally assumes the std
+    /// `Vec` layout (`ptr` at byte 0, `len` at byte 16 on 64-bit); that assumption is
+    /// pinned by `jit::tests::vec_layout_matches_jit_assumption`.
+    #[cfg(feature = "jit")]
+    pub(crate) const JIT_STACK_OFFSET: usize = core::mem::offset_of!(Self, stack);
+    #[cfg(feature = "jit")]
+    pub(crate) const JIT_HEAP_OFFSET: usize = core::mem::offset_of!(Self, heap);
+    #[cfg(feature = "jit")]
+    pub(crate) const JIT_HP_OFFSET: usize = core::mem::offset_of!(Self, hp);
+
     /// Create a new VM memory.
     pub fn new() -> Self {
         Self {

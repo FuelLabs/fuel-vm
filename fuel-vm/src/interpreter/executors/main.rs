@@ -965,12 +965,17 @@ where
         // call below (the slice outlives `f(&ctx)`).
         let spec_table =
             crate::interpreter::jit::spec_table::<M, S, Tx, Ecal, V>();
+        // Live `MemoryInstance` for the block's native bounds-checked loads. The struct's
+        // address is stable across the block call (only the Vecs inside reallocate, which
+        // the codegen re-reads per access); no `&mut self` borrow is held across `f(&ctx)`.
+        let mem: *const crate::interpreter::MemoryInstance = self.memory.as_ref();
         let ctx = crate::interpreter::jit::JitCtx {
             regs,
             interp,
             exit_out,
             step,
             spec: spec_table.as_ptr(),
+            mem,
         };
         // SAFETY: no Rust borrow of `self` is live here (window owned, get_block borrows
         // ended). The block reads regs/interp/exit_out/step from `ctx`; thunks

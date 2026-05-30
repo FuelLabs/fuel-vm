@@ -16,3 +16,4 @@ Cargo.lock
 .history
 
 .pnpm-store
+.claude/

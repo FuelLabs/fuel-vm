@@ -114,6 +114,8 @@ where
             verifier: self.verifier,
             owner_ptr: self.owner_ptr,
             storage_slot_cache: self.storage_slot_cache,
+            #[cfg(feature = "jit")]
+            jit: self.jit,
         }
     }
 
@@ -206,6 +208,8 @@ where
             verifier: self.verifier,
             owner_ptr: self.owner_ptr,
             storage_slot_cache: self.storage_slot_cache,
+            #[cfg(feature = "jit")]
+            jit: self.jit,
         }
     }
 

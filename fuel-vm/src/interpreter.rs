@@ -66,6 +66,8 @@ mod flow;
 mod gas;
 mod initialization;
 mod internal;
+#[cfg(feature = "jit")]
+pub(crate) mod jit;
 mod log;
 mod memory;
 mod metadata;
@@ -142,6 +144,10 @@ pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal, V = verification:
     /// for new bytes written.
     storage_slot_cache:
         hashbrown::HashMap<ContractId, hashbrown::HashMap<Bytes32, Option<Vec<u8>>>>,
+    /// Cranelift JIT accelerator for straight-line ALU blocks. The interpreter
+    /// remains the source of truth; this only speeds up eligible blocks.
+    #[cfg(feature = "jit")]
+    jit: jit::JitState,
 }
 
 /// Interpreter parameters

@@ -22,6 +22,8 @@ mod encoding;
 mod external;
 mod flow;
 mod gas_factor;
+#[cfg(feature = "jit")]
+mod jit;
 mod jump_absolute;
 mod jump_and_link;
 mod jump_relative;

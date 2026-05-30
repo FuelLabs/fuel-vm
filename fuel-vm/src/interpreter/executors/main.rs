@@ -111,6 +111,17 @@ use fuel_types::{
     Word,
 };
 
+/// Outcome of attempting a JIT-compiled block at the current PC.
+#[cfg(feature = "jit")]
+enum JitStep<E> {
+    /// Ran >=1 instruction, all `Proceed` — continue the dispatch loop.
+    Proceeded,
+    /// Nothing eligible / bailed at the first instruction — let the interpreter run it.
+    NotEligible,
+    /// A thunked op produced a non-`Proceed`/error result — handle like `execute()`.
+    Exited(Result<crate::state::ExecuteState, InterpreterError<E>>),
+}
+
 /// Predicates were checked succesfully
 #[derive(Debug, Clone, Copy)]
 pub struct PredicatesChecked {
@@ -892,6 +903,151 @@ where
         Ok(())
     }
 
+    /// Executable bytecode window `(pc, len)` at the current PC, or `None` if PC is
+    /// outside `[IS, SSP)` or too short for an instruction.
+    #[cfg(feature = "jit")]
+    fn jit_bounds(&self) -> Option<(u64, u64)> {
+        use fuel_asm::RegId;
+        let pc = self.registers[RegId::PC];
+        let ssp = self.registers[RegId::SSP];
+        let is = self.registers[RegId::IS];
+        if pc < is || pc >= ssp {
+            return None;
+        }
+        const MAX_WINDOW: u64 = 256 * 4;
+        let len = ssp.saturating_sub(pc).min(MAX_WINDOW);
+        if len < 4 {
+            return None;
+        }
+        Some((pc, len))
+    }
+
+    /// Shared JIT block runner. Copies the bytecode window, compiles/looks up the block
+    /// (dropping every interpreter borrow first), then executes it via raw pointers so
+    /// the block's thunks can re-enter `&mut self` without aliasing a live borrow.
+    ///
+    /// Returns `(instructions_executed, exit)` where `exit` carries a thunk's
+    /// non-`Proceed`/error result for the dispatcher, or `None` if no eligible block
+    /// ran. `allow_thunks=false` restricts to pure-ALU blocks (used by verify mode).
+    #[cfg(feature = "jit")]
+    #[allow(unsafe_code)]
+    #[allow(clippy::type_complexity)]
+    fn jit_run_block_inner(
+        &mut self,
+        pc: u64,
+        len: u64,
+        allow_thunks: bool,
+    ) -> Option<(u64, Option<Result<ExecuteState, InterpreterError<S::DataError>>>)>
+    {
+        // Copy the window: a thunked memory op may reallocate VM memory, which would
+        // dangle a borrowed slice. After this, no borrow of `self.memory` is held.
+        let window: alloc::vec::Vec<u8> =
+            self.memory.as_ref().read(pc, len).ok()?.to_vec();
+        // Compile/look up; the returned fn pointer is `Copy`, so all borrows end here.
+        let f = {
+            let costs = &self.interpreter_params.gas_costs;
+            self.jit.get_block(&window, costs, pc, allow_thunks)?
+        };
+        // Caller-owned, concretely-typed slot the thunk writes a non-Proceed/error
+        // result into (keeps `JitCtx` non-generic and avoids any `'static` bound).
+        let mut exit_slot: Option<Result<ExecuteState, InterpreterError<S::DataError>>> =
+            None;
+        let regs = self.registers.as_mut_ptr();
+        let interp = core::ptr::from_mut(self).cast::<core::ffi::c_void>();
+        let exit_out =
+            core::ptr::from_mut(&mut exit_slot).cast::<core::ffi::c_void>();
+        let step = crate::interpreter::jit::step_thunk::<M, S, Tx, Ecal, V>;
+        let ctx = crate::interpreter::jit::JitCtx {
+            regs,
+            interp,
+            exit_out,
+            step,
+        };
+        // SAFETY: no Rust borrow of `self` is live here (window owned, get_block borrows
+        // ended). The block reads regs/interp/exit_out/step from `ctx`; thunks
+        // reconstruct `&mut Interpreter<M,S,Tx,Ecal,V>` from `interp` and write into
+        // `exit_out` (a `*mut Option<Result<.., S::DataError>>`) — the matching
+        // monomorphization.
+        let ret = unsafe { f(&ctx) };
+        if ret & crate::interpreter::jit::EXIT_SENTINEL != 0 {
+            Some((0, exit_slot))
+        } else {
+            self.jit.add_executed(ret);
+            Some((ret, None))
+        }
+    }
+
+    /// Normal JIT fast path: run the (thunk-enabled) block at the current PC.
+    #[cfg(feature = "jit")]
+    fn jit_step(&mut self) -> JitStep<S::DataError> {
+        let Some((pc, len)) = self.jit_bounds() else {
+            return JitStep::NotEligible;
+        };
+        match self.jit_run_block_inner(pc, len, true) {
+            Some((n, None)) if n > 0 => JitStep::Proceeded,
+            Some((_, Some(exit))) => JitStep::Exited(exit),
+            _ => JitStep::NotEligible,
+        }
+    }
+
+    /// Verify mode (`FUEL_VM_JIT_VERIFY=1`): run a NATIVE-only block (no side-effecting
+    /// thunks), then re-run the same instructions in the interpreter from the pre-block
+    /// state and diff the register file, logging any divergence. Keeps the interpreter's
+    /// (correct) result so execution still completes.
+    #[cfg(feature = "jit")]
+    fn jit_verify_step(&mut self) -> JitStep<S::DataError> {
+        use fuel_asm::RegId;
+        let Some((pc, len)) = self.jit_bounds() else {
+            return JitStep::NotEligible;
+        };
+        let snapshot = self.registers;
+        let pc_before = self.registers[RegId::PC];
+        match self.jit_run_block_inner(pc, len, false) {
+            Some((n, _)) if n > 0 => {
+                let jit_regs = self.registers;
+                self.registers = snapshot;
+                let mut mismatch = false;
+                for _ in 0..n {
+                    if !matches!(self.execute::<false>(), Ok(ExecuteState::Proceed)) {
+                        mismatch = true;
+                        break;
+                    }
+                }
+                if mismatch || self.registers != jit_regs {
+                    self.log_jit_divergence(pc_before, n, &snapshot, &jit_regs);
+                }
+                JitStep::Proceeded
+            }
+            _ => JitStep::NotEligible,
+        }
+    }
+
+    #[cfg(feature = "jit")]
+    #[allow(
+        clippy::arithmetic_side_effects,
+        clippy::cast_possible_truncation,
+        clippy::indexing_slicing
+    )]
+    fn log_jit_divergence(&self, pc: Word, n: u64, before: &[Word], jit_regs: &[Word]) {
+        // Debug-only divergence dump (FUEL_VM_JIT_VERIFY); not on any hot path.
+        std::eprintln!("=== JIT DIVERGENCE @ pc={pc} ({n} instr) ===");
+        let count = n as usize;
+        if let Ok(bytes) = self.memory().read(pc, count.saturating_mul(4)) {
+            for chunk in bytes.chunks_exact(4) {
+                let raw = [chunk[0], chunk[1], chunk[2], chunk[3]];
+                std::eprintln!("  {:?}", fuel_asm::Instruction::try_from(raw));
+            }
+        }
+        for ((r, &j), &cur) in jit_regs.iter().enumerate().zip(self.registers.iter()) {
+            if j != cur {
+                std::eprintln!(
+                    "  reg[{r:#04x}] before={} jit={} interp={}",
+                    before[r], j, cur
+                );
+            }
+        }
+    }
+
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError<S::DataError>> {
         for input in self.transaction().inputs() {
             if let Input::Contract(contract) = input
@@ -1021,10 +1177,33 @@ where
         } else {
             // TODO set tree balance
             loop {
+                // Fast path: a JIT-compiled block at the current PC. `Proceeded` => it
+                // ran >=1 instruction with no exit (loop again). `Exited` carries a
+                // thunk's non-Proceed/error result, handled by the same match below as a
+                // normal `execute()` result. `NotEligible` => fall to the interpreter.
+                // The debugger must single-step so per-instruction debug events fire.
+                #[cfg(feature = "jit")]
+                let result = if self.debugger.is_active() {
+                    self.execute::<false>()
+                } else {
+                    let step = if self.jit.verify_enabled() {
+                        self.jit_verify_step()
+                    } else {
+                        self.jit_step()
+                    };
+                    match step {
+                        JitStep::Proceeded => continue,
+                        JitStep::Exited(r) => r,
+                        JitStep::NotEligible => self.execute::<false>(),
+                    }
+                };
+                #[cfg(not(feature = "jit"))]
+                let result = self.execute::<false>();
+
                 // Check whether the instruction will be executed in a call context
                 let in_call = !self.frames.is_empty();
 
-                match self.execute::<false>() {
+                match result {
                     // Proceeding with the execution normally
                     Ok(ExecuteState::Proceed) => continue,
                     // Debugger events are returned directly to the caller

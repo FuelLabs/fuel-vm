@@ -83,7 +83,24 @@ where
             verifier: Default::default(),
             owner_ptr: None,
             storage_slot_cache: Default::default(),
+            #[cfg(feature = "jit")]
+            jit: Default::default(),
         }
+    }
+}
+
+#[cfg(feature = "jit")]
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
+    /// Enable or disable the Cranelift JIT at runtime. Disabling forces pure
+    /// interpretation (useful for A/B benchmarking and differential testing).
+    pub fn set_jit_enabled(&mut self, enabled: bool) {
+        self.jit.set_enabled(enabled);
+    }
+
+    /// Total instructions executed through JIT-compiled blocks so far. Useful to
+    /// confirm the JIT is genuinely being exercised.
+    pub fn jit_executed_instrs(&self) -> u64 {
+        self.jit.executed_instrs()
     }
 }
 

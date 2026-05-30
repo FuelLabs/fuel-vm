@@ -77,8 +77,13 @@ pub struct JitCtx {
     /// (`step_thunk` knows the concrete `S`). Type-erased here so `JitCtx` stays
     /// non-generic — and so no `'static` bound leaks into the public API.
     pub exit_out: *mut core::ffi::c_void,
-    /// Monomorphized thunk that runs ONE instruction via the interpreter.
+    /// Monomorphized thunk that runs ONE instruction via the interpreter (generic
+    /// fallback; the specialized table below is the hot path).
     pub step: StepFn,
+    /// Base pointer of the per-monomorphization [`SpecThunkFn`] table (see `spec_table`).
+    /// A compiled `Thunk`/`Term` step loads `spec[idx]` and calls it — skipping the
+    /// opcode re-decode + dispatch match the generic `step` would do.
+    pub spec: *const SpecThunkFn,
 }
 
 /// Runs one instruction (reading `interp`/`exit_out` from the passed `JitCtx`); returns 0
@@ -132,6 +137,128 @@ where
     }
 }
 
+
+/// A *specialized* thunk: like [`StepFn`] but bound to one concrete opcode, so it skips
+/// the per-execution `Opcode::try_from` + the ~80-arm dispatch match that
+/// `Interpreter::instruction` walks. Takes the raw instruction word; runs that opcode's
+/// audited `op::X::from_raw_args(..).execute(..)` directly. Same ABI as [`StepFn`].
+pub type SpecThunkFn = unsafe extern "C" fn(*const JitCtx, u32) -> u64;
+
+/// The exit-stash type written through `JitCtx.exit_out` (must match `step_thunk`'s).
+type SpecExit<S> = Option<
+    Result<
+        crate::state::ExecuteState,
+        crate::error::InterpreterError<<S as crate::storage::InterpreterStorage>::DataError>,
+    >,
+>;
+
+/// Generates, for each listed opcode, a specialized `extern "C"` thunk that runs exactly
+/// that opcode via its audited interpreter impl (`op::X::from_raw_args(..).execute(..)`),
+/// replicating `Interpreter::instruction`'s error wrapping — but WITHOUT the opcode
+/// re-decode + giant match it performs on every call. Also emits `spec_table` (the
+/// per-monomorphization fn-pointer table; a constant array ⇒ promoted to static rodata,
+/// so building it per dispatch is free) and `spec_index` (opcode → dense table slot).
+///
+/// Semantics are identical to the generic thunk: it reuses the same op impls and the same
+/// `InterpreterError::from_runtime(.., raw)` wrapping, so it cannot diverge. The only
+/// elided work is decode/dispatch the JIT already did at compile time (and the inactive
+/// debugger check, which the JIT dispatch path guarantees is off).
+macro_rules! define_spec_thunks {
+    ($($op:ident),+ $(,)?) => { paste::paste! {
+        $(
+            #[allow(non_snake_case)]
+            unsafe extern "C" fn [<spec_thunk_ $op>]<M, S, Tx, Ecal, V>(
+                ctx: *const JitCtx,
+                raw: u32,
+            ) -> u64
+            where
+                M: super::Memory,
+                S: crate::storage::InterpreterStorage,
+                Tx: super::ExecutableTransaction,
+                Ecal: super::EcalHandler,
+                V: crate::verification::Verifier,
+            {
+                use crate::interpreter::executors::instruction::Execute;
+                // SAFETY: same contract as `step_thunk` — `interp`/`exit_out` match this
+                // monomorphization (the table pointer was built from it).
+                let interp = unsafe {
+                    &mut *((*ctx).interp as *mut super::Interpreter<M, S, Tx, Ecal, V>)
+                };
+                let b = raw.to_be_bytes();
+                // Mirror `Interpreter::instruction`: run the op, then wrap any
+                // `RuntimeError` into an `InterpreterError` carrying the raw word.
+                let res: Result<
+                    crate::state::ExecuteState,
+                    crate::error::InterpreterError<S::DataError>,
+                > = match fuel_asm::op::$op::from_raw_args([b[1], b[2], b[3]]) {
+                    Ok(o) => o.execute(interp),
+                    Err(_) => Err(crate::error::RuntimeError::from(
+                        fuel_asm::PanicReason::InvalidInstruction,
+                    )),
+                }
+                .map_err(|e| crate::error::InterpreterError::from_runtime(e, raw));
+                match res {
+                    Ok(crate::state::ExecuteState::Proceed) => 0,
+                    other => {
+                        // SAFETY: `exit_out` is a `*mut SpecExit<S>` for this same `S`.
+                        unsafe {
+                            *((*ctx).exit_out as *mut SpecExit<S>) = Some(other);
+                        }
+                        EXIT_SENTINEL
+                    }
+                }
+            }
+        )+
+
+        /// Count of specialized opcodes (size of the per-monomorph table).
+        const N_SPEC: usize = [ $( { let _ = stringify!($op); 1usize } ),+ ].len();
+
+        /// Per-monomorphization table of specialized thunks, in `spec_index` order.
+        pub fn spec_table<M, S, Tx, Ecal, V>() -> [SpecThunkFn; N_SPEC]
+        where
+            M: super::Memory,
+            S: crate::storage::InterpreterStorage,
+            Tx: super::ExecutableTransaction,
+            Ecal: super::EcalHandler,
+            V: crate::verification::Verifier,
+        {
+            [ $( [<spec_thunk_ $op>]::<M, S, Tx, Ecal, V> ),+ ]
+        }
+
+        /// Dense table index of an opcode the JIT runs via a specialized thunk, if any.
+        fn spec_index(op: Opcode) -> Option<u32> {
+            let mut i = 0u32;
+            $(
+                if op == Opcode::$op {
+                    return Some(i);
+                }
+                i = i.wrapping_add(1);
+            )+
+            let _ = i;
+            None
+        }
+    } };
+}
+
+// Union of `is_thunkable` (mid-block) and `is_terminator_thunkable` (trailing control
+// flow). Every opcode that can appear as `BlockStep::Thunk`/`Term` MUST be listed here;
+// `scan_block` `.expect()`s a slot, so any omission fails loudly in the test suite.
+define_spec_thunks!(
+    // memory load/store/copy/compare/alloc + stack frame adjust
+    LB, LW, LQW, LHW, SB, SW, SQW, SHW, MCL, MCLI, MCP, MCPI, MEQ,
+    ALOC, CFEI, CFSI, CFE, CFS, POPL, POPH, PSHL, PSHH,
+    // transaction/VM field reads
+    GTF, GM,
+    // arithmetic not emitted as native IR
+    MUL, MULI, DIV, DIVI, MOD, MODI, EXP, EXPI, MLOG, MROO,
+    // 256/128-bit wide-int math
+    WDCM, WQCM, WDOP, WQOP, WDML, WQML, WDDV, WQDV, WDMD, WQMD,
+    WDAM, WQAM, WDMM, WQMM, MLDV,
+    // misc register/flag ops
+    FLAG, MOVE, NOOP,
+    // control-flow terminators (run as the block's last step)
+    JAL, JMP, JI, JNE, JNEI, JNZI, JNZF, JNZB, JMPF, JMPB, JNEF,
+);
 
 /// Field embedded in the `Interpreter`. Lazily creates a [`JitRuntime`] on first
 /// use. Cloning an interpreter yields a fresh (empty) JIT — the cache is a pure
@@ -687,8 +814,8 @@ const MAX_BLOCK_OPS: usize = 256;
 #[derive(Clone, Copy, Debug)]
 enum BlockStep {
     Native(DecodedOp),
-    /// Big-endian raw instruction bytes, fed to `Interpreter::instruction`.
-    Thunk(u32),
+    /// `spec` = index into the [`SpecThunkFn`] table; `raw` = the instruction word.
+    Thunk { spec: u32, raw: u32 },
     /// A control-flow *terminator* run via the interpreter thunk as the block's last
     /// step (threaded dispatch). Unlike `Thunk`, the interpreter sets PC to the jump
     /// target/fallthrough itself, so the block returns immediately afterwards WITHOUT
@@ -696,7 +823,8 @@ enum BlockStep {
     /// of bouncing through a separate `NotEligible` dispatch + interpreter step per
     /// terminator — see [`is_terminator_thunkable`]. Semantics come for free (the audited
     /// interpreter impl runs), so this cannot diverge from the interpreter.
-    Term(u32),
+    /// `spec`/`raw` as in [`BlockStep::Thunk`].
+    Term { spec: u32, raw: u32 },
 }
 
 /// Is `op` a control-flow terminator we can run as a block's final thunk step? Allowlist
@@ -752,7 +880,9 @@ fn scan_block(window: &[u8], g: &GasCosts, allow_thunks: bool) -> Vec<BlockStep>
             continue;
         }
         if allow_thunks && is_thunkable(instr.opcode()) {
-            steps.push(BlockStep::Thunk(u32::from_be_bytes(raw)));
+            let spec = spec_index(instr.opcode())
+                .expect("is_thunkable opcode missing from define_spec_thunks!");
+            steps.push(BlockStep::Thunk { spec, raw: u32::from_be_bytes(raw) });
             pos += 4;
             continue;
         }
@@ -762,7 +892,9 @@ fn scan_block(window: &[u8], g: &GasCosts, allow_thunks: bool) -> Vec<BlockStep>
         // lone terminator is cheaper to run via the interpreter than to wrap in a block
         // call), so gate on a non-empty block.
         if allow_thunks && !steps.is_empty() && is_terminator_thunkable(instr.opcode()) {
-            steps.push(BlockStep::Term(u32::from_be_bytes(raw)));
+            let spec = spec_index(instr.opcode())
+                .expect("terminator opcode missing from define_spec_thunks!");
+            steps.push(BlockStep::Term { spec, raw: u32::from_be_bytes(raw) });
         }
         break;
     }
@@ -1003,47 +1135,21 @@ impl JitRuntime {
                 // control back to the dispatcher (which takes the stashed result).
                 let op = match *step {
                     BlockStep::Native(o) => o,
-                    BlockStep::Thunk(raw) => {
-                        // `JitCtx` is { regs@0, interp@8, exit_out@16, step@24 }.
-                        // `step` (step_thunk) is at offset 24, and it reads `interp` and
-                        // `exit_out` from the ctx itself — so pass `ctx` as the first
-                        // argument, not the interp pointer.
-                        let stepfn = b.ins().load(ptr_ty, flags, ctx, 24);
-                        let rawv = b.ins().iconst(types::I32, raw as i64);
-                        let call =
-                            b.ins().call_indirect(thunk_sig, stepfn, &[ctx, rawv]);
-                        let r = b.inst_results(call)[0];
-                        let cont = b.create_block();
-                        let exit_b = b.create_block();
-                        b.ins().brif(r, exit_b, &[], cont, &[]);
-                        b.switch_to_block(exit_b);
-                        b.seal_block(exit_b);
-                        let sentinel = b.ins().iconst(types::I64, EXIT_SENTINEL as i64);
-                        b.ins().return_(&[sentinel]);
-                        b.switch_to_block(cont);
-                        b.seal_block(cont);
+                    BlockStep::Thunk { spec, raw } => {
+                        // `JitCtx` = { regs@0, interp@8, exit_out@16, step@24, spec@32 }.
+                        // Load the specialized thunk `spec_base[spec]` and call it; it
+                        // reads `interp`/`exit_out` from `ctx`, so pass `ctx` first.
+                        emit_thunk_call(&mut b, ptr_ty, flags, thunk_sig, ctx, spec, raw);
                         continue;
                     }
-                    BlockStep::Term(raw) => {
-                        // Threaded-dispatch terminator: run the jump via the interpreter
-                        // (it sets PC to the resolved target/fallthrough) and return the
-                        // count immediately — do NOT overwrite PC with base+4*n. `pc_cur`
-                        // (stored above) is this instruction's address, which the jump
-                        // reads for PC-relative targets. Term is always the last step.
-                        let stepfn = b.ins().load(ptr_ty, flags, ctx, 24);
-                        let rawv = b.ins().iconst(types::I32, raw as i64);
-                        let call =
-                            b.ins().call_indirect(thunk_sig, stepfn, &[ctx, rawv]);
-                        let r = b.inst_results(call)[0];
-                        let cont = b.create_block();
-                        let exit_b = b.create_block();
-                        b.ins().brif(r, exit_b, &[], cont, &[]);
-                        b.switch_to_block(exit_b);
-                        b.seal_block(exit_b);
-                        let sentinel = b.ins().iconst(types::I64, EXIT_SENTINEL as i64);
-                        b.ins().return_(&[sentinel]);
-                        b.switch_to_block(cont);
-                        b.seal_block(cont);
+                    BlockStep::Term { spec, raw } => {
+                        // Threaded-dispatch terminator: run the jump via its specialized
+                        // thunk (the interpreter sets PC to the resolved target/
+                        // fallthrough) and return the count immediately — do NOT overwrite
+                        // PC with base+4*n. `pc_cur` (stored above) is this instruction's
+                        // address, which the jump reads for PC-relative targets. Term is
+                        // always the last step.
+                        emit_thunk_call(&mut b, ptr_ty, flags, thunk_sig, ctx, spec, raw);
                         let n = b.ins().iconst(types::I64, (i + 1) as i64);
                         b.ins().return_(&[n]);
                         ends_with_term = true;
@@ -1226,6 +1332,36 @@ impl JitRuntime {
         // SAFETY: signature matches BlockFn by construction.
         Some(unsafe { mem::transmute::<*const u8, BlockFn>(code) })
     }
+}
+
+/// Emit a call to the specialized thunk `ctx.spec[spec]` with `(ctx, raw)`. On a non-zero
+/// (EXIT_SENTINEL) result the block returns immediately (the thunk stashed the exit);
+/// otherwise the builder is left positioned in the fall-through block so the caller can
+/// continue emitting. `ctx.spec` is at byte offset 32; entries are 8-byte fn pointers.
+#[allow(clippy::too_many_arguments)]
+fn emit_thunk_call(
+    b: &mut FunctionBuilder,
+    ptr_ty: types::Type,
+    flags: MemFlags,
+    thunk_sig: cranelift_codegen::ir::SigRef,
+    ctx: Value,
+    spec: u32,
+    raw: u32,
+) {
+    let spec_base = b.ins().load(ptr_ty, flags, ctx, 32);
+    let f = b.ins().load(ptr_ty, flags, spec_base, (spec * 8) as i32);
+    let rawv = b.ins().iconst(types::I32, raw as i64);
+    let call = b.ins().call_indirect(thunk_sig, f, &[ctx, rawv]);
+    let r = b.inst_results(call)[0];
+    let cont = b.create_block();
+    let exit_b = b.create_block();
+    b.ins().brif(r, exit_b, &[], cont, &[]);
+    b.switch_to_block(exit_b);
+    b.seal_block(exit_b);
+    let sentinel = b.ins().iconst(types::I64, EXIT_SENTINEL as i64);
+    b.ins().return_(&[sentinel]);
+    b.switch_to_block(cont);
+    b.seal_block(cont);
 }
 
 /// Emit an inline gas check matching `gas_charge`'s happy path; bail on OOG.

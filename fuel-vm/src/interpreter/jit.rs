@@ -793,9 +793,9 @@ impl JitRuntime {
             b.seal_block(entry);
             let ctx = b.block_params(entry)[0];
             let flags = MemFlags::trusted();
-            // regs = ctx.regs (offset 0); interp/step loaded per-thunk (offsets 8/16).
+            // regs = ctx.regs (offset 0); step loaded per-thunk (offset 24).
             let regs = b.ins().load(ptr_ty, flags, ctx, 0);
-            // Signature of `StepFn`: extern "C" fn(*mut c_void, u32) -> u64.
+            // Signature of `StepFn`: extern "C" fn(*const JitCtx, u32) -> u64.
             let thunk_sig = {
                 let mut sig = cranelift_codegen::ir::Signature::new(call_conv);
                 sig.params.push(AbiParam::new(ptr_ty));
@@ -842,11 +842,14 @@ impl JitRuntime {
                 let op = match *step {
                     BlockStep::Native(o) => o,
                     BlockStep::Thunk(raw) => {
-                        let interp = b.ins().load(ptr_ty, flags, ctx, 8);
-                        let stepfn = b.ins().load(ptr_ty, flags, ctx, 16);
+                        // `JitCtx` is { regs@0, interp@8, exit_out@16, step@24 }.
+                        // `step` (step_thunk) is at offset 24, and it reads `interp` and
+                        // `exit_out` from the ctx itself — so pass `ctx` as the first
+                        // argument, not the interp pointer.
+                        let stepfn = b.ins().load(ptr_ty, flags, ctx, 24);
                         let rawv = b.ins().iconst(types::I32, raw as i64);
                         let call =
-                            b.ins().call_indirect(thunk_sig, stepfn, &[interp, rawv]);
+                            b.ins().call_indirect(thunk_sig, stepfn, &[ctx, rawv]);
                         let r = b.inst_results(call)[0];
                         let cont = b.create_block();
                         let exit_b = b.create_block();

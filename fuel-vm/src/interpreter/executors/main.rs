@@ -1182,6 +1182,15 @@ where
                 // thunk's non-Proceed/error result, handled by the same match below as a
                 // normal `execute()` result. `NotEligible` => fall to the interpreter.
                 // The debugger must single-step so per-instruction debug events fire.
+
+                // Check whether the instruction will be executed in a call context.
+                // Captured BEFORE the instruction runs: executing a RET/RVRT/CALL
+                // mutates `self.frames`, and this flag must reflect the pre-execution
+                // state (a RET inside a call must `continue`, not terminate the script).
+                // JIT blocks never contain frame-changing ops (CALL/RET/RVRT are on the
+                // block-terminating DENY list), so this is equally correct on that path.
+                let in_call = !self.frames.is_empty();
+
                 #[cfg(feature = "jit")]
                 let result = if self.debugger.is_active() {
                     self.execute::<false>()
@@ -1199,9 +1208,6 @@ where
                 };
                 #[cfg(not(feature = "jit"))]
                 let result = self.execute::<false>();
-
-                // Check whether the instruction will be executed in a call context
-                let in_call = !self.frames.is_empty();
 
                 match result {
                     // Proceeding with the execution normally

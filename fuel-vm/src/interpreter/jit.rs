@@ -689,6 +689,27 @@ enum BlockStep {
     Native(DecodedOp),
     /// Big-endian raw instruction bytes, fed to `Interpreter::instruction`.
     Thunk(u32),
+    /// A control-flow *terminator* run via the interpreter thunk as the block's last
+    /// step (threaded dispatch). Unlike `Thunk`, the interpreter sets PC to the jump
+    /// target/fallthrough itself, so the block returns immediately afterwards WITHOUT
+    /// overwriting PC. This lets a block absorb its trailing JAL / relative jump instead
+    /// of bouncing through a separate `NotEligible` dispatch + interpreter step per
+    /// terminator — see [`is_terminator_thunkable`]. Semantics come for free (the audited
+    /// interpreter impl runs), so this cannot diverge from the interpreter.
+    Term(u32),
+}
+
+/// Is `op` a control-flow terminator we can run as a block's final thunk step? Allowlist
+/// of ops that (a) produce `ExecuteState::Proceed`, (b) set PC themselves (jump target or
+/// fallthrough), and (c) never push/pop a call frame or change which contract code window
+/// is executing. JAL is an intra-contract call (writes the return register + jumps within
+/// the same code), so it qualifies; CALL/RET/RETD/RVRT do not (frame/window changes).
+fn is_terminator_thunkable(op: Opcode) -> bool {
+    use Opcode::*;
+    matches!(
+        op,
+        JAL | JMP | JI | JNE | JNEI | JNZI | JNZF | JNZB | JMPF | JMPB | JNEF
+    )
 }
 
 /// Is `opcode` safe to execute via a host thunk in the middle of a compiled block?
@@ -734,6 +755,14 @@ fn scan_block(window: &[u8], g: &GasCosts, allow_thunks: bool) -> Vec<BlockStep>
             steps.push(BlockStep::Thunk(u32::from_be_bytes(raw)));
             pos += 4;
             continue;
+        }
+        // Threaded dispatch: absorb a trailing control-flow terminator (JAL / relative
+        // jump) into this block so we don't pay a separate dispatch round-trip + interp
+        // step for it. Only worthwhile when the block already has real work before it (a
+        // lone terminator is cheaper to run via the interpreter than to wrap in a block
+        // call), so gate on a non-empty block.
+        if allow_thunks && !steps.is_empty() && is_terminator_thunkable(instr.opcode()) {
+            steps.push(BlockStep::Term(u32::from_be_bytes(raw)));
         }
         break;
     }
@@ -957,6 +986,10 @@ impl JitRuntime {
                 }
             };
 
+            // Set when the final step is a `Term` (it returns inside the loop with PC
+            // already set by the interpreter), so the trailing PC-store/return below is
+            // skipped (and would be unreachable codegen into a terminated block).
+            let mut ends_with_term = false;
             for (i, step) in steps.iter().enumerate() {
                 // Keep `regs[PC]` at the *current* instruction's address so that ops
                 // reading `$pc` (reg 0x3) as a source operand — e.g. Sway's PC-relative
@@ -989,6 +1022,31 @@ impl JitRuntime {
                         b.ins().return_(&[sentinel]);
                         b.switch_to_block(cont);
                         b.seal_block(cont);
+                        continue;
+                    }
+                    BlockStep::Term(raw) => {
+                        // Threaded-dispatch terminator: run the jump via the interpreter
+                        // (it sets PC to the resolved target/fallthrough) and return the
+                        // count immediately — do NOT overwrite PC with base+4*n. `pc_cur`
+                        // (stored above) is this instruction's address, which the jump
+                        // reads for PC-relative targets. Term is always the last step.
+                        let stepfn = b.ins().load(ptr_ty, flags, ctx, 24);
+                        let rawv = b.ins().iconst(types::I32, raw as i64);
+                        let call =
+                            b.ins().call_indirect(thunk_sig, stepfn, &[ctx, rawv]);
+                        let r = b.inst_results(call)[0];
+                        let cont = b.create_block();
+                        let exit_b = b.create_block();
+                        b.ins().brif(r, exit_b, &[], cont, &[]);
+                        b.switch_to_block(exit_b);
+                        b.seal_block(exit_b);
+                        let sentinel = b.ins().iconst(types::I64, EXIT_SENTINEL as i64);
+                        b.ins().return_(&[sentinel]);
+                        b.switch_to_block(cont);
+                        b.seal_block(cont);
+                        let n = b.ins().iconst(types::I64, (i + 1) as i64);
+                        b.ins().return_(&[n]);
+                        ends_with_term = true;
                         continue;
                     }
                 };
@@ -1140,12 +1198,15 @@ impl JitRuntime {
                 }
             }
 
-            // Block completed: pc advanced past all steps; return count.
-            let n = steps.len();
-            let final_pc = b.ins().iadd_imm(base_pc, n as i64 * INSTR_SIZE);
-            b.ins().store(flags, final_pc, regs, (R_PC * 8) as i32);
-            let nval = b.ins().iconst(types::I64, n as i64);
-            b.ins().return_(&[nval]);
+            // Block completed: pc advanced past all steps; return count. Skipped when the
+            // final step was a `Term` (it already returned with PC set by the interpreter).
+            if !ends_with_term {
+                let n = steps.len();
+                let final_pc = b.ins().iadd_imm(base_pc, n as i64 * INSTR_SIZE);
+                b.ins().store(flags, final_pc, regs, (R_PC * 8) as i32);
+                let nval = b.ins().iconst(types::I64, n as i64);
+                b.ins().return_(&[nval]);
+            }
 
             b.finalize();
         }

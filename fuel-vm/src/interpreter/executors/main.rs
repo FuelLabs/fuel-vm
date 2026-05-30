@@ -939,14 +939,16 @@ where
         allow_thunks: bool,
     ) -> Option<(u64, Option<Result<ExecuteState, InterpreterError<S::DataError>>>)>
     {
-        // Copy the window: a thunked memory op may reallocate VM memory, which would
-        // dangle a borrowed slice. After this, no borrow of `self.memory` is held.
-        let window: alloc::vec::Vec<u8> =
-            self.memory.as_ref().read(pc, len).ok()?.to_vec();
-        // Compile/look up; the returned fn pointer is `Copy`, so all borrows end here.
+        // Compile/look up the block. The returned fn pointer is `Copy`, so every borrow
+        // below ends with this scope — crucially the `window` borrow of `self.memory`,
+        // which must not be held across block execution (a thunked memory op may
+        // reallocate VM memory). `memory`, `interpreter_params` and `jit` are disjoint
+        // fields, so the window slice can feed `get_block` directly with no copy — this
+        // is the per-dispatch hot path, so avoiding the up-to-1KB `to_vec` matters.
         let f = {
+            let window = self.memory.as_ref().read(pc, len).ok()?;
             let costs = &self.interpreter_params.gas_costs;
-            self.jit.get_block(&window, costs, pc, allow_thunks)?
+            self.jit.get_block(window, costs, pc, allow_thunks)?
         };
         // Caller-owned, concretely-typed slot the thunk writes a non-Proceed/error
         // result into (keeps `JitCtx` non-generic and avoids any `'static` bound).
@@ -1203,7 +1205,33 @@ where
                     match step {
                         JitStep::Proceeded => continue,
                         JitStep::Exited(r) => r,
-                        JitStep::NotEligible => self.execute::<false>(),
+                        JitStep::NotEligible => {
+                            if crate::interpreter::jit::stats::enabled()
+                                && self.jit.is_enabled()
+                                && let Ok(b) = self
+                                    .memory
+                                    .as_ref()
+                                    .read(self.registers[fuel_asm::RegId::PC], 4usize)
+                            {
+                                let bytes = [b[0], b[1], b[2], b[3]];
+                                crate::interpreter::jit::stats::record(
+                                    u32::from_be_bytes(bytes),
+                                );
+                                if let Ok(fuel_asm::Instruction::JAL(op)) =
+                                    fuel_asm::Instruction::try_from(bytes)
+                                {
+                                    let (_, rt, off) = op.unpack();
+                                    let off: u64 = off.into();
+                                    let target = self.registers[rt]
+                                        .saturating_add(off.saturating_mul(4));
+                                    crate::interpreter::jit::stats::record_jal(
+                                        self.registers[fuel_asm::RegId::PC],
+                                        target,
+                                    );
+                                }
+                            }
+                            self.execute::<false>()
+                        }
                     }
                 };
                 #[cfg(not(feature = "jit"))]
@@ -1252,6 +1280,11 @@ where
                 }
             }
         };
+
+        #[cfg(feature = "jit")]
+        if crate::interpreter::jit::stats::enabled() {
+            crate::interpreter::jit::stats::dump();
+        }
 
         // Produce result receipt
         let gas_used = gas_limit

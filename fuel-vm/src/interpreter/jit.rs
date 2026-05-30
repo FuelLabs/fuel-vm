@@ -220,6 +220,11 @@ impl JitState {
         self.enabled = enabled;
     }
 
+    /// Whether the JIT is currently enabled (false ⇒ pure interpretation).
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
     /// True when FUEL_VM_JIT_VERIFY=1: run each JIT block, then re-run the same
     /// instructions in the interpreter and compare register state to catch codegen bugs.
     pub fn verify_enabled(&self) -> bool {
@@ -229,6 +234,130 @@ impl JitState {
     /// Total instructions executed through compiled blocks (0 if never initialized).
     pub fn executed_instrs(&self) -> u64 {
         RUNTIME.with(|cell| cell.borrow().1.as_ref().map_or(0, JitRuntime::executed_instrs))
+    }
+}
+
+/// Diagnostic histogram of which opcodes terminate JIT blocks (i.e. force a return to
+/// the interpreter dispatcher). Env-gated by `FUEL_VM_JIT_STATS=1`; off by default and
+/// off any hot path. Used to size the control-flow-JIT opportunity on real workloads.
+pub mod stats {
+    use super::{HashMap, Instruction, Opcode};
+    use core::{
+        cell::RefCell,
+        sync::atomic::{AtomicU8, Ordering},
+    };
+
+    static ENABLED: AtomicU8 = AtomicU8::new(0);
+
+    pub fn enabled() -> bool {
+        match ENABLED.load(Ordering::Relaxed) {
+            1 => true,
+            2 => false,
+            _ => {
+                let on = std::env::var("FUEL_VM_JIT_STATS").as_deref() == Ok("1");
+                ENABLED.store(if on { 1 } else { 2 }, Ordering::Relaxed);
+                on
+            }
+        }
+    }
+
+    thread_local! {
+        // key: (opcode byte, dyn-reg class), val: count.
+        // class: 0 = not a relative jump, 1 = dynamic reg is ZERO (statically mappable),
+        //        2 = dynamic reg is non-zero (runtime target).
+        static HIST: RefCell<HashMap<(u8, u8), u64>> = RefCell::new(HashMap::new());
+    }
+
+    /// The dynamic (register) operand of a relative jump, used to decide if the target is
+    /// statically computable (reg == ZERO ⇒ pure-immediate offset). `None` for non-jumps.
+    fn dyn_reg(instr: Instruction) -> Option<u8> {
+        use fuel_asm::Instruction::*;
+        Some(match instr {
+            JMPF(op) => op.unpack().0.to_u8(),
+            JMPB(op) => op.unpack().0.to_u8(),
+            JNZF(op) => op.unpack().1.to_u8(),
+            JNZB(op) => op.unpack().1.to_u8(),
+            JNEF(op) => op.unpack().2.to_u8(),
+            JNEB(op) => op.unpack().2.to_u8(),
+            _ => return None,
+        })
+    }
+
+    thread_local! {
+        // JAL call-site PC -> (target PC -> count). Sized to gauge the block-linking win.
+        static JAL: RefCell<HashMap<u64, HashMap<u64, u64>>> =
+            RefCell::new(HashMap::new());
+    }
+
+    pub fn record(raw: u32) {
+        let Ok(instr) = Instruction::try_from(raw.to_be_bytes()) else {
+            return;
+        };
+        let op = instr.opcode() as u8;
+        let class = match dyn_reg(instr) {
+            None => 0,
+            Some(0) => 1,
+            Some(_) => 2,
+        };
+        HIST.with(|h| *h.borrow_mut().entry((op, class)).or_insert(0) += 1);
+    }
+
+    /// Record a JAL call-site PC and its (runtime-computed) target PC.
+    pub fn record_jal(site: u64, target: u64) {
+        JAL.with(|j| {
+            *j.borrow_mut()
+                .entry(site)
+                .or_default()
+                .entry(target)
+                .or_insert(0) += 1;
+        });
+    }
+
+    pub fn dump() {
+        HIST.with(|h| {
+            let h = h.borrow();
+            if h.is_empty() {
+                return;
+            }
+            let mut rows: alloc::vec::Vec<((u8, u8), u64)> =
+                h.iter().map(|(k, v)| (*k, *v)).collect();
+            rows.sort_by_key(|(_, n)| core::cmp::Reverse(*n));
+            let total: u64 = rows.iter().map(|(_, v)| *v).sum();
+            std::eprintln!("=== JIT block terminators (total {total}) ===");
+            for ((op, class), n) in rows {
+                let opcode = Opcode::try_from(op)
+                    .map(|o| alloc::format!("{o:?}"))
+                    .unwrap_or_else(|_| alloc::format!("op{op}"));
+                let tag = match class {
+                    1 => " [dyn-reg=ZERO → static target]",
+                    2 => " [dyn-reg≠0 → runtime target]",
+                    _ => "",
+                };
+                let pct = 100.0 * n as f64 / total as f64;
+                std::eprintln!("  {opcode:<8} {n:>8}  {pct:5.1}%{tag}");
+            }
+        });
+        JAL.with(|j| {
+            let j = j.borrow();
+            if j.is_empty() {
+                return;
+            }
+            let sites = j.len();
+            let mut targets = HashMap::new();
+            let mut total = 0u64;
+            for tmap in j.values() {
+                for (t, c) in tmap {
+                    *targets.entry(*t).or_insert(0u64) += *c;
+                    total += *c;
+                }
+            }
+            // How many call-sites resolve to a single (monomorphic) target?
+            let mono = j.values().filter(|t| t.len() == 1).count();
+            std::eprintln!(
+                "=== JAL linking potential: {total} calls, {sites} distinct call-sites ({mono} monomorphic), {} distinct targets ===",
+                targets.len()
+            );
+        });
     }
 }
 

@@ -97,6 +97,12 @@ pub struct JitCtx {
     /// on every access — the struct address is stable for the block, but the `Vec`s
     /// inside reallocate on growth, so a base captured once would go stale mid-block.
     pub mem: *const crate::interpreter::MemoryInstance,
+    /// Monomorphized [`chain_dispatch`]: after a block's trailing jump sets `regs[PC]`, the
+    /// block calls this to run the *next* already-compiled block in-place (reusing this same
+    /// `ctx`) instead of returning to the dispatcher — threaded dispatch across the block
+    /// edge. Returns 0 if it didn't chain (next block not cached / depth-capped / disabled),
+    /// else the chained run's instruction count or [`EXIT_SENTINEL`].
+    pub chain: ChainFn,
 }
 
 /// Block return value with this bit set ⇒ a thunk exited the block; the result is in the
@@ -118,6 +124,89 @@ type SpecExit<S> = Option<
         crate::error::InterpreterError<<S as crate::storage::InterpreterStorage>::DataError>,
     >,
 >;
+
+// ---- Native block chaining (threaded dispatch across block edges) ---------------
+//
+// After a block's trailing jump runs (its specialized thunk sets `regs[PC]` to the
+// resolved target), the block calls [`chain_dispatch`] to run the *next* block in native
+// code — reusing the same `JitCtx` — instead of returning to the interpreter's dispatch
+// loop. This is correct-by-construction and *safe*: it reuses the same content-validated
+// `get_block` lookup the dispatcher uses (so stack-reused code can't alias the wrong
+// block), only chains to **already-compiled** blocks (never compiles mid-execution), and
+// is depth-capped to bound native-stack growth on cyclic chains (loops). Gas/PC/exit
+// semantics are identical to returning to the dispatcher — only the round-trip is elided.
+
+/// Block-chaining helper installed in `JitCtx.chain`. ABI:
+/// `extern "C" fn(*const JitCtx) -> u64`. Returns 0 if it did not chain (next block not
+/// cached, depth cap hit, or chaining disabled), else the chained run's instruction count
+/// or [`EXIT_SENTINEL`].
+pub type ChainFn = unsafe extern "C" fn(*const JitCtx) -> u64;
+
+/// Max native-frame depth for chained blocks before falling back to the dispatcher. Bounds
+/// native-stack growth on cyclic chains (e.g. a JAL loop): the chain runs in bursts of this
+/// many blocks, re-entering the dispatcher (at depth 0) between bursts.
+pub(crate) const CHAIN_DEPTH_CAP: u32 = 32;
+
+thread_local! {
+    /// Current native chain-call nesting depth (see [`CHAIN_DEPTH_CAP`]). Incremented around
+    /// each chained `f(ctx)` call and restored after; balanced, so it is 0 at every
+    /// top-level dispatch entry.
+    static CHAIN_DEPTH: core::cell::Cell<u32> = const { core::cell::Cell::new(0) };
+}
+
+/// Runtime on/off switch for chaining (for A/B measurement via `FUEL_VM_JIT_CHAIN`). When
+/// off, [`chain_dispatch`] always returns 0 (every block returns to the dispatcher), so the
+/// only residual cost vs. the no-chain build is one predictable, returns-0 call per edge.
+/// 0 = unread, 1 = on, 2 = off.
+static CHAIN_ENABLED: core::sync::atomic::AtomicU8 = core::sync::atomic::AtomicU8::new(0);
+
+fn chain_enabled() -> bool {
+    use core::sync::atomic::Ordering;
+    match CHAIN_ENABLED.load(Ordering::Relaxed) {
+        1 => true,
+        2 => false,
+        _ => {
+            // Default ON; only "0" disables.
+            let on = std::env::var("FUEL_VM_JIT_CHAIN").as_deref() != Ok("0");
+            CHAIN_ENABLED.store(if on { 1 } else { 2 }, Ordering::Relaxed);
+            on
+        }
+    }
+}
+
+/// Current chain depth; if it is below [`CHAIN_DEPTH_CAP`], the caller may run one more
+/// chained block (after which it must restore the depth via [`set_chain_depth`]).
+pub(crate) fn chain_depth() -> u32 {
+    CHAIN_DEPTH.with(core::cell::Cell::get)
+}
+
+pub(crate) fn set_chain_depth(d: u32) {
+    CHAIN_DEPTH.with(|c| c.set(d));
+}
+
+/// `JitCtx.chain` entry point: thin `extern "C"` wrapper that reconstructs the concrete
+/// `Interpreter` from `ctx.interp` and runs one chained block via `jit_chain_step`.
+///
+/// # Safety
+/// Same contract as the thunks: `(*ctx).interp` is a valid `&mut Interpreter<M,S,Tx,Ecal,V>`
+/// for this monomorphization (the fn pointer was stored from it), and `ctx` outlives the
+/// call. Only invoked from compiled blocks after a trailing jump has set `regs[PC]`.
+pub unsafe extern "C" fn chain_dispatch<M, S, Tx, Ecal, V>(ctx: *const JitCtx) -> u64
+where
+    M: super::Memory,
+    S: crate::storage::InterpreterStorage,
+    Tx: super::ExecutableTransaction,
+    Ecal: super::EcalHandler,
+    V: crate::verification::Verifier,
+{
+    if !chain_enabled() {
+        return 0;
+    }
+    // SAFETY: caller guarantees `interp` matches this monomorphization.
+    let interp =
+        unsafe { &mut *((*ctx).interp as *mut super::Interpreter<M, S, Tx, Ecal, V>) };
+    interp.jit_chain_step(ctx)
+}
 
 /// Generates, for each listed opcode, a specialized `extern "C"` thunk that runs exactly
 /// that opcode via its audited interpreter impl (`op::X::from_raw_args(..).execute(..)`),
@@ -296,6 +385,28 @@ impl JitState {
                 slot.1 = JitRuntime::new();
             }
             slot.1.as_mut()?.get_block(window, g, pc, allow_thunks)
+        })
+    }
+
+    /// Memo-only lookup of an **already-compiled** block at `pc` (no compilation). Used by
+    /// block chaining, which must never compile while another block is executing natively.
+    /// Returns `None` on any miss (uncompiled, content mismatch, or stale gas schedule),
+    /// in which case the caller returns to the dispatcher (which compiles safely).
+    pub fn get_block_cached(
+        &mut self,
+        window: &[u8],
+        g: &GasCosts,
+        pc: u64,
+        allow_thunks: bool,
+    ) -> Option<BlockFn> {
+        if !self.enabled {
+            return None;
+        }
+        RUNTIME.with(|cell| {
+            cell.borrow_mut()
+                .1
+                .as_mut()?
+                .get_block_cached(window, g, pc, allow_thunks)
         })
     }
 
@@ -1065,6 +1176,33 @@ impl JitRuntime {
         blk
     }
 
+    /// Memo-only variant of [`Self::get_block`] for chaining: returns an already-compiled
+    /// block at `pc` validated against `window`, or `None` on any miss — never scans or
+    /// compiles (compiling while another block executes natively could re-protect live code
+    /// pages). A stale gas-schedule memo also returns `None` (the dispatcher rebuilds it).
+    fn get_block_cached(
+        &mut self,
+        window: &[u8],
+        g: &GasCosts,
+        pc: u64,
+        allow_thunks: bool,
+    ) -> Option<BlockFn> {
+        if window.len() < 4 {
+            return None;
+        }
+        let fp = self.fp(g) ^ if allow_thunks { 0xA11 } else { 0 };
+        if fp != self.memo_gas_fp {
+            return None;
+        }
+        if let Some((code, blk)) = self.memo.get(&pc)
+            && window.len() >= code.len()
+            && window[..code.len()] == code[..]
+        {
+            return *blk;
+        }
+        None
+    }
+
     fn add_executed(&mut self, n: u64) {
         self.executed_instrs = self.executed_instrs.saturating_add(n);
     }
@@ -1094,7 +1232,7 @@ impl JitRuntime {
             b.seal_block(entry);
             let ctx = b.block_params(entry)[0];
             let flags = MemFlags::trusted();
-            // JitCtx (repr(C)) = { regs@0, interp@8, exit_out@16, spec@24, mem@32 }.
+            // JitCtx (repr(C)) = { regs@0, interp@8, exit_out@16, spec@24, mem@32, chain@40 }.
             // regs = ctx.regs (offset 0).
             let regs = b.ins().load(ptr_ty, flags, ctx, 0);
             // mem = ctx.mem (offset 32): the live `MemoryInstance`. Native loads re-read
@@ -1107,6 +1245,13 @@ impl JitRuntime {
                 let mut sig = cranelift_codegen::ir::Signature::new(call_conv);
                 sig.params.push(AbiParam::new(ptr_ty));
                 sig.params.push(AbiParam::new(types::I32));
+                sig.returns.push(AbiParam::new(types::I64));
+                b.import_signature(sig)
+            };
+            // Signature of the chain helper: extern "C" fn(*const JitCtx) -> u64.
+            let chain_sig = {
+                let mut sig = cranelift_codegen::ir::Signature::new(call_conv);
+                sig.params.push(AbiParam::new(ptr_ty));
                 sig.returns.push(AbiParam::new(types::I64));
                 b.import_signature(sig)
             };
@@ -1161,13 +1306,46 @@ impl JitRuntime {
                     BlockStep::Term { spec, raw } => {
                         // Threaded-dispatch terminator: run the jump via its specialized
                         // thunk (the interpreter sets PC to the resolved target/
-                        // fallthrough) and return the count immediately — do NOT overwrite
-                        // PC with base+4*n. `pc_cur` (stored above) is this instruction's
-                        // address, which the jump reads for PC-relative targets. Term is
-                        // always the last step.
+                        // fallthrough). Do NOT overwrite PC with base+4*n — `pc_cur` (stored
+                        // above) is this instruction's address, which the jump reads for
+                        // PC-relative targets. Term is always the last step.
                         emit_thunk_call(&mut b, ptr_ty, flags, thunk_sig, ctx, spec, raw);
-                        let n = b.ins().iconst(types::I64, (i + 1) as i64);
-                        b.ins().return_(&[n]);
+                        // Block chaining: with PC now at the resolved target, try to run the
+                        // next already-compiled block in-place (reusing `ctx`) instead of
+                        // bouncing through the dispatcher. `chain` returns 0 if it didn't
+                        // chain, else the chained run's count or EXIT_SENTINEL.
+                        let own = b.ins().iconst(types::I64, (i + 1) as i64);
+                        let chain_fn = b.ins().load(ptr_ty, flags, ctx, 40);
+                        let call = b.ins().call_indirect(chain_sig, chain_fn, &[ctx]);
+                        let r = b.inst_results(call)[0];
+                        // r == 0  -> didn't chain: return our own count.
+                        // r has EXIT_SENTINEL -> a chained block exited: propagate it.
+                        // else -> chained normally: return own + chained count (telemetry;
+                        //         the magnitude is only used for the executed-instr counter,
+                        //         and own+r can't set bit 63).
+                        let no_chain = b.create_block();
+                        let chained = b.create_block();
+                        b.ins().brif(r, chained, &[], no_chain, &[]);
+
+                        b.switch_to_block(no_chain);
+                        b.seal_block(no_chain);
+                        b.ins().return_(&[own]);
+
+                        b.switch_to_block(chained);
+                        b.seal_block(chained);
+                        let sentinel = b.ins().iconst(types::I64, EXIT_SENTINEL as i64);
+                        let exit_bit = b.ins().band(r, sentinel);
+                        let prop_exit = b.create_block();
+                        let sum_count = b.create_block();
+                        b.ins().brif(exit_bit, prop_exit, &[], sum_count, &[]);
+                        b.switch_to_block(prop_exit);
+                        b.seal_block(prop_exit);
+                        b.ins().return_(&[r]);
+                        b.switch_to_block(sum_count);
+                        b.seal_block(sum_count);
+                        let total = b.ins().iadd(own, r);
+                        b.ins().return_(&[total]);
+
                         ends_with_term = true;
                         continue;
                     }

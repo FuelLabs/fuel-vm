@@ -968,12 +968,14 @@ where
         // address is stable across the block call (only the Vecs inside reallocate, which
         // the codegen re-reads per access); no `&mut self` borrow is held across `f(&ctx)`.
         let mem: *const crate::interpreter::MemoryInstance = self.memory.as_ref();
+        let chain = crate::interpreter::jit::chain_dispatch::<M, S, Tx, Ecal, V>;
         let ctx = crate::interpreter::jit::JitCtx {
             regs,
             interp,
             exit_out,
             spec: spec_table.as_ptr(),
             mem,
+            chain,
         };
         // SAFETY: no Rust borrow of `self` is live here (window owned, get_block borrows
         // ended). The block reads regs/interp/exit_out/spec/mem from `ctx`; thunks
@@ -987,6 +989,50 @@ where
             self.jit.add_executed(ret);
             Some((ret, None))
         }
+    }
+
+    /// Block-chaining step, called *from inside* a compiled block (via `JitCtx.chain`) once
+    /// its trailing jump has set `regs[PC]` to the resolved target. Runs the next
+    /// **already-compiled** block at that PC in-place — reusing the caller's `ctx` — instead
+    /// of returning to the dispatcher. Returns 0 if it didn't chain (no eligible/compiled
+    /// block at the target, or the native-chain depth cap was hit), else that block's
+    /// instruction count or [`EXIT_SENTINEL`] (a thunk exit, stashed in the shared
+    /// `exit_out`). Never compiles — that must only happen between block executions.
+    ///
+    /// # Safety
+    /// `ctx` is the live `JitCtx` of the in-flight block call (its `interp` is `self`); the
+    /// borrows taken to look the block up are all released before `f(ctx)` runs.
+    #[cfg(feature = "jit")]
+    #[allow(unsafe_code)]
+    pub(crate) fn jit_chain_step(
+        &mut self,
+        ctx: *const crate::interpreter::jit::JitCtx,
+    ) -> u64 {
+        let d = crate::interpreter::jit::chain_depth();
+        if d >= crate::interpreter::jit::CHAIN_DEPTH_CAP {
+            return 0;
+        }
+        let Some((pc, len)) = self.jit_bounds() else {
+            return 0;
+        };
+        let f = {
+            let Ok(window) = self.memory.as_ref().read(pc, len) else {
+                return 0;
+            };
+            let costs = &self.interpreter_params.gas_costs;
+            match self.jit.get_block_cached(window, costs, pc, true) {
+                Some(f) => f,
+                None => return 0,
+            }
+        };
+        crate::interpreter::jit::set_chain_depth(d.saturating_add(1));
+        // SAFETY: same contract as the top-level call in `jit_run_block_inner`. `ctx`
+        // describes `self` (regs/interp/exit_out/spec/mem/chain); no Rust borrow of `self`
+        // is live across the call (the window/get_block borrows ended above). The block may
+        // recurse here for a further edge — bounded by `CHAIN_DEPTH_CAP`.
+        let r = unsafe { f(ctx) };
+        crate::interpreter::jit::set_chain_depth(d);
+        r
     }
 
     /// Normal JIT fast path: run the (thunk-enabled) block at the current PC.

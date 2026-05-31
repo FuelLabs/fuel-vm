@@ -1034,6 +1034,35 @@ enum BlockStep {
     /// interpreter impl runs), so this cannot diverge from the interpreter.
     /// `spec`/`raw` as in [`BlockStep::Thunk`].
     Term { spec: u32, raw: u32 },
+    /// Native JAL terminator: compute `$pc = $reg[target_reg] + add`, write the return
+    /// register (`ret`, unless ZERO), set PC, and chain — all natively, replacing the thunk
+    /// for this (the most common) terminator. Bails to the interpreter for an out-of-range
+    /// target or OOG (the interpreter reproduces the exact panic/charge). `add = offset*4`;
+    /// `gas` = `jmp()`. `ret` is ZERO or a writable register (gated at scan time).
+    TermJal { ret: u8, target_reg: u8, add: u64, gas: u64 },
+}
+
+/// If `instr` is a JAL we can run as a native terminator (return register is ZERO or
+/// writable), describe it; else `None` (run via the thunk `Term`). Gated by
+/// `native_mem_enabled` for A/B.
+fn native_jal_term(instr: Instruction, g: &GasCosts) -> Option<BlockStep> {
+    if !native_mem_enabled() {
+        return None;
+    }
+    let Instruction::JAL(op) = instr else {
+        return None;
+    };
+    let (ret, target_reg, offset) = op.unpack();
+    let ret = ret.to_u8();
+    if ret != 0 && ret < FIRST_WRITABLE {
+        return None;
+    }
+    Some(BlockStep::TermJal {
+        ret,
+        target_reg: target_reg.to_u8(),
+        add: u64::from(offset).saturating_mul(Instruction::SIZE as u64),
+        gas: g.jmp(),
+    })
 }
 
 /// Is `op` a control-flow terminator we can run as a block's final thunk step? Allowlist
@@ -1101,6 +1130,10 @@ fn scan_block(window: &[u8], g: &GasCosts, allow_thunks: bool) -> Vec<BlockStep>
         // lone terminator is cheaper to run via the interpreter than to wrap in a block
         // call), so gate on a non-empty block.
         if allow_thunks && !steps.is_empty() && is_terminator_thunkable(instr.opcode()) {
+            if let Some(tj) = native_jal_term(instr, g) {
+                steps.push(tj);
+                break;
+            }
             let spec = spec_index(instr.opcode())
                 .expect("terminator opcode missing from define_spec_thunks!");
             steps.push(BlockStep::Term { spec, raw: u32::from_be_bytes(raw) });
@@ -1124,6 +1157,8 @@ fn gas_fingerprint(g: &GasCosts) -> u64 {
         // native stack-frame ops
         g.cfei().resolve(0), g.cfei().resolve(1 << 24), g.cfsi(),
         g.pshl(), g.pshh(), g.popl(), g.poph(),
+        // native JAL terminator
+        g.jmp(),
     ];
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
     for c in costs {
@@ -1422,44 +1457,60 @@ impl JitRuntime {
                         // fallthrough). Do NOT overwrite PC with base+4*n — `pc_cur` (stored
                         // above) is this instruction's address, which the jump reads for
                         // PC-relative targets. Term is always the last step.
-                        rc.flush(&mut b, regs, flags, true);
-                        emit_thunk_call(&mut b, ptr_ty, flags, thunk_sig, ctx, spec, raw);
                         // Block chaining: with PC now at the resolved target, try to run the
                         // next already-compiled block in-place (reusing `ctx`) instead of
-                        // bouncing through the dispatcher. `chain` returns 0 if it didn't
-                        // chain, else the chained run's count or EXIT_SENTINEL.
-                        let own = b.ins().iconst(types::I64, (i + 1) as i64);
-                        let chain_fn = b.ins().load(ptr_ty, flags, ctx, 40);
-                        let call = b.ins().call_indirect(chain_sig, chain_fn, &[ctx]);
-                        let r = b.inst_results(call)[0];
-                        // r == 0  -> didn't chain: return our own count.
-                        // r has EXIT_SENTINEL -> a chained block exited: propagate it.
-                        // else -> chained normally: return own + chained count (telemetry;
-                        //         the magnitude is only used for the executed-instr counter,
-                        //         and own+r can't set bit 63).
-                        let no_chain = b.create_block();
-                        let chained = b.create_block();
-                        b.ins().brif(r, chained, &[], no_chain, &[]);
+                        // bouncing through the dispatcher.
+                        rc.flush(&mut b, regs, flags, true);
+                        emit_thunk_call(&mut b, ptr_ty, flags, thunk_sig, ctx, spec, raw);
+                        emit_chain_tail(&mut b, ptr_ty, flags, chain_sig, ctx, i + 1);
+                        ends_with_term = true;
+                        continue;
+                    }
+                    BlockStep::TermJal {
+                        ret,
+                        target_reg,
+                        add,
+                        gas,
+                    } => {
+                        // Native JAL: charge gas (jmp), compute target = $target_reg + add,
+                        // write the return register, set PC, then chain. Order matches the
+                        // interpreter (gas charge, then operand read), so a target read of
+                        // `$cgas`/`$ggas` observes the post-charge value. Bails reproduce the
+                        // exact interpreter behaviour: OOG → bail before charging; an
+                        // out-of-range target → bail after charging (refund gas; the
+                        // interpreter re-charges then raises the panic).
+                        let gas_v = b.ins().iconst(types::I64, gas as i64);
+                        let cgas = rc.read(&mut b, regs, flags, R_CGAS);
+                        let have_gas =
+                            b.ins().icmp(IntCC::UnsignedLessThanOrEqual, gas_v, cgas);
+                        emit_guard(&mut b, &mut rc, regs, flags, i, 0, have_gas);
+                        let new_cgas = b.ins().isub(cgas, gas_v);
+                        rc.write(&mut b, R_CGAS, new_cgas);
+                        let ggas = rc.read(&mut b, regs, flags, R_GGAS);
+                        let new_ggas = b.ins().isub(ggas, gas_v);
+                        rc.write(&mut b, R_GGAS, new_ggas);
 
-                        b.switch_to_block(no_chain);
-                        b.seal_block(no_chain);
-                        b.ins().return_(&[own]);
+                        // target = $target_reg + add (interpreter saturating-adds, then
+                        // rejects >= VM_MAX_RAM; overflow ⇒ saturates high ⇒ also rejected).
+                        let base = rc.read(&mut b, regs, flags, target_reg as u32);
+                        let add_v = b.ins().iconst(types::I64, add as i64);
+                        let target = b.ins().iadd(base, add_v);
+                        let no_of =
+                            b.ins().icmp(IntCC::UnsignedGreaterThanOrEqual, target, base);
+                        let max = b.ins().iconst(types::I64, MEM_SIZE as i64);
+                        let in_ram = b.ins().icmp(IntCC::UnsignedLessThan, target, max);
+                        let ok = b.ins().band(no_of, in_ram);
+                        emit_guard(&mut b, &mut rc, regs, flags, i, gas, ok);
 
-                        b.switch_to_block(chained);
-                        b.seal_block(chained);
-                        let sentinel = b.ins().iconst(types::I64, EXIT_SENTINEL as i64);
-                        let exit_bit = b.ins().band(r, sentinel);
-                        let prop_exit = b.create_block();
-                        let sum_count = b.create_block();
-                        b.ins().brif(exit_bit, prop_exit, &[], sum_count, &[]);
-                        b.switch_to_block(prop_exit);
-                        b.seal_block(prop_exit);
-                        b.ins().return_(&[r]);
-                        b.switch_to_block(sum_count);
-                        b.seal_block(sum_count);
-                        let total = b.ins().iadd(own, r);
-                        b.ins().return_(&[total]);
-
+                        // Return address (PC+4) into the return register, unless ZERO.
+                        if ret != 0 {
+                            let ret_addr =
+                                b.ins().iadd_imm(base_pc, (i + 1) as i64 * INSTR_SIZE);
+                            rc.write(&mut b, ret as u32, ret_addr);
+                        }
+                        rc.write(&mut b, R_PC, target);
+                        rc.flush(&mut b, regs, flags, true);
+                        emit_chain_tail(&mut b, ptr_ty, flags, chain_sig, ctx, i + 1);
                         ends_with_term = true;
                         continue;
                     }
@@ -2194,6 +2245,44 @@ fn emit_charge(
     let ggas = rc.read(b, regs, flags, R_GGAS);
     let ggas = b.ins().iadd_imm(ggas, neg);
     rc.write(b, R_GGAS, ggas);
+}
+
+/// Emit the chain tail shared by terminator steps: with `regs[PC]` already set to the jump
+/// target and the cache flushed, call `ctx.chain` (offset 40) to run the next compiled block
+/// in-place, then return — `own_count` (= instructions completed in this block) if it didn't
+/// chain, the chained run's count summed with `own_count` if it did, or its EXIT_SENTINEL.
+fn emit_chain_tail(
+    b: &mut FunctionBuilder,
+    ptr_ty: types::Type,
+    flags: MemFlags,
+    chain_sig: cranelift_codegen::ir::SigRef,
+    ctx: Value,
+    own_count: usize,
+) {
+    let own = b.ins().iconst(types::I64, own_count as i64);
+    let chain_fn = b.ins().load(ptr_ty, flags, ctx, 40);
+    let call = b.ins().call_indirect(chain_sig, chain_fn, &[ctx]);
+    let r = b.inst_results(call)[0];
+    let no_chain = b.create_block();
+    let chained = b.create_block();
+    b.ins().brif(r, chained, &[], no_chain, &[]);
+    b.switch_to_block(no_chain);
+    b.seal_block(no_chain);
+    b.ins().return_(&[own]);
+    b.switch_to_block(chained);
+    b.seal_block(chained);
+    let sentinel = b.ins().iconst(types::I64, EXIT_SENTINEL as i64);
+    let exit_bit = b.ins().band(r, sentinel);
+    let prop_exit = b.create_block();
+    let sum_count = b.create_block();
+    b.ins().brif(exit_bit, prop_exit, &[], sum_count, &[]);
+    b.switch_to_block(prop_exit);
+    b.seal_block(prop_exit);
+    b.ins().return_(&[r]);
+    b.switch_to_block(sum_count);
+    b.seal_block(sum_count);
+    let total = b.ins().iadd(own, r);
+    b.ins().return_(&[total]);
 }
 
 /// Emit a call to the specialized thunk `ctx.spec[spec]` with `(ctx, raw)`. On a non-zero

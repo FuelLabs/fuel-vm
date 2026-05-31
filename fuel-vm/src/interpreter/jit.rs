@@ -1201,12 +1201,32 @@ fn gas_fingerprint(g: &GasCosts) -> u64 {
 /// *contract code run inside CALL frames*: compiled blocks are position-independent
 /// (PC is read from the register array at runtime), so identical bytecode reuses the
 /// same compiled block no matter where in memory — or in which call frame — it runs.
+/// A direct-mapped L1 over `memo`: one slot per `(pc >> 2) & (L1_SIZE-1)`. It skips the
+/// hashbrown SwissTable probe (the dominant dispatch cost in the warm profile) on the hot
+/// chained edges, while keeping full content validation against its own copy of the block
+/// bytecode — so a hit returns exactly what the `memo` would, and stale/aliased entries just
+/// miss (a hit means `window[..code.len()] == code`, i.e. those exact validated bytes are at
+/// `pc`, so running the cached block is correct).
+struct L1Entry {
+    /// `u64::MAX` ⇒ empty (never matches a real, in-RAM `pc`).
+    pc: u64,
+    /// Own copy of the validated block bytecode (the full block for compiled entries; the
+    /// 4-byte head for non-eligible ones), so the slot can't dangle on a `memo` update.
+    code: Box<[u8]>,
+    blk: Option<BlockFn>,
+}
+
+const L1_BITS: usize = 13;
+const L1_SIZE: usize = 1 << L1_BITS;
+
 pub struct JitRuntime {
     module: JITModule,
     ctx: cranelift_codegen::Context,
     fctx: FunctionBuilderContext,
     /// Cache: block bytecode -> compiled block. Content-keyed, position-independent.
     cache: HashMap<Vec<u8>, BlockFn>,
+    /// Direct-mapped L1 in front of `memo` (see [`L1Entry`]). Cleared with `memo`.
+    l1: Box<[L1Entry]>,
     /// PC-indexed dispatch memo so steady-state dispatch is an O(1) lookup instead of
     /// re-scanning the bytecode every instruction. Verified by the first instruction's
     /// bytes (safe across stack reuse) and scoped to one gas schedule (`memo_gas_fp`).
@@ -1246,11 +1266,20 @@ impl JitRuntime {
             JITBuilder::with_isa(isa, cranelift_module::default_libcall_names());
         let module = JITModule::new(builder);
         let ctx = module.make_context();
+        let l1 = (0..L1_SIZE)
+            .map(|_| L1Entry {
+                pc: u64::MAX,
+                code: Box::new([]),
+                blk: None,
+            })
+            .collect::<Vec<_>>()
+            .into_boxed_slice();
         Some(Self {
             module,
             ctx,
             fctx: FunctionBuilderContext::new(),
             cache: HashMap::new(),
+            l1,
             memo: HashMap::new(),
             memo_gas_fp: 0,
             gas_ptr: 0,
@@ -1269,6 +1298,7 @@ impl JitRuntime {
     /// must be the bytecode at `regs[PC]`.
     /// Gas-costs fingerprint, cached by the `&GasCosts` pointer so the 21-accessor hash
     /// runs only when the gas schedule actually changes (not every block).
+    #[inline]
     fn fp(&mut self, g: &GasCosts) -> u64 {
         let ptr = core::ptr::from_ref(g).addr();
         if ptr != self.gas_ptr {
@@ -1276,6 +1306,38 @@ impl JitRuntime {
             self.gas_fp = gas_fingerprint(g);
         }
         self.gas_fp
+    }
+
+    /// L1-accelerated, content-validated memo lookup (caller has already checked the gas
+    /// fingerprint). `Some(blk)` ⇒ `pc` is classified for this `window` (`blk` is the block,
+    /// or `None` if non-eligible); outer `None` ⇒ not in the memo / content mismatch (the
+    /// caller scans+compiles or, for chaining, bails). On a memo hit the L1 slot is filled.
+    #[inline]
+    fn memo_lookup(&mut self, window: &[u8], pc: u64) -> Option<Option<BlockFn>> {
+        let idx = ((pc >> 2) as usize) & (L1_SIZE - 1);
+        {
+            let e = &self.l1[idx];
+            if e.pc == pc
+                && window.len() >= e.code.len()
+                && window[..e.code.len()] == *e.code
+            {
+                return Some(e.blk);
+            }
+        }
+        let (code, blk) = match self.memo.get(&pc) {
+            Some((code, blk))
+                if window.len() >= code.len() && window[..code.len()] == code[..] =>
+            {
+                (code.clone(), *blk)
+            }
+            _ => return None,
+        };
+        self.l1[idx] = L1Entry {
+            pc,
+            code: code.into_boxed_slice(),
+            blk,
+        };
+        Some(blk)
     }
 
     /// Look up (compiling on demand) the compiled block whose bytecode begins at
@@ -1297,16 +1359,16 @@ impl JitRuntime {
         let fp = self.fp(g) ^ if allow_thunks { 0xA11 } else { 0 };
         if fp != self.memo_gas_fp {
             self.memo.clear();
+            for e in self.l1.iter_mut() {
+                e.pc = u64::MAX;
+            }
             self.memo_gas_fp = fp;
         }
         // Fast path: PC already classified for this fingerprint and the bytecode still
         // matches (full block for compiled entries, head for non-eligible ones — guards
         // against stack-reused code at the same address).
-        if let Some((code, blk)) = self.memo.get(&pc)
-            && window.len() >= code.len()
-            && window[..code.len()] == code[..]
-        {
-            return *blk;
+        if let Some(blk) = self.memo_lookup(window, pc) {
+            return blk;
         }
         let steps = scan_block(window, g, allow_thunks);
         let (code, blk): (Vec<u8>, Option<BlockFn>) = if steps.is_empty() {
@@ -1349,13 +1411,7 @@ impl JitRuntime {
         if fp != self.memo_gas_fp {
             return None;
         }
-        if let Some((code, blk)) = self.memo.get(&pc)
-            && window.len() >= code.len()
-            && window[..code.len()] == code[..]
-        {
-            return *blk;
-        }
-        None
+        self.memo_lookup(window, pc).flatten()
     }
 
     fn add_executed(&mut self, n: u64) {

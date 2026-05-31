@@ -38,14 +38,17 @@ use cranelift_codegen::{
     ir::{AbiParam, InstBuilder, MemFlags, Value, condcodes::IntCC, types},
     settings::{self, Configurable},
 };
-use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
+use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{Linkage, Module};
 
 use fuel_asm::{Instruction, Opcode, RegId};
 use fuel_tx::GasCosts;
 
-use crate::{consts::MEM_SIZE, interpreter::MemoryInstance};
+use crate::{
+    consts::{MEM_SIZE, VM_REGISTER_COUNT},
+    interpreter::MemoryInstance,
+};
 
 // `Vec`'s in-memory header layout is not a stable language guarantee; on the toolchain
 // this was built against (rustc 1.96, post-`RawVecInner` refactor) it is `{cap@0, ptr@8,
@@ -1255,30 +1258,15 @@ impl JitRuntime {
                 sig.returns.push(AbiParam::new(types::I64));
                 b.import_signature(sig)
             };
-            let load = |b: &mut FunctionBuilder, reg: u32| -> Value {
-                b.ins().load(types::I64, flags, regs, (reg * 8) as i32)
-            };
-            let store = |b: &mut FunctionBuilder, reg: u32, v: Value| {
-                b.ins().store(flags, v, regs, (reg * 8) as i32);
-            };
+            // VM registers live in SSA `Variable`s for the block (see `RegCache`): read via
+            // `rc.read`, write via `rc.write`, flushed to the `regs` array only where it must
+            // be coherent (bail / before a thunk-terminator / block end). This keeps
+            // `$cgas`/`$ggas`/`$of`/`$err`/`$pc` and operands in machine registers across a
+            // native run instead of reloading/re-storing them every instruction.
+            let mut rc = RegCache::new();
 
             // base_pc = regs[PC] at block entry; addr of instr i = base_pc + 4*i.
-            let base_pc = load(&mut b, R_PC);
-
-            // Emit a bail: store the bailing instruction's pc, return `done` count.
-            let bail = |b: &mut FunctionBuilder, done: usize| {
-                let pc_i = b.ins().iadd_imm(base_pc, done as i64 * INSTR_SIZE);
-                b.ins().store(flags, pc_i, regs, (R_PC * 8) as i32);
-                let n = b.ins().iconst(types::I64, done as i64);
-                b.ins().return_(&[n]);
-            };
-
-            let rhs_val = |b: &mut FunctionBuilder, rhs: Rhs| -> Value {
-                match rhs {
-                    Rhs::Reg(r) => load(b, r as u32),
-                    Rhs::Imm(i) => b.ins().iconst(types::I64, i as i64),
-                }
-            };
+            let base_pc = rc.read(&mut b, regs, flags, R_PC);
 
             // Set when the final step is a `Term` (it returns inside the loop with PC
             // already set by the interpreter), so the trailing PC-store/return below is
@@ -1290,7 +1278,7 @@ impl JitRuntime {
                 // `ADD r, $pc, imm` — and the thunked interpreter ops observe the same
                 // PC the interpreter would (it increments PC per instruction).
                 let pc_cur = b.ins().iadd_imm(base_pc, i as i64 * INSTR_SIZE);
-                store(&mut b, R_PC, pc_cur);
+                rc.write(&mut b, R_PC, pc_cur);
 
                 // Thunk step: call back into the interpreter for one instruction. On a
                 // non-Proceed/error result the thunk returns EXIT_SENTINEL and we hand
@@ -1298,9 +1286,13 @@ impl JitRuntime {
                 let op = match *step {
                     BlockStep::Native(o) => o,
                     BlockStep::Thunk { spec, raw } => {
+                        // Flush the register cache so the interpreter sees current values,
+                        // run the op, then invalidate (it may have changed any register).
                         // Load the specialized thunk `spec_base[spec]` and call it; it
                         // reads `interp`/`exit_out` from `ctx`, so pass `ctx` first.
+                        rc.flush(&mut b, regs, flags, true);
                         emit_thunk_call(&mut b, ptr_ty, flags, thunk_sig, ctx, spec, raw);
+                        rc.invalidate();
                         continue;
                     }
                     BlockStep::Term { spec, raw } => {
@@ -1309,6 +1301,7 @@ impl JitRuntime {
                         // fallthrough). Do NOT overwrite PC with base+4*n — `pc_cur` (stored
                         // above) is this instruction's address, which the jump reads for
                         // PC-relative targets. Term is always the last step.
+                        rc.flush(&mut b, regs, flags, true);
                         emit_thunk_call(&mut b, ptr_ty, flags, thunk_sig, ctx, spec, raw);
                         // Block chaining: with PC now at the resolved target, try to run the
                         // next already-compiled block in-place (reusing `ctx`) instead of
@@ -1357,8 +1350,8 @@ impl JitRuntime {
                     b: rb, rhs, sub, ..
                 } = op.kind
                 {
-                    let bv = load(&mut b, rb as u32);
-                    let cv = rhs_val(&mut b, rhs);
+                    let bv = rc.read(&mut b, regs, flags, rb as u32);
+                    let cv = rhs_val(&mut b, &mut rc, regs, flags, rhs);
                     let (res, of_cond) = if sub {
                         // borrow = bv < cv (unsigned)
                         let r = b.ins().isub(bv, cv);
@@ -1375,18 +1368,18 @@ impl JitRuntime {
                     b.ins().brif(of_cond, bail_b, &[], cont, &[]);
                     b.switch_to_block(bail_b);
                     b.seal_block(bail_b);
-                    bail(&mut b, i);
+                    emit_bail(&mut b, &mut rc, regs, flags, i);
                     b.switch_to_block(cont);
                     b.seal_block(cont);
 
                     // gas check
-                    emit_gas_or_bail(&mut b, regs, flags, cost, &bail, i);
+                    emit_gas_or_bail(&mut b, &mut rc, regs, flags, cost, i);
                     // commit: dest, OF=0, ERR=0
                     if let OpKind::AddSub { dest, .. } = op.kind {
                         let zero = b.ins().iconst(types::I64, 0);
-                        store(&mut b, dest as u32, res);
-                        store(&mut b, R_OF, zero);
-                        store(&mut b, R_ERR, zero);
+                        rc.write(&mut b, dest as u32, res);
+                        rc.write(&mut b, R_OF, zero);
+                        rc.write(&mut b, R_ERR, zero);
                     }
                     continue;
                 }
@@ -1413,7 +1406,7 @@ impl JitRuntime {
 
                     // addr = regs[base] + offset, with the interpreter's `checked_add` —
                     // bail on wrap (would be `MemoryOverflow`).
-                    let bv = load(&mut b, base as u32);
+                    let bv = rc.read(&mut b, regs, flags, base as u32);
                     let off_v = b.ins().iconst(types::I64, offset as i64);
                     let addr = b.ins().iadd(bv, off_v);
                     let carry = b.ins().icmp(IntCC::UnsignedLessThan, addr, bv);
@@ -1422,7 +1415,7 @@ impl JitRuntime {
                     b.ins().brif(carry, bail0, &[], cont0, &[]);
                     b.switch_to_block(bail0);
                     b.seal_block(bail0);
-                    bail(&mut b, i);
+                    emit_bail(&mut b, &mut rc, regs, flags, i);
                     b.switch_to_block(cont0);
                     b.seal_block(cont0);
 
@@ -1436,7 +1429,7 @@ impl JitRuntime {
                     b.ins().brif(in_ram, cont1, &[], bail1, &[]);
                     b.switch_to_block(bail1);
                     b.seal_block(bail1);
-                    bail(&mut b, i);
+                    emit_bail(&mut b, &mut rc, regs, flags, i);
                     b.switch_to_block(cont1);
                     b.seal_block(cont1);
 
@@ -1464,14 +1457,14 @@ impl JitRuntime {
                     b.ins().brif(valid, cont2, &[], bail2, &[]);
                     b.switch_to_block(bail2);
                     b.seal_block(bail2);
-                    bail(&mut b, i);
+                    emit_bail(&mut b, &mut rc, regs, flags, i);
                     b.switch_to_block(cont2);
                     b.seal_block(cont2);
 
                     // Charge gas after the bounds check (the read is side-effect-free; the
                     // interpreter charges gas before the read, but bailing on OOG defers the
                     // whole instruction to it, so any ordering is preserved).
-                    emit_gas_or_bail(&mut b, regs, flags, cost, &bail, i);
+                    emit_gas_or_bail(&mut b, &mut rc, regs, flags, cost, i);
 
                     // Effective byte pointer. Stack: base+addr. Heap: base+(addr-heap_off),
                     // heap_off = MEM_SIZE - heap.len(). Both computed branchlessly; `select`
@@ -1496,34 +1489,34 @@ impl JitRuntime {
                             b.ins().uextend(types::I64, swapped)
                         }
                     };
-                    store(&mut b, dest as u32, val);
+                    rc.write(&mut b, dest as u32, val);
                     // Load touches neither OF nor ERR.
                     continue;
                 }
 
                 // --- pure ops: gas check, then compute + commit ---
-                emit_gas_or_bail(&mut b, regs, flags, cost, &bail, i);
+                emit_gas_or_bail(&mut b, &mut rc, regs, flags, cost, i);
 
                 let zero = b.ins().iconst(types::I64, 0);
                 match op.kind {
                     OpKind::Movi { dest, imm } => {
                         let v = b.ins().iconst(types::I64, imm as i64);
-                        store(&mut b, dest as u32, v);
-                        store(&mut b, R_OF, zero);
-                        store(&mut b, R_ERR, zero);
+                        rc.write(&mut b, dest as u32, v);
+                        rc.write(&mut b, R_OF, zero);
+                        rc.write(&mut b, R_ERR, zero);
                     }
                     OpKind::Move { dest, src } => {
-                        let v = load(&mut b, src as u32);
-                        store(&mut b, dest as u32, v);
-                        store(&mut b, R_OF, zero);
-                        store(&mut b, R_ERR, zero);
+                        let v = rc.read(&mut b, regs, flags, src as u32);
+                        rc.write(&mut b, dest as u32, v);
+                        rc.write(&mut b, R_OF, zero);
+                        rc.write(&mut b, R_ERR, zero);
                     }
                     OpKind::Not { dest, src } => {
-                        let v = load(&mut b, src as u32);
+                        let v = rc.read(&mut b, regs, flags, src as u32);
                         let v = b.ins().bnot(v);
-                        store(&mut b, dest as u32, v);
-                        store(&mut b, R_OF, zero);
-                        store(&mut b, R_ERR, zero);
+                        rc.write(&mut b, dest as u32, v);
+                        rc.write(&mut b, R_OF, zero);
+                        rc.write(&mut b, R_ERR, zero);
                     }
                     OpKind::Bit {
                         dest,
@@ -1531,25 +1524,25 @@ impl JitRuntime {
                         rhs,
                         op: bop,
                     } => {
-                        let bv = load(&mut b, rb as u32);
-                        let cv = rhs_val(&mut b, rhs);
+                        let bv = rc.read(&mut b, regs, flags, rb as u32);
+                        let cv = rhs_val(&mut b, &mut rc, regs, flags, rhs);
                         let v = match bop {
                             BitOp::And => b.ins().band(bv, cv),
                             BitOp::Or => b.ins().bor(bv, cv),
                             BitOp::Xor => b.ins().bxor(bv, cv),
                         };
-                        store(&mut b, dest as u32, v);
-                        store(&mut b, R_OF, zero);
-                        store(&mut b, R_ERR, zero);
+                        rc.write(&mut b, dest as u32, v);
+                        rc.write(&mut b, R_OF, zero);
+                        rc.write(&mut b, R_ERR, zero);
                     }
                     OpKind::Cmp {
                         dest,
                         b: rb,
-                        c: rc,
+                        c: rcc,
                         cc,
                     } => {
-                        let bv = load(&mut b, rb as u32);
-                        let cv = load(&mut b, rc as u32);
+                        let bv = rc.read(&mut b, regs, flags, rb as u32);
+                        let cv = rc.read(&mut b, regs, flags, rcc as u32);
                         let icc = match cc {
                             Cmp::Eq => IntCC::Equal,
                             Cmp::Lt => IntCC::UnsignedLessThan,
@@ -1557,9 +1550,9 @@ impl JitRuntime {
                         };
                         let cmp = b.ins().icmp(icc, bv, cv);
                         let v = b.ins().uextend(types::I64, cmp);
-                        store(&mut b, dest as u32, v);
-                        store(&mut b, R_OF, zero);
-                        store(&mut b, R_ERR, zero);
+                        rc.write(&mut b, dest as u32, v);
+                        rc.write(&mut b, R_OF, zero);
+                        rc.write(&mut b, R_ERR, zero);
                     }
                     OpKind::Shift {
                         dest,
@@ -1567,7 +1560,7 @@ impl JitRuntime {
                         rhs,
                         right,
                     } => {
-                        let bv = load(&mut b, rb as u32);
+                        let bv = rc.read(&mut b, regs, flags, rb as u32);
                         let v = match rhs {
                             Rhs::Imm(sh) => {
                                 if sh >= 64 {
@@ -1582,7 +1575,7 @@ impl JitRuntime {
                                 }
                             }
                             Rhs::Reg(r) => {
-                                let cv = load(&mut b, r as u32);
+                                let cv = rc.read(&mut b, regs, flags, r as u32);
                                 let shifted = if right {
                                     b.ins().ushr(bv, cv)
                                 } else {
@@ -1595,14 +1588,14 @@ impl JitRuntime {
                                 b.ins().select(in_range, shifted, z)
                             }
                         };
-                        store(&mut b, dest as u32, v);
-                        store(&mut b, R_OF, zero);
-                        store(&mut b, R_ERR, zero);
+                        rc.write(&mut b, dest as u32, v);
+                        rc.write(&mut b, R_OF, zero);
+                        rc.write(&mut b, R_ERR, zero);
                     }
                     OpKind::Noop => {
                         // alu_clear: OF=0, ERR=0, no dest write.
-                        store(&mut b, R_OF, zero);
-                        store(&mut b, R_ERR, zero);
+                        rc.write(&mut b, R_OF, zero);
+                        rc.write(&mut b, R_ERR, zero);
                     }
                     OpKind::AddSub { .. } | OpKind::Load { .. } => {
                         unreachable!("handled above")
@@ -1610,12 +1603,14 @@ impl JitRuntime {
                 }
             }
 
-            // Block completed: pc advanced past all steps; return count. Skipped when the
-            // final step was a `Term` (it already returned with PC set by the interpreter).
+            // Block completed: pc advanced past all steps; flush the register cache and
+            // return the count. Skipped when the final step was a `Term` (it already flushed
+            // and returned with PC set by the interpreter).
             if !ends_with_term {
                 let n = steps.len();
                 let final_pc = b.ins().iadd_imm(base_pc, n as i64 * INSTR_SIZE);
-                b.ins().store(flags, final_pc, regs, (R_PC * 8) as i32);
+                rc.write(&mut b, R_PC, final_pc);
+                rc.flush(&mut b, regs, flags, true);
                 let nval = b.ins().iconst(types::I64, n as i64);
                 b.ins().return_(&[nval]);
             }
@@ -1638,6 +1633,133 @@ impl JitRuntime {
         // SAFETY: signature matches BlockFn by construction.
         Some(unsafe { mem::transmute::<*const u8, BlockFn>(code) })
     }
+}
+
+/// A per-block cache of the VM register file in Cranelift SSA [`Variable`]s, so register
+/// values (including `$cgas`/`$ggas`/`$of`/`$err`/`$pc`) stay in machine registers across a
+/// native run instead of round-tripping through the `regs` array every instruction.
+///
+/// Why this matters: Cranelift's alias analysis versions memory **per region, not per
+/// offset**, so any store to the register array kills load-forwarding for every other
+/// register — and a native VM-memory load is an opaque may-alias barrier. Left to memory,
+/// each native op reloads `$cgas`/`$ggas` and re-stores `$of`/`$err`/`$pc`. Holding them in
+/// `Variable`s lets Cranelift keep them in registers; we flush to memory only where it must
+/// be coherent: before a thunk/terminator (the interpreter reads/writes the array), at a
+/// bail (the interpreter resumes from there), and at block end.
+///
+/// Correctness: a flush writes back exactly the committed register state; after a thunk the
+/// cache is **invalidated** (the interpreter may have changed any register), so the next
+/// read reloads from memory. Verify mode (`FUEL_VM_JIT_VERIFY`) diffs the full register file
+/// against the interpreter, so any missed flush/stale read is caught.
+struct RegCache {
+    /// `Some` once register `i` has been read or written in the current run.
+    var: [Option<Variable>; VM_REGISTER_COUNT],
+    /// Bit `i` set ⇒ `var[i]` holds a value not yet written back to `regs[i]`.
+    dirty: u64,
+    /// Monotonic `Variable` index allocator (unique within this function).
+    next: u32,
+}
+
+impl RegCache {
+    fn new() -> Self {
+        Self {
+            var: [None; VM_REGISTER_COUNT],
+            dirty: 0,
+            next: 0,
+        }
+    }
+
+    fn ensure(&mut self, b: &mut FunctionBuilder, reg: u32) -> Variable {
+        if let Some(v) = self.var[reg as usize] {
+            return v;
+        }
+        let v = Variable::from_u32(self.next);
+        self.next += 1;
+        b.declare_var(v, types::I64);
+        self.var[reg as usize] = Some(v);
+        v
+    }
+
+    /// Read register `reg`, loading it from `regs` on first use this run.
+    fn read(
+        &mut self,
+        b: &mut FunctionBuilder,
+        regs: Value,
+        flags: MemFlags,
+        reg: u32,
+    ) -> Value {
+        if let Some(v) = self.var[reg as usize] {
+            return b.use_var(v);
+        }
+        let v = self.ensure(b, reg);
+        let loaded = b.ins().load(types::I64, flags, regs, (reg * 8) as i32);
+        b.def_var(v, loaded);
+        loaded
+    }
+
+    /// Write register `reg` (kept in a `Variable`; flushed to memory later).
+    fn write(&mut self, b: &mut FunctionBuilder, reg: u32, val: Value) {
+        let v = self.ensure(b, reg);
+        b.def_var(v, val);
+        self.dirty |= 1u64 << reg;
+    }
+
+    /// Write back every dirty register to `regs`. When `clear`, the dirty set is reset (the
+    /// fall-through path has committed its state); when not, the dirty set is preserved — for
+    /// a **side-exit** (bail) block, whose stores must not change the main path's view of
+    /// what still needs flushing.
+    fn flush(&mut self, b: &mut FunctionBuilder, regs: Value, flags: MemFlags, clear: bool) {
+        let mut d = self.dirty;
+        while d != 0 {
+            let reg = d.trailing_zeros();
+            d &= d - 1;
+            let v = self.var[reg as usize].expect("dirty bit implies a live var");
+            let val = b.use_var(v);
+            b.ins().store(flags, val, regs, (reg * 8) as i32);
+        }
+        if clear {
+            self.dirty = 0;
+        }
+    }
+
+    /// Forget all cached values (after a thunk: the interpreter may have changed any
+    /// register, so subsequent reads must reload from memory). Caller must `flush` first if
+    /// there is uncommitted state to preserve.
+    fn invalidate(&mut self) {
+        self.var = [None; VM_REGISTER_COUNT];
+        self.dirty = 0;
+    }
+}
+
+/// Resolve an [`Rhs`] operand to a value (register read via `rc`, or an immediate constant).
+fn rhs_val(
+    b: &mut FunctionBuilder,
+    rc: &mut RegCache,
+    regs: Value,
+    flags: MemFlags,
+    rhs: Rhs,
+) -> Value {
+    match rhs {
+        Rhs::Reg(r) => rc.read(b, regs, flags, r as u32),
+        Rhs::Imm(i) => b.ins().iconst(types::I64, i as i64),
+    }
+}
+
+/// Emit a bail from a side-exit block: write back all committed register state and return
+/// the `done` count so the interpreter resumes at exactly the bailing instruction. `$pc` is
+/// already in the dirty set as `base_pc + 4*done` (every step writes it before any bail can
+/// fire), so flushing the dirty set restores the correct resume PC. The flush keeps the
+/// dirty set intact — this is a side exit; the fall-through path still owns that state.
+fn emit_bail(
+    b: &mut FunctionBuilder,
+    rc: &mut RegCache,
+    regs: Value,
+    flags: MemFlags,
+    done: usize,
+) {
+    rc.flush(b, regs, flags, false);
+    let n = b.ins().iconst(types::I64, done as i64);
+    b.ins().return_(&[n]);
 }
 
 /// Emit a call to the specialized thunk `ctx.spec[spec]` with `(ctx, raw)`. On a non-zero
@@ -1670,17 +1792,19 @@ fn emit_thunk_call(
     b.seal_block(cont);
 }
 
-/// Emit an inline gas check matching `gas_charge`'s happy path; bail on OOG.
+/// Emit an inline gas check matching `gas_charge`'s happy path; bail on OOG. `$cgas`/`$ggas`
+/// are read/updated through the register cache, so within a native run they stay in machine
+/// registers (no per-op reload/store) and are flushed to memory only at exits.
 fn emit_gas_or_bail(
     b: &mut FunctionBuilder,
+    rc: &mut RegCache,
     regs: Value,
     flags: MemFlags,
     cost: i64,
-    bail: &dyn Fn(&mut FunctionBuilder, usize),
     i: usize,
 ) {
-    let cgas = b.ins().load(types::I64, flags, regs, (R_CGAS * 8) as i32);
-    let ggas = b.ins().load(types::I64, flags, regs, (R_GGAS * 8) as i32);
+    let cgas = rc.read(b, regs, flags, R_CGAS);
+    let ggas = rc.read(b, regs, flags, R_GGAS);
     let cost_v = b.ins().iconst(types::I64, cost);
     // OOG when cost > cgas
     let oog = b.ins().icmp(IntCC::UnsignedGreaterThan, cost_v, cgas);
@@ -1689,13 +1813,14 @@ fn emit_gas_or_bail(
     b.ins().brif(oog, bail_b, &[], cont, &[]);
     b.switch_to_block(bail_b);
     b.seal_block(bail_b);
-    bail(b, i);
+    // OOG before charging: $cgas/$ggas still hold the pre-op (ops 0..i-1) values.
+    emit_bail(b, rc, regs, flags, i);
     b.switch_to_block(cont);
     b.seal_block(cont);
     let new_cgas = b.ins().isub(cgas, cost_v);
     let new_ggas = b.ins().isub(ggas, cost_v);
-    b.ins().store(flags, new_cgas, regs, (R_CGAS * 8) as i32);
-    b.ins().store(flags, new_ggas, regs, (R_GGAS * 8) as i32);
+    rc.write(b, R_CGAS, new_cgas);
+    rc.write(b, R_GGAS, new_ggas);
 }
 
 #[cfg(test)]

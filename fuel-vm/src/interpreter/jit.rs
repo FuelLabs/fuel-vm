@@ -67,6 +67,7 @@ const R_GGAS: u32 = RegId::GGAS.to_u8() as u32;
 const R_CGAS: u32 = RegId::CGAS.to_u8() as u32;
 const R_SP: u32 = RegId::SP.to_u8() as u32;
 const R_SSP: u32 = RegId::SSP.to_u8() as u32;
+const R_HP: u32 = RegId::HP.to_u8() as u32;
 /// First writable (program) register. Writes below this index error in the
 /// interpreter, so such instructions are not JIT-eligible.
 const FIRST_WRITABLE: u8 = RegId::WRITABLE.to_u8();
@@ -655,6 +656,16 @@ enum OpKind {
     /// ranges; bails to the interpreter for the exact panic otherwise (heap dst, overlap,
     /// out-of-bounds). Writes memory only — no register / OF / ERR change.
     Mcpi { dst: u8, src: u8, len: u32 },
+    /// Stack-pointer adjust (CFEI `delta>0` / CFSI `delta<0`): `$sp += delta`. Extend bails
+    /// on overflow, `$sp+delta > $hp` (overlap), or needing a stack realloc
+    /// (`> stack.len()`); shrink bails on underflow or `$sp-|delta| < $ssp`. Touches `$sp`
+    /// only.
+    StackPtr { delta: i64 },
+    /// Push/pop a compile-time register set to/from the stack (PSHL/PSHH/POPL/POPH).
+    /// `base` is the segment's first register (16 or 40); `mask` is the 24-bit selection.
+    /// Push bails if it would realloc/overlap; pop bails on underflow / below `$ssp`.
+    /// Registers stored/loaded big-endian; updates `$sp` and (pop) the selected registers.
+    StackRegs { base: u8, mask: u32, push: bool },
 }
 
 /// Largest MCPI copy emitted as native unrolled word/byte moves; larger copies bail to the
@@ -971,6 +982,32 @@ fn decode_op(instr: Instruction, g: &GasCosts) -> Option<DecodedOp> {
                 g.mcpi().resolve(len),
             )
         }
+        // Stack-frame ops (the dominant thunk category). All immediate-shaped, so the gas
+        // and (PSH/POP) register set are compile-time known. Gated by `native_mem_enabled`.
+        I::CFEI(op) if native_mem_enabled() => {
+            let imm = u64::from(op.unpack());
+            (OpKind::StackPtr { delta: imm as i64 }, g.cfei().resolve(imm))
+        }
+        I::CFSI(op) if native_mem_enabled() => {
+            let imm = u64::from(op.unpack());
+            (OpKind::StackPtr { delta: -(imm as i64) }, g.cfsi())
+        }
+        I::PSHL(op) if native_mem_enabled() => (
+            OpKind::StackRegs { base: 16, mask: op.unpack().to_u32(), push: true },
+            g.pshl(),
+        ),
+        I::PSHH(op) if native_mem_enabled() => (
+            OpKind::StackRegs { base: 40, mask: op.unpack().to_u32(), push: true },
+            g.pshh(),
+        ),
+        I::POPL(op) if native_mem_enabled() => (
+            OpKind::StackRegs { base: 16, mask: op.unpack().to_u32(), push: false },
+            g.popl(),
+        ),
+        I::POPH(op) if native_mem_enabled() => (
+            OpKind::StackRegs { base: 40, mask: op.unpack().to_u32(), push: false },
+            g.poph(),
+        ),
         _ => return None,
     };
     Some(DecodedOp { kind, gas })
@@ -1084,6 +1121,9 @@ fn gas_fingerprint(g: &GasCosts) -> u64 {
         g.lb(), g.lw(),
         // native MCPI: two points pin the (linear) dependent-cost function
         g.mcpi().resolve(0), g.mcpi().resolve(1 << 24),
+        // native stack-frame ops
+        g.cfei().resolve(0), g.cfei().resolve(1 << 24), g.cfsi(),
+        g.pshl(), g.pshh(), g.popl(), g.poph(),
     ];
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
     for c in costs {
@@ -1677,6 +1717,113 @@ impl JitRuntime {
                     continue;
                 }
 
+                // --- stack-pointer adjust (CFEI extend / CFSI shrink) ---
+                if let OpKind::StackPtr { delta } = op.kind {
+                    let sp = rc.read(&mut b, regs, flags, R_SP);
+                    if delta < 0 {
+                        // Shrink: new_sp = sp - amt; bail on underflow or new_sp < ssp.
+                        let amt = b.ins().iconst(types::I64, -delta);
+                        let no_uf =
+                            b.ins().icmp(IntCC::UnsignedGreaterThanOrEqual, sp, amt);
+                        emit_guard(&mut b, &mut rc, regs, flags, i, op.gas, no_uf);
+                        let new_sp = b.ins().isub(sp, amt);
+                        let ssp = rc.read(&mut b, regs, flags, R_SSP);
+                        let ge_ssp =
+                            b.ins().icmp(IntCC::UnsignedGreaterThanOrEqual, new_sp, ssp);
+                        emit_guard(&mut b, &mut rc, regs, flags, i, op.gas, ge_ssp);
+                        rc.write(&mut b, R_SP, new_sp);
+                    } else {
+                        // Extend: new_sp = sp + delta; bail on overflow, > hp (overlap), or
+                        // needing a realloc (> stack.len() — the Vec resize stays in interp).
+                        let amt = b.ins().iconst(types::I64, delta);
+                        let new_sp = b.ins().iadd(sp, amt);
+                        let no_of =
+                            b.ins().icmp(IntCC::UnsignedGreaterThanOrEqual, new_sp, sp);
+                        emit_guard(&mut b, &mut rc, regs, flags, i, op.gas, no_of);
+                        let hp = rc.read(&mut b, regs, flags, R_HP);
+                        let le_hp =
+                            b.ins().icmp(IntCC::UnsignedLessThanOrEqual, new_sp, hp);
+                        emit_guard(&mut b, &mut rc, regs, flags, i, op.gas, le_hp);
+                        let s_len = b.ins().load(
+                            types::I64,
+                            flags,
+                            mem,
+                            MemoryInstance::JIT_STACK_OFFSET as i32 + VEC_LEN_OFF,
+                        );
+                        let no_re =
+                            b.ins().icmp(IntCC::UnsignedLessThanOrEqual, new_sp, s_len);
+                        emit_guard(&mut b, &mut rc, regs, flags, i, op.gas, no_re);
+                        rc.write(&mut b, R_SP, new_sp);
+                    }
+                    continue;
+                }
+
+                // --- push/pop a compile-time register set (PSHL/PSHH/POPL/POPH) ---
+                if let OpKind::StackRegs { base, mask, push } = op.kind {
+                    let mem_flags = MemFlags::new().with_notrap();
+                    let count = (mask & 0x00FF_FFFF).count_ones();
+                    let size = i64::from(count) * 8;
+                    let size_v = b.ins().iconst(types::I64, size);
+                    let s_ptr_off = MemoryInstance::JIT_STACK_OFFSET as i32;
+                    let sp = rc.read(&mut b, regs, flags, R_SP);
+                    if push {
+                        // write_at = sp; new_sp = sp + size. Bail on overflow / > hp /
+                        // realloc; the destination is the stack we own (no ownership check —
+                        // matches the interpreter's `write_noownerchecks`).
+                        let new_sp = b.ins().iadd(sp, size_v);
+                        let no_of =
+                            b.ins().icmp(IntCC::UnsignedGreaterThanOrEqual, new_sp, sp);
+                        emit_guard(&mut b, &mut rc, regs, flags, i, op.gas, no_of);
+                        let hp = rc.read(&mut b, regs, flags, R_HP);
+                        let le_hp =
+                            b.ins().icmp(IntCC::UnsignedLessThanOrEqual, new_sp, hp);
+                        emit_guard(&mut b, &mut rc, regs, flags, i, op.gas, le_hp);
+                        let s_len =
+                            b.ins().load(types::I64, flags, mem, s_ptr_off + VEC_LEN_OFF);
+                        let no_re =
+                            b.ins().icmp(IntCC::UnsignedLessThanOrEqual, new_sp, s_len);
+                        emit_guard(&mut b, &mut rc, regs, flags, i, op.gas, no_re);
+                        let s_ptr =
+                            b.ins().load(ptr_ty, flags, mem, s_ptr_off + VEC_PTR_OFF);
+                        let at = b.ins().iadd(s_ptr, sp);
+                        let mut slot = 0i32;
+                        for bit in 0..24u32 {
+                            if mask & (1 << bit) != 0 {
+                                let v = rc.read(&mut b, regs, flags, u32::from(base) + bit);
+                                let be = b.ins().bswap(v);
+                                b.ins().store(mem_flags, be, at, slot * 8);
+                                slot += 1;
+                            }
+                        }
+                        rc.write(&mut b, R_SP, new_sp);
+                    } else {
+                        // new_sp = sp - size (bail on underflow / < ssp). Reads are in-bounds
+                        // (sp <= stack.len() invariant), so no separate bounds check.
+                        let no_uf =
+                            b.ins().icmp(IntCC::UnsignedGreaterThanOrEqual, sp, size_v);
+                        emit_guard(&mut b, &mut rc, regs, flags, i, op.gas, no_uf);
+                        let new_sp = b.ins().isub(sp, size_v);
+                        let ssp = rc.read(&mut b, regs, flags, R_SSP);
+                        let ge_ssp =
+                            b.ins().icmp(IntCC::UnsignedGreaterThanOrEqual, new_sp, ssp);
+                        emit_guard(&mut b, &mut rc, regs, flags, i, op.gas, ge_ssp);
+                        let s_ptr =
+                            b.ins().load(ptr_ty, flags, mem, s_ptr_off + VEC_PTR_OFF);
+                        let at = b.ins().iadd(s_ptr, new_sp);
+                        let mut slot = 0i32;
+                        for bit in 0..24u32 {
+                            if mask & (1 << bit) != 0 {
+                                let raw = b.ins().load(types::I64, mem_flags, at, slot * 8);
+                                let v = b.ins().bswap(raw);
+                                rc.write(&mut b, u32::from(base) + bit, v);
+                                slot += 1;
+                            }
+                        }
+                        rc.write(&mut b, R_SP, new_sp);
+                    }
+                    continue;
+                }
+
                 // --- pure ops (no per-op bail; gas charged once for the run): compute +
                 // commit. These never fault, so they are fully straight-line. ---
                 let zero = b.ins().iconst(types::I64, 0);
@@ -1779,7 +1926,11 @@ impl JitRuntime {
                         rc.write(&mut b, R_OF, zero);
                         rc.write(&mut b, R_ERR, zero);
                     }
-                    OpKind::AddSub { .. } | OpKind::Load { .. } | OpKind::Mcpi { .. } => {
+                    OpKind::AddSub { .. }
+                    | OpKind::Load { .. }
+                    | OpKind::Mcpi { .. }
+                    | OpKind::StackPtr { .. }
+                    | OpKind::StackRegs { .. } => {
                         unreachable!("handled above")
                     }
                 }
@@ -1964,6 +2115,28 @@ fn emit_bail(
     rc.dirty = saved_dirty;
     let n = b.ins().iconst(types::I64, done as i64);
     b.ins().return_(&[n]);
+}
+
+/// Emit `if !cond { bail (refund) }`: continue straight-line when `cond` holds, else bail to
+/// the interpreter at instruction `done`. Used by the native memory ops for each
+/// bounds/ownership/overlap precondition.
+fn emit_guard(
+    b: &mut FunctionBuilder,
+    rc: &mut RegCache,
+    regs: Value,
+    flags: MemFlags,
+    done: usize,
+    refund: u64,
+    cond: Value,
+) {
+    let cont = b.create_block();
+    let bail_b = b.create_block();
+    b.ins().brif(cond, cont, &[], bail_b, &[]);
+    b.switch_to_block(bail_b);
+    b.seal_block(bail_b);
+    emit_bail(b, rc, regs, flags, done, refund);
+    b.switch_to_block(cont);
+    b.seal_block(cont);
 }
 
 /// Emit the once-per-native-run gas *guard*: if `$cgas < total` (the run's summed fixed

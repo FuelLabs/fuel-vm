@@ -1101,11 +1101,31 @@ fn is_thunkable(op: Opcode) -> bool {
     )
 }
 
+/// Native ops that emit guard/bail sub-blocks (and so cost CFG/IR + compile time): the
+/// memory loads/copy and stack-frame ops. Counted against `MAX_MEM_OPS` per block.
+fn is_mem_op(kind: OpKind) -> bool {
+    matches!(
+        kind,
+        OpKind::Load { .. }
+            | OpKind::Mcpi { .. }
+            | OpKind::StackPtr { .. }
+            | OpKind::StackRegs { .. }
+    )
+}
+
 /// Scan a maximal block from the start of `window`: native ALU ops plus (when
 /// `allow_thunks`) thunkable non-ALU ops. Terminates at the first control-flow / call /
 /// return / unknown op. `window` is the executable bytecode at the current PC.
 fn scan_block(window: &[u8], g: &GasCosts, allow_thunks: bool) -> Vec<BlockStep> {
+    // Native memory/stack ops each emit several guard + bail sub-blocks, and every bail
+    // flushes the whole register cache — so a long run of them (e.g. a byte-by-byte memory
+    // loop) explodes the Cranelift CFG/IR, making compilation pathological (seconds, deep
+    // enough to risk a stack overflow on adversarial bytecode). Cap them per block; the
+    // block ends early and the next continues. Typical blocks are ~7 ops, so this only
+    // bounds degenerate runs. ALU ops are cheap to compile and stay uncapped.
+    const MAX_MEM_OPS: usize = 32;
     let mut steps: Vec<BlockStep> = Vec::new();
+    let mut mem_ops = 0usize;
     let mut pos = 0;
     while pos + 4 <= window.len() && steps.len() < MAX_BLOCK_OPS {
         let raw = [window[pos], window[pos + 1], window[pos + 2], window[pos + 3]];
@@ -1113,6 +1133,12 @@ fn scan_block(window: &[u8], g: &GasCosts, allow_thunks: bool) -> Vec<BlockStep>
             break;
         };
         if let Some(op) = decode_op(instr, g) {
+            if is_mem_op(op.kind) {
+                if mem_ops >= MAX_MEM_OPS {
+                    break;
+                }
+                mem_ops += 1;
+            }
             steps.push(BlockStep::Native(op));
             pos += 4;
             continue;

@@ -1268,6 +1268,36 @@ impl JitRuntime {
             // base_pc = regs[PC] at block entry; addr of instr i = base_pc + 4*i.
             let base_pc = rc.read(&mut b, regs, flags, R_PC);
 
+            // Batched gas, per "native run" (a maximal sequence of `Native` steps; thunks /
+            // terminators break runs, since they charge their own gas). At each run's first
+            // instruction we emit ONE `$cgas >= run_total` OOG guard; the per-op gas is then
+            // charged incrementally (no per-op OOG check). `run_total[s]` = the run's summed
+            // fixed cost, computed at its start `s`.
+            let mut run_total = alloc::vec![0u64; steps.len()];
+            {
+                let mut i = 0;
+                while i < steps.len() {
+                    if matches!(steps[i], BlockStep::Native(_)) {
+                        let s = i;
+                        let mut acc = 0u64;
+                        while i < steps.len() && matches!(steps[i], BlockStep::Native(_)) {
+                            if let BlockStep::Native(op) = steps[i] {
+                                acc = acc.saturating_add(op.gas);
+                            }
+                            i += 1;
+                        }
+                        run_total[s] = acc;
+                    } else {
+                        i += 1;
+                    }
+                }
+            }
+            // True at a step that begins a native run (and so emits the run gas guard).
+            let is_run_start = |i: usize| {
+                matches!(steps[i], BlockStep::Native(_))
+                    && (i == 0 || !matches!(steps[i - 1], BlockStep::Native(_)))
+            };
+
             // Set when the final step is a `Term` (it returns inside the loop with PC
             // already set by the interpreter), so the trailing PC-store/return below is
             // skipped (and would be unreachable codegen into a terminated block).
@@ -1343,9 +1373,17 @@ impl JitRuntime {
                         continue;
                     }
                 };
-                let cost = op.gas as i64;
 
-                // --- overflow bail (AddSub only), computed BEFORE charging gas ---
+                // Batched gas: one OOG *guard* per native run (see precompute above), then
+                // an incremental per-op charge. The guard removes the per-op compare+branch;
+                // the incremental charge keeps `$cgas`/`$ggas` observably correct. A mid-op
+                // bail refunds this op's `op.gas` (the interpreter re-charges on resume).
+                if is_run_start(i) {
+                    emit_run_gas_guard(&mut b, &mut rc, regs, flags, run_total[i], i);
+                }
+                emit_charge(&mut b, &mut rc, regs, flags, op.gas);
+
+                // --- overflow bail (AddSub only); gas already charged for this op ---
                 if let OpKind::AddSub {
                     b: rb, rhs, sub, ..
                 } = op.kind
@@ -1368,12 +1406,10 @@ impl JitRuntime {
                     b.ins().brif(of_cond, bail_b, &[], cont, &[]);
                     b.switch_to_block(bail_b);
                     b.seal_block(bail_b);
-                    emit_bail(&mut b, &mut rc, regs, flags, i);
+                    emit_bail(&mut b, &mut rc, regs, flags, i, op.gas);
                     b.switch_to_block(cont);
                     b.seal_block(cont);
 
-                    // gas check
-                    emit_gas_or_bail(&mut b, &mut rc, regs, flags, cost, i);
                     // commit: dest, OF=0, ERR=0
                     if let OpKind::AddSub { dest, .. } = op.kind {
                         let zero = b.ins().iconst(types::I64, 0);
@@ -1415,7 +1451,7 @@ impl JitRuntime {
                     b.ins().brif(carry, bail0, &[], cont0, &[]);
                     b.switch_to_block(bail0);
                     b.seal_block(bail0);
-                    emit_bail(&mut b, &mut rc, regs, flags, i);
+                    emit_bail(&mut b, &mut rc, regs, flags, i, op.gas);
                     b.switch_to_block(cont0);
                     b.seal_block(cont0);
 
@@ -1429,7 +1465,7 @@ impl JitRuntime {
                     b.ins().brif(in_ram, cont1, &[], bail1, &[]);
                     b.switch_to_block(bail1);
                     b.seal_block(bail1);
-                    emit_bail(&mut b, &mut rc, regs, flags, i);
+                    emit_bail(&mut b, &mut rc, regs, flags, i, op.gas);
                     b.switch_to_block(cont1);
                     b.seal_block(cont1);
 
@@ -1457,15 +1493,12 @@ impl JitRuntime {
                     b.ins().brif(valid, cont2, &[], bail2, &[]);
                     b.switch_to_block(bail2);
                     b.seal_block(bail2);
-                    emit_bail(&mut b, &mut rc, regs, flags, i);
+                    emit_bail(&mut b, &mut rc, regs, flags, i, op.gas);
                     b.switch_to_block(cont2);
                     b.seal_block(cont2);
 
-                    // Charge gas after the bounds check (the read is side-effect-free; the
-                    // interpreter charges gas before the read, but bailing on OOG defers the
-                    // whole instruction to it, so any ordering is preserved).
-                    emit_gas_or_bail(&mut b, &mut rc, regs, flags, cost, i);
-
+                    // Gas was charged once for the whole run; the bounds bails above refunded
+                    // it so the interpreter re-charges on resume.
                     // Effective byte pointer. Stack: base+addr. Heap: base+(addr-heap_off),
                     // heap_off = MEM_SIZE - heap.len(). Both computed branchlessly; `select`
                     // takes the live one (heap arm is dead arithmetic when stack_hit).
@@ -1494,9 +1527,8 @@ impl JitRuntime {
                     continue;
                 }
 
-                // --- pure ops: gas check, then compute + commit ---
-                emit_gas_or_bail(&mut b, &mut rc, regs, flags, cost, i);
-
+                // --- pure ops (no per-op bail; gas charged once for the run): compute +
+                // commit. These never fault, so they are fully straight-line. ---
                 let zero = b.ins().iconst(types::I64, 0);
                 match op.kind {
                     OpKind::Movi { dest, imm } => {
@@ -1748,18 +1780,97 @@ fn rhs_val(
 /// Emit a bail from a side-exit block: write back all committed register state and return
 /// the `done` count so the interpreter resumes at exactly the bailing instruction. `$pc` is
 /// already in the dirty set as `base_pc + 4*done` (every step writes it before any bail can
-/// fire), so flushing the dirty set restores the correct resume PC. The flush keeps the
-/// dirty set intact — this is a side exit; the fall-through path still owns that state.
+/// fire), so flushing the dirty set restores the correct resume PC.
+///
+/// `refund` (gas) is added back to `$cgas`/`$ggas` first: with batched gas (one check +
+/// subtract per native run, see `emit_run_gas_check`), a mid-run bail at instruction `done`
+/// has pre-charged the gas of `done`..run-end, which the interpreter re-charges when it
+/// resumes — so we give it back. Pass 0 when no run-batch charge applies (the run-start gas
+/// check itself, which bails before charging).
+///
+/// Side-exit safety: this block ends in `return`, so its writes must not leak into the
+/// fall-through path. `$cgas`/`$ggas` are already dirty here (the run charged them), so the
+/// refund adds no new dirty bits; Cranelift scopes the `def_var`s to this block (the
+/// fall-through reads its own dominating values), and we restore the dirty set after the
+/// flush so the main path's view of what still needs writing back is unchanged.
 fn emit_bail(
     b: &mut FunctionBuilder,
     rc: &mut RegCache,
     regs: Value,
     flags: MemFlags,
     done: usize,
+    refund: u64,
 ) {
-    rc.flush(b, regs, flags, false);
+    let saved_dirty = rc.dirty;
+    if refund != 0 {
+        let cgas = rc.read(b, regs, flags, R_CGAS);
+        let cgas = b.ins().iadd_imm(cgas, refund as i64);
+        rc.write(b, R_CGAS, cgas);
+        let ggas = rc.read(b, regs, flags, R_GGAS);
+        let ggas = b.ins().iadd_imm(ggas, refund as i64);
+        rc.write(b, R_GGAS, ggas);
+    }
+    rc.flush(b, regs, flags, true);
+    rc.dirty = saved_dirty;
     let n = b.ins().iconst(types::I64, done as i64);
     b.ins().return_(&[n]);
+}
+
+/// Emit the once-per-native-run gas *guard*: if `$cgas < total` (the run's summed fixed
+/// cost), bail the whole run to the interpreter at instruction `s` (which charges per-op and
+/// produces the exact out-of-gas point). It does **not** subtract — the per-op
+/// [`emit_charge`] still decrements `$cgas`/`$ggas` incrementally so that an op reading
+/// `$cgas`/`$ggas` as an operand observes the same value the interpreter would. Because gas
+/// is monotonic, one guard for the whole run is equivalent to the interpreter's per-op OOG
+/// check on the no-bail path (if the sum fits, every prefix fits), but it removes the per-op
+/// compare+branch+bail-block — leaving pure-ALU runs straight-line.
+fn emit_run_gas_guard(
+    b: &mut FunctionBuilder,
+    rc: &mut RegCache,
+    regs: Value,
+    flags: MemFlags,
+    total: u64,
+    s: usize,
+) {
+    if total == 0 {
+        return;
+    }
+    let cgas = rc.read(b, regs, flags, R_CGAS);
+    let total_v = b.ins().iconst(types::I64, total as i64);
+    // OOG iff total > cgas (matches the interpreter's `cost > cgas`).
+    let oog = b.ins().icmp(IntCC::UnsignedGreaterThan, total_v, cgas);
+    let cont = b.create_block();
+    let bail_b = b.create_block();
+    b.ins().brif(oog, bail_b, &[], cont, &[]);
+    b.switch_to_block(bail_b);
+    b.seal_block(bail_b);
+    emit_bail(b, rc, regs, flags, s, 0);
+    b.switch_to_block(cont);
+    b.seal_block(cont);
+}
+
+/// Incrementally charge one op's fixed gas: `$cgas -= cost`, `$ggas -= cost` (no OOG check —
+/// the run guard already proved the whole run fits). Done *before* the op body, matching the
+/// interpreter's `gas_charge`-then-execute order, so an operand read of `$cgas`/`$ggas` sees
+/// the post-charge value. Stays in registers via the cache; a mid-op bail refunds this
+/// `cost` (the interpreter re-charges on resume).
+fn emit_charge(
+    b: &mut FunctionBuilder,
+    rc: &mut RegCache,
+    regs: Value,
+    flags: MemFlags,
+    cost: u64,
+) {
+    if cost == 0 {
+        return;
+    }
+    let neg = -(cost as i64);
+    let cgas = rc.read(b, regs, flags, R_CGAS);
+    let cgas = b.ins().iadd_imm(cgas, neg);
+    rc.write(b, R_CGAS, cgas);
+    let ggas = rc.read(b, regs, flags, R_GGAS);
+    let ggas = b.ins().iadd_imm(ggas, neg);
+    rc.write(b, R_GGAS, ggas);
 }
 
 /// Emit a call to the specialized thunk `ctx.spec[spec]` with `(ctx, raw)`. On a non-zero
@@ -1790,37 +1901,6 @@ fn emit_thunk_call(
     b.ins().return_(&[sentinel]);
     b.switch_to_block(cont);
     b.seal_block(cont);
-}
-
-/// Emit an inline gas check matching `gas_charge`'s happy path; bail on OOG. `$cgas`/`$ggas`
-/// are read/updated through the register cache, so within a native run they stay in machine
-/// registers (no per-op reload/store) and are flushed to memory only at exits.
-fn emit_gas_or_bail(
-    b: &mut FunctionBuilder,
-    rc: &mut RegCache,
-    regs: Value,
-    flags: MemFlags,
-    cost: i64,
-    i: usize,
-) {
-    let cgas = rc.read(b, regs, flags, R_CGAS);
-    let ggas = rc.read(b, regs, flags, R_GGAS);
-    let cost_v = b.ins().iconst(types::I64, cost);
-    // OOG when cost > cgas
-    let oog = b.ins().icmp(IntCC::UnsignedGreaterThan, cost_v, cgas);
-    let cont = b.create_block();
-    let bail_b = b.create_block();
-    b.ins().brif(oog, bail_b, &[], cont, &[]);
-    b.switch_to_block(bail_b);
-    b.seal_block(bail_b);
-    // OOG before charging: $cgas/$ggas still hold the pre-op (ops 0..i-1) values.
-    emit_bail(b, rc, regs, flags, i);
-    b.switch_to_block(cont);
-    b.seal_block(cont);
-    let new_cgas = b.ins().isub(cgas, cost_v);
-    let new_ggas = b.ins().isub(ggas, cost_v);
-    rc.write(b, R_CGAS, new_cgas);
-    rc.write(b, R_GGAS, new_ggas);
 }
 
 #[cfg(test)]

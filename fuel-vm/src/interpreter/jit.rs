@@ -65,6 +65,8 @@ const R_PC: u32 = RegId::PC.to_u8() as u32;
 const R_ERR: u32 = RegId::ERR.to_u8() as u32;
 const R_GGAS: u32 = RegId::GGAS.to_u8() as u32;
 const R_CGAS: u32 = RegId::CGAS.to_u8() as u32;
+const R_SP: u32 = RegId::SP.to_u8() as u32;
+const R_SSP: u32 = RegId::SSP.to_u8() as u32;
 /// First writable (program) register. Writes below this index error in the
 /// interpreter, so such instructions are not JIT-eligible.
 const FIRST_WRITABLE: u8 = RegId::WRITABLE.to_u8();
@@ -172,6 +174,25 @@ fn chain_enabled() -> bool {
             // Default ON; only "0" disables.
             let on = std::env::var("FUEL_VM_JIT_CHAIN").as_deref() != Ok("0");
             CHAIN_ENABLED.store(if on { 1 } else { 2 }, Ordering::Relaxed);
+            on
+        }
+    }
+}
+
+/// Runtime on/off switch for native memory-writer ops (MCPI, and later the stack-frame
+/// ops) — `FUEL_VM_JIT_NATIVE_MEM=0` makes them decode as `None` so they run via their
+/// thunk, for clean same-build A/B measurement. 0 = unread, 1 = on, 2 = off.
+static NATIVE_MEM_ENABLED: core::sync::atomic::AtomicU8 =
+    core::sync::atomic::AtomicU8::new(0);
+
+fn native_mem_enabled() -> bool {
+    use core::sync::atomic::Ordering;
+    match NATIVE_MEM_ENABLED.load(Ordering::Relaxed) {
+        1 => true,
+        2 => false,
+        _ => {
+            let on = std::env::var("FUEL_VM_JIT_NATIVE_MEM").as_deref() != Ok("0");
+            NATIVE_MEM_ENABLED.store(if on { 1 } else { 2 }, Ordering::Relaxed);
             on
         }
     }
@@ -628,7 +649,17 @@ enum OpKind {
         /// 1 (LB), 2 (LQW), 4 (LHW), or 8 (LW).
         nbytes: u8,
     },
+    /// Native immediate-length memory copy (MCPI): `mem[reg[dst]..] = mem[reg[src]..]`,
+    /// `len` bytes (a small compile-time immediate). Fast path requires a stack-owned
+    /// destination (ownership = `ssp <= dst && dst+len <= sp`) and non-overlapping in-bounds
+    /// ranges; bails to the interpreter for the exact panic otherwise (heap dst, overlap,
+    /// out-of-bounds). Writes memory only — no register / OF / ERR change.
+    Mcpi { dst: u8, src: u8, len: u32 },
 }
+
+/// Largest MCPI copy emitted as native unrolled word/byte moves; larger copies bail to the
+/// interpreter thunk (where the `copy_within`/memcpy work dominates the call overhead anyway).
+const MCPI_MAX_NATIVE: u64 = 128;
 
 #[derive(Clone, Copy, Debug)]
 enum BitOp {
@@ -922,6 +953,24 @@ fn decode_op(instr: Instruction, g: &GasCosts) -> Option<DecodedOp> {
             let (a, b, imm) = op.unpack();
             (load_kind(w(a)?, b.to_u8(), imm, 8), g.lw())
         }
+        // Native immediate-length copy. `len` is the immediate; gas is the (constant)
+        // `mcpi().resolve(len)`. Only small copies go native; len 0 or > MCPI_MAX_NATIVE
+        // returns `None` so the op runs via its thunk (which handles the general case).
+        I::MCPI(op) => {
+            let (a, b, imm) = op.unpack();
+            let len = u64::from(imm);
+            if len == 0 || len > MCPI_MAX_NATIVE || !native_mem_enabled() {
+                return None;
+            }
+            (
+                OpKind::Mcpi {
+                    dst: a.to_u8(),
+                    src: b.to_u8(),
+                    len: len as u32,
+                },
+                g.mcpi().resolve(len),
+            )
+        }
         _ => return None,
     };
     Some(DecodedOp { kind, gas })
@@ -1033,6 +1082,8 @@ fn gas_fingerprint(g: &GasCosts) -> u64 {
         g.sll(), g.slli(), g.srl(), g.srli(), g.noop(),
         // memory loads emitted as native IR (LB uses lb(); LQW/LHW/LW use lw())
         g.lb(), g.lw(),
+        // native MCPI: two points pin the (linear) dependent-cost function
+        g.mcpi().resolve(0), g.mcpi().resolve(1 << 24),
     ];
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
     for c in costs {
@@ -1527,6 +1578,105 @@ impl JitRuntime {
                     continue;
                 }
 
+                // --- native immediate-length memory copy (MCPI) ---
+                // Stack-destination fast path; bails (preserving the exact panic) on heap
+                // dst, overlap, or out-of-bounds. Writes memory only — no register change.
+                if let OpKind::Mcpi { dst, src, len } = op.kind {
+                    let copy_flags = MemFlags::new().with_notrap();
+                    let len_v = b.ins().iconst(types::I64, len as i64);
+
+                    // Bail-on-false helper: `cond` true continues, false bails (refund gas).
+                    let guard = |b: &mut FunctionBuilder,
+                                 rc: &mut RegCache,
+                                 cond: Value| {
+                        let cont = b.create_block();
+                        let bail_b = b.create_block();
+                        b.ins().brif(cond, cont, &[], bail_b, &[]);
+                        b.switch_to_block(bail_b);
+                        b.seal_block(bail_b);
+                        emit_bail(b, rc, regs, flags, i, op.gas);
+                        b.switch_to_block(cont);
+                        b.seal_block(cont);
+                    };
+
+                    let dst_addr = rc.read(&mut b, regs, flags, dst as u32);
+                    let src_addr = rc.read(&mut b, regs, flags, src as u32);
+
+                    // In-RAM + no-overflow: both starts <= MEM_SIZE - len (mirrors verify()).
+                    let max_addr =
+                        b.ins().iconst(types::I64, (MEM_SIZE - len as usize) as i64);
+                    let dst_in = b.ins().icmp(IntCC::UnsignedLessThanOrEqual, dst_addr, max_addr);
+                    let src_in = b.ins().icmp(IntCC::UnsignedLessThanOrEqual, src_addr, max_addr);
+                    let in_ram = b.ins().band(dst_in, src_in);
+                    guard(&mut b, &mut rc, in_ram);
+
+                    let dst_end = b.ins().iadd(dst_addr, len_v);
+                    let src_end = b.ins().iadd(src_addr, len_v);
+
+                    // No overlap (else `MemoryWriteOverlap`): ranges intersect iff
+                    // `dst < src_end && src < dst_end`. Continue when NOT intersecting.
+                    let lt1 = b.ins().icmp(IntCC::UnsignedLessThan, dst_addr, src_end);
+                    let lt2 = b.ins().icmp(IntCC::UnsignedLessThan, src_addr, dst_end);
+                    let overlap = b.ins().band(lt1, lt2);
+                    let one = b.ins().iconst(types::I8, 1);
+                    let no_overlap = b.ins().bxor(overlap, one);
+                    guard(&mut b, &mut rc, no_overlap);
+
+                    // Destination must be stack-owned: ssp <= dst && dst_end <= sp (the only
+                    // ownership we can check natively; heap ownership needs prev_hp → bail).
+                    let ssp = rc.read(&mut b, regs, flags, R_SSP);
+                    let sp = rc.read(&mut b, regs, flags, R_SP);
+                    let own_lo = b.ins().icmp(IntCC::UnsignedLessThanOrEqual, ssp, dst_addr);
+                    let own_hi = b.ins().icmp(IntCC::UnsignedLessThanOrEqual, dst_end, sp);
+                    let owned = b.ins().band(own_lo, own_hi);
+                    guard(&mut b, &mut rc, owned);
+
+                    // Live mem fields (Vecs realloc on growth — re-read per access).
+                    let s_off = MemoryInstance::JIT_STACK_OFFSET as i32;
+                    let h_off = MemoryInstance::JIT_HEAP_OFFSET as i32;
+                    let stack_ptr = b.ins().load(ptr_ty, flags, mem, s_off + VEC_PTR_OFF);
+                    let stack_len = b.ins().load(types::I64, flags, mem, s_off + VEC_LEN_OFF);
+                    let heap_ptr = b.ins().load(ptr_ty, flags, mem, h_off + VEC_PTR_OFF);
+                    let heap_len = b.ins().load(types::I64, flags, mem, h_off + VEC_LEN_OFF);
+                    let hp = b.ins().load(types::I64, flags, mem, MemoryInstance::JIT_HP_OFFSET as i32);
+
+                    // Source must be accessible: stack (src_end <= stack.len()) or heap
+                    // (src >= hp). Dest is stack-owned ⇒ dst_end <= sp <= stack.len().
+                    let src_stack = b.ins().icmp(IntCC::UnsignedLessThanOrEqual, src_end, stack_len);
+                    let src_heap = b.ins().icmp(IntCC::UnsignedGreaterThanOrEqual, src_addr, hp);
+                    let src_ok = b.ins().bor(src_stack, src_heap);
+                    guard(&mut b, &mut rc, src_ok);
+
+                    // Effective byte pointers. Dest: stack base + dst. Source: stack or heap.
+                    let dst_eff = b.ins().iadd(stack_ptr, dst_addr);
+                    let src_stack_eff = b.ins().iadd(stack_ptr, src_addr);
+                    let mem_size_v = b.ins().iconst(types::I64, MEM_SIZE as i64);
+                    let heap_base = b.ins().isub(mem_size_v, heap_len);
+                    let src_heap_idx = b.ins().isub(src_addr, heap_base);
+                    let src_heap_eff = b.ins().iadd(heap_ptr, src_heap_idx);
+                    let src_eff = b.ins().select(src_stack, src_stack_eff, src_heap_eff);
+
+                    // Verbatim byte copy, unrolled (no overlap ⇒ order is irrelevant). Copying
+                    // preserves bytes, so no endianness fixup.
+                    let mut off = 0i32;
+                    let mut rem = len;
+                    for (chunk, ty) in [
+                        (8u32, types::I64),
+                        (4, types::I32),
+                        (2, types::I16),
+                        (1, types::I8),
+                    ] {
+                        while rem >= chunk {
+                            let v = b.ins().load(ty, copy_flags, src_eff, off);
+                            b.ins().store(copy_flags, v, dst_eff, off);
+                            off += chunk as i32;
+                            rem -= chunk;
+                        }
+                    }
+                    // MCPI touches neither registers nor OF/ERR.
+                    continue;
+                }
+
                 // --- pure ops (no per-op bail; gas charged once for the run): compute +
                 // commit. These never fault, so they are fully straight-line. ---
                 let zero = b.ins().iconst(types::I64, 0);
@@ -1629,7 +1779,7 @@ impl JitRuntime {
                         rc.write(&mut b, R_OF, zero);
                         rc.write(&mut b, R_ERR, zero);
                     }
-                    OpKind::AddSub { .. } | OpKind::Load { .. } => {
+                    OpKind::AddSub { .. } | OpKind::Load { .. } | OpKind::Mcpi { .. } => {
                         unreachable!("handled above")
                     }
                 }

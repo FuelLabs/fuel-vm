@@ -1050,8 +1050,10 @@ where
 
     /// Verify mode (`FUEL_VM_JIT_VERIFY=1`): run a NATIVE-only block (no side-effecting
     /// thunks), then re-run the same instructions in the interpreter from the pre-block
-    /// state and diff the register file, logging any divergence. Keeps the interpreter's
-    /// (correct) result so execution still completes.
+    /// state and diff both the register file **and memory**, logging any divergence. Keeps
+    /// the interpreter's (correct) result so execution still completes. The memory diff
+    /// (cloned only in this debug mode) is what gates native memory *writers* (MCPI / PSH /
+    /// stores), whose effect the register diff alone would miss.
     #[cfg(feature = "jit")]
     fn jit_verify_step(&mut self) -> JitStep<S::DataError> {
         use fuel_asm::RegId;
@@ -1059,11 +1061,14 @@ where
             return JitStep::NotEligible;
         };
         let snapshot = self.registers;
+        let mem_snapshot = self.memory.as_ref().clone();
         let pc_before = self.registers[RegId::PC];
         match self.jit_run_block_inner(pc, len, false) {
             Some((n, _)) if n > 0 => {
                 let jit_regs = self.registers;
+                let jit_mem = self.memory.as_ref().clone();
                 self.registers = snapshot;
+                *self.memory.as_mut() = mem_snapshot;
                 let mut mismatch = false;
                 for _ in 0..n {
                     if !matches!(self.execute::<false>(), Ok(ExecuteState::Proceed)) {
@@ -1071,8 +1076,14 @@ where
                         break;
                     }
                 }
-                if mismatch || self.registers != jit_regs {
+                if mismatch
+                    || self.registers != jit_regs
+                    || *self.memory.as_ref() != jit_mem
+                {
                     self.log_jit_divergence(pc_before, n, &snapshot, &jit_regs);
+                    if *self.memory.as_ref() != jit_mem {
+                        std::eprintln!("  (memory differs)");
+                    }
                 }
                 JitStep::Proceeded
             }

@@ -969,6 +969,13 @@ where
         // the codegen re-reads per access); no `&mut self` borrow is held across `f(&ctx)`.
         let mem: *const crate::interpreter::MemoryInstance = self.memory.as_ref();
         let chain = crate::interpreter::jit::chain_dispatch::<M, S, Tx, Ecal, V>;
+        // `prev_hp` for native heap-ownership checks (matches `OwnershipRegisters::prev_hp`):
+        // the calling frame's HP, or VM_MAX_RAM at the top level.
+        let prev_hp = self
+            .frames
+            .last()
+            .map(|frame| frame.registers()[fuel_asm::RegId::HP])
+            .unwrap_or(crate::consts::VM_MAX_RAM);
         let ctx = crate::interpreter::jit::JitCtx {
             regs,
             interp,
@@ -976,6 +983,7 @@ where
             spec: spec_table.as_ptr(),
             mem,
             chain,
+            prev_hp,
         };
         // SAFETY: no Rust borrow of `self` is live here (window owned, get_block borrows
         // ended). The block reads regs/interp/exit_out/spec/mem from `ctx`; thunks

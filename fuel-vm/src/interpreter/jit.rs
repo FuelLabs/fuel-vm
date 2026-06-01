@@ -109,6 +109,10 @@ pub struct JitCtx {
     /// edge. Returns 0 if it didn't chain (next block not cached / depth-capped / disabled),
     /// else the chained run's instruction count or [`EXIT_SENTINEL`].
     pub chain: ChainFn,
+    /// `prev_hp` for heap-ownership checks (native stores / MCPI to the heap): the calling
+    /// frame's `$hp`, or `VM_MAX_RAM` at the top level — i.e. `OwnershipRegisters::prev_hp`.
+    /// Stable for the block + its chain (no CALL/RET inside a JIT block changes the frames).
+    pub prev_hp: u64,
 }
 
 /// Block return value with this bit set ⇒ a thunk exited the block; the result is in the
@@ -666,6 +670,10 @@ enum OpKind {
     /// Push bails if it would realloc/overlap; pop bails on underflow / below `$ssp`.
     /// Registers stored/loaded big-endian; updates `$sp` and (pop) the selected registers.
     StackRegs { base: u8, mask: u32, push: bool },
+    /// Native bounds+ownership-checked store (SB/SQW/SHW/SW): `mem[reg[base]+offset] =
+    /// reg[value] (truncated to nbytes, big-endian)`. Writes a stack- *or* heap-owned
+    /// destination natively; bails (exact panic) for an unowned/out-of-bounds address.
+    Store { base: u8, value: u8, offset: u64, nbytes: u8 },
 }
 
 /// Largest MCPI copy emitted as native unrolled word/byte moves; larger copies bail to the
@@ -703,6 +711,17 @@ fn decode_op(instr: Instruction, g: &GasCosts) -> Option<DecodedOp> {
         OpKind::Load {
             dest,
             base,
+            offset: u64::from(imm) * nbytes as u64,
+            nbytes,
+        }
+    }
+
+    // Build a `Store` op (`offset = imm * nbytes`). `base` holds the address, `value` the
+    // word to store (truncated to `nbytes`).
+    fn store_kind(base: u8, value: u8, imm: fuel_asm::Imm12, nbytes: u8) -> OpKind {
+        OpKind::Store {
+            base,
+            value,
             offset: u64::from(imm) * nbytes as u64,
             nbytes,
         }
@@ -1008,6 +1027,24 @@ fn decode_op(instr: Instruction, g: &GasCosts) -> Option<DecodedOp> {
             OpKind::StackRegs { base: 40, mask: op.unpack().to_u32(), push: false },
             g.poph(),
         ),
+        // Native bounds+ownership-checked stores. `offset = imm * nbytes` (store_load! macro).
+        // SB→sb()/1; SQW/SHW/SW→sw()/2,4,8.
+        I::SB(op) if native_mem_enabled() => {
+            let (a, b, imm) = op.unpack();
+            (store_kind(a.to_u8(), b.to_u8(), imm, 1), g.sb())
+        }
+        I::SQW(op) if native_mem_enabled() => {
+            let (a, b, imm) = op.unpack();
+            (store_kind(a.to_u8(), b.to_u8(), imm, 2), g.sw())
+        }
+        I::SHW(op) if native_mem_enabled() => {
+            let (a, b, imm) = op.unpack();
+            (store_kind(a.to_u8(), b.to_u8(), imm, 4), g.sw())
+        }
+        I::SW(op) if native_mem_enabled() => {
+            let (a, b, imm) = op.unpack();
+            (store_kind(a.to_u8(), b.to_u8(), imm, 8), g.sw())
+        }
         _ => return None,
     };
     Some(DecodedOp { kind, gas })
@@ -1110,6 +1147,7 @@ fn is_mem_op(kind: OpKind) -> bool {
             | OpKind::Mcpi { .. }
             | OpKind::StackPtr { .. }
             | OpKind::StackRegs { .. }
+            | OpKind::Store { .. }
     )
 }
 
@@ -1185,6 +1223,8 @@ fn gas_fingerprint(g: &GasCosts) -> u64 {
         g.pshl(), g.pshh(), g.popl(), g.poph(),
         // native JAL terminator
         g.jmp(),
+        // native stores (SB→sb; SQW/SHW/SW→sw)
+        g.sb(), g.sw(),
     ];
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
     for c in costs {
@@ -1451,6 +1491,9 @@ impl JitRuntime {
             // address is stable; the Vecs inside reallocate on growth). Unused (DCE'd) for
             // blocks with no native loads.
             let mem = b.ins().load(ptr_ty, flags, ctx, 32);
+            // prev_hp = ctx.prev_hp (offset 48): for native heap-store/copy ownership. Unused
+            // (DCE'd) for blocks with no native stores/copies.
+            let prev_hp = b.ins().load(types::I64, flags, ctx, 48);
             // Signature of a specialized thunk: extern "C" fn(*const JitCtx, u32) -> u64.
             let thunk_sig = {
                 let mut sig = cranelift_codegen::ir::Signature::new(call_conv);
@@ -1795,16 +1838,13 @@ impl JitRuntime {
                     let no_overlap = b.ins().bxor(overlap, one);
                     guard(&mut b, &mut rc, no_overlap);
 
-                    // Destination must be stack-owned: ssp <= dst && dst_end <= sp (the only
-                    // ownership we can check natively; heap ownership needs prev_hp → bail).
-                    let ssp = rc.read(&mut b, regs, flags, R_SSP);
-                    let sp = rc.read(&mut b, regs, flags, R_SP);
-                    let own_lo = b.ins().icmp(IntCC::UnsignedLessThanOrEqual, ssp, dst_addr);
-                    let own_hi = b.ins().icmp(IntCC::UnsignedLessThanOrEqual, dst_end, sp);
-                    let owned = b.ins().band(own_lo, own_hi);
-                    guard(&mut b, &mut rc, owned);
+                    // Destination must be stack- or heap-owned (shared with native stores).
+                    let dst_eff = emit_owned_dst(
+                        &mut b, &mut rc, regs, flags, mem, ptr_ty, prev_hp, dst_addr,
+                        dst_end, i, op.gas,
+                    );
 
-                    // Live mem fields (Vecs realloc on growth — re-read per access).
+                    // Live mem fields for the source (Vecs realloc on growth — re-read).
                     let s_off = MemoryInstance::JIT_STACK_OFFSET as i32;
                     let h_off = MemoryInstance::JIT_HEAP_OFFSET as i32;
                     let stack_ptr = b.ins().load(ptr_ty, flags, mem, s_off + VEC_PTR_OFF);
@@ -1814,14 +1854,13 @@ impl JitRuntime {
                     let hp = b.ins().load(types::I64, flags, mem, MemoryInstance::JIT_HP_OFFSET as i32);
 
                     // Source must be accessible: stack (src_end <= stack.len()) or heap
-                    // (src >= hp). Dest is stack-owned ⇒ dst_end <= sp <= stack.len().
+                    // (src >= hp).
                     let src_stack = b.ins().icmp(IntCC::UnsignedLessThanOrEqual, src_end, stack_len);
                     let src_heap = b.ins().icmp(IntCC::UnsignedGreaterThanOrEqual, src_addr, hp);
                     let src_ok = b.ins().bor(src_stack, src_heap);
                     guard(&mut b, &mut rc, src_ok);
 
-                    // Effective byte pointers. Dest: stack base + dst. Source: stack or heap.
-                    let dst_eff = b.ins().iadd(stack_ptr, dst_addr);
+                    // Source effective pointer: stack base + src, or heap base + (src-heap_off).
                     let src_stack_eff = b.ins().iadd(stack_ptr, src_addr);
                     let mem_size_v = b.ins().iconst(types::I64, MEM_SIZE as i64);
                     let heap_base = b.ins().isub(mem_size_v, heap_len);
@@ -1957,6 +1996,51 @@ impl JitRuntime {
                     continue;
                 }
 
+                // --- native bounds+ownership-checked store (SB/SQW/SHW/SW) ---
+                // Writes a stack- or heap-owned destination; bails for unowned / OOB.
+                if let OpKind::Store {
+                    base,
+                    value,
+                    offset,
+                    nbytes,
+                } = op.kind
+                {
+                    let mem_flags = MemFlags::new().with_notrap();
+                    let addr_base = rc.read(&mut b, regs, flags, base as u32);
+                    let off_v = b.ins().iconst(types::I64, offset as i64);
+                    let addr = b.ins().iadd(addr_base, off_v);
+                    // checked_add (no wrap) + addr+nbytes <= MEM_SIZE.
+                    let no_of =
+                        b.ins().icmp(IntCC::UnsignedGreaterThanOrEqual, addr, addr_base);
+                    emit_guard(&mut b, &mut rc, regs, flags, i, op.gas, no_of);
+                    let max_addr =
+                        b.ins().iconst(types::I64, (MEM_SIZE - nbytes as usize) as i64);
+                    let in_ram =
+                        b.ins().icmp(IntCC::UnsignedLessThanOrEqual, addr, max_addr);
+                    emit_guard(&mut b, &mut rc, regs, flags, i, op.gas, in_ram);
+                    let end = b.ins().iadd_imm(addr, i64::from(nbytes));
+                    let eff = emit_owned_dst(
+                        &mut b, &mut rc, regs, flags, mem, ptr_ty, prev_hp, addr, end, i,
+                        op.gas,
+                    );
+                    // value truncated to nbytes, big-endian (`$t::to_be_bytes`).
+                    let v = rc.read(&mut b, regs, flags, value as u32);
+                    if nbytes == 1 {
+                        let v8 = b.ins().ireduce(types::I8, v);
+                        b.ins().store(mem_flags, v8, eff, 0);
+                    } else {
+                        let red = match nbytes {
+                            2 => b.ins().ireduce(types::I16, v),
+                            4 => b.ins().ireduce(types::I32, v),
+                            _ => v,
+                        };
+                        let be = b.ins().bswap(red);
+                        b.ins().store(mem_flags, be, eff, 0);
+                    }
+                    // Store touches neither registers nor OF/ERR.
+                    continue;
+                }
+
                 // --- pure ops (no per-op bail; gas charged once for the run): compute +
                 // commit. These never fault, so they are fully straight-line. ---
                 let zero = b.ins().iconst(types::I64, 0);
@@ -2063,7 +2147,8 @@ impl JitRuntime {
                     | OpKind::Load { .. }
                     | OpKind::Mcpi { .. }
                     | OpKind::StackPtr { .. }
-                    | OpKind::StackRegs { .. } => {
+                    | OpKind::StackRegs { .. }
+                    | OpKind::Store { .. } => {
                         unreachable!("handled above")
                     }
                 }
@@ -2270,6 +2355,66 @@ fn emit_guard(
     emit_bail(b, rc, regs, flags, done, refund);
     b.switch_to_block(cont);
     b.seal_block(cont);
+}
+
+/// Emit the write-destination check shared by native stores and MCPI: the range
+/// `[addr, end)` must be **stack-owned** (`ssp <= addr && end <= sp`) or **heap-owned**
+/// (`hp <= addr && hp != prev_hp && end <= prev_hp`) — exactly
+/// `OwnershipRegisters::verify_ownership` for a non-empty range; bails otherwise. Returns the
+/// effective byte pointer into the live stack/heap `Vec` (ownership ⇒ the range is in-bounds:
+/// `end <= sp <= stack.len()`, or `[hp, prev_hp) ⊆ heap`). `end` must already be known
+/// `<= MEM_SIZE` with no wrap.
+#[allow(clippy::too_many_arguments)]
+fn emit_owned_dst(
+    b: &mut FunctionBuilder,
+    rc: &mut RegCache,
+    regs: Value,
+    flags: MemFlags,
+    mem: Value,
+    ptr_ty: types::Type,
+    prev_hp: Value,
+    addr: Value,
+    end: Value,
+    done: usize,
+    refund: u64,
+) -> Value {
+    let ssp = rc.read(b, regs, flags, R_SSP);
+    let sp = rc.read(b, regs, flags, R_SP);
+    let hp = rc.read(b, regs, flags, R_HP);
+    let s_lo = b.ins().icmp(IntCC::UnsignedLessThanOrEqual, ssp, addr);
+    let s_hi = b.ins().icmp(IntCC::UnsignedLessThanOrEqual, end, sp);
+    let stack_owned = b.ins().band(s_lo, s_hi);
+    let h_lo = b.ins().icmp(IntCC::UnsignedLessThanOrEqual, hp, addr);
+    let h_ne = b.ins().icmp(IntCC::NotEqual, hp, prev_hp);
+    let h_hi = b.ins().icmp(IntCC::UnsignedLessThanOrEqual, end, prev_hp);
+    let h_tmp = b.ins().band(h_lo, h_ne);
+    let heap_owned = b.ins().band(h_tmp, h_hi);
+    let owned = b.ins().bor(stack_owned, heap_owned);
+    emit_guard(b, rc, regs, flags, done, refund, owned);
+    let s_ptr = b.ins().load(
+        ptr_ty,
+        flags,
+        mem,
+        MemoryInstance::JIT_STACK_OFFSET as i32 + VEC_PTR_OFF,
+    );
+    let stack_eff = b.ins().iadd(s_ptr, addr);
+    let h_ptr = b.ins().load(
+        ptr_ty,
+        flags,
+        mem,
+        MemoryInstance::JIT_HEAP_OFFSET as i32 + VEC_PTR_OFF,
+    );
+    let h_len = b.ins().load(
+        types::I64,
+        flags,
+        mem,
+        MemoryInstance::JIT_HEAP_OFFSET as i32 + VEC_LEN_OFF,
+    );
+    let mem_size = b.ins().iconst(types::I64, MEM_SIZE as i64);
+    let h_off = b.ins().isub(mem_size, h_len);
+    let h_idx = b.ins().isub(addr, h_off);
+    let heap_eff = b.ins().iadd(h_ptr, h_idx);
+    b.ins().select(stack_owned, stack_eff, heap_eff)
 }
 
 /// Emit the once-per-native-run gas *guard*: if `$cgas < total` (the run's summed fixed

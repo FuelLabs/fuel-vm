@@ -170,7 +170,7 @@ pub(crate) fn set_flag(
     a: Word,
 ) -> SimpleResult<()> {
     let Some(flags) = Flags::from_bits(a) else {
-        return Err(PanicReason::InvalidFlags.into())
+        return Err(PanicReason::InvalidFlags.into());
     };
 
     *flag = flags.bits();
@@ -239,4 +239,21 @@ pub(crate) fn set_frame_pointer(
     context.update_from_frame_pointer(fp);
 
     *register = fp;
+}
+
+/// Returns `PanicReason::ContractIsReadOnly` if the contract is declared as a
+/// read-only input (a contract input without the corresponding contract
+/// output). Used to guard every operation that modifies the state or balances
+/// of a contract.
+pub(crate) fn check_contract_is_not_read_only(
+    panic_context: &mut super::PanicContext,
+    read_only_contracts: &alloc::collections::BTreeSet<ContractId>,
+    contract_id: &ContractId,
+) -> Result<(), PanicReason> {
+    if read_only_contracts.contains(contract_id) {
+        *panic_context = super::PanicContext::ContractId(*contract_id);
+        Err(PanicReason::ContractIsReadOnly)
+    } else {
+        Ok(())
+    }
 }

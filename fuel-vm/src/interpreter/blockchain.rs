@@ -25,6 +25,7 @@ use crate::{
         },
         internal::{
             base_asset_balance_sub,
+            check_contract_is_not_read_only,
             inc_pc,
             internal_contract,
             tx_id,
@@ -159,6 +160,8 @@ where
             context: &self.context,
             memory: self.memory.as_ref(),
             receipts: &mut self.receipts,
+            read_only_contracts: &self.read_only_contracts,
+            panic_context: &mut self.panic_context,
             fp: fp.as_ref(),
             pc,
             is: is.as_ref(),
@@ -184,6 +187,8 @@ where
             context: &self.context,
             memory: self.memory.as_ref(),
             receipts: &mut self.receipts,
+            read_only_contracts: &self.read_only_contracts,
+            panic_context: &mut self.panic_context,
 
             new_storage_gas_per_byte,
             cgas,
@@ -321,6 +326,8 @@ where
             balances: &mut self.balances,
             storage: &mut self.storage,
             current_contract: self.frames.last().map(|frame| frame.to()).copied(),
+            read_only_contracts: &self.read_only_contracts,
+            panic_context: &mut self.panic_context,
             fp: fp.as_ref(),
             pc,
             recipient_mem_address: a,
@@ -374,11 +381,11 @@ impl<S, V> LoadContractCodeCtx<'_, S, V> {
 
         // only blobs are allowed in predicates
         if self.context.is_predicate() {
-            return Err(PanicReason::ContractInstructionNotAllowed.into())
+            return Err(PanicReason::ContractInstructionNotAllowed.into());
         }
 
         if ssp != sp {
-            return Err(PanicReason::ExpectedUnallocatedStack.into())
+            return Err(PanicReason::ExpectedUnallocatedStack.into());
         }
 
         let contract_id = ContractId::from(self.memory.read_bytes(contract_id_addr)?);
@@ -387,7 +394,7 @@ impl<S, V> LoadContractCodeCtx<'_, S, V> {
             padded_len_word(length_unpadded).ok_or(PanicReason::MemoryOverflow)?;
 
         if length > self.contract_max_size {
-            return Err(PanicReason::ContractMaxSize.into())
+            return Err(PanicReason::ContractMaxSize.into());
         }
 
         self.verifier.check_contract_in_inputs(
@@ -471,7 +478,7 @@ impl<S, V> LoadContractCodeCtx<'_, S, V> {
         let region_start = ssp;
 
         if ssp != sp {
-            return Err(PanicReason::ExpectedUnallocatedStack.into())
+            return Err(PanicReason::ExpectedUnallocatedStack.into());
         }
 
         let blob_id = BlobId::from(self.memory.read_bytes(blob_id_addr)?);
@@ -554,12 +561,12 @@ impl<S, V> LoadContractCodeCtx<'_, S, V> {
         let dst = ssp;
 
         if ssp != sp {
-            return Err(PanicReason::ExpectedUnallocatedStack.into())
+            return Err(PanicReason::ExpectedUnallocatedStack.into());
         }
 
         if length_unpadded == 0 {
             inc_pc(self.pc);
-            return Ok(())
+            return Ok(());
         }
 
         let length = bytes::padded_len_word(length_unpadded).unwrap_or(Word::MAX);
@@ -622,6 +629,8 @@ struct BurnCtx<'vm, S> {
     context: &'vm Context,
     memory: &'vm MemoryInstance,
     receipts: &'vm mut ReceiptsCtx,
+    read_only_contracts: &'vm BTreeSet<ContractId>,
+    panic_context: &'vm mut PanicContext,
     fp: Reg<'vm, FP>,
     pc: RegMut<'vm, PC>,
     is: Reg<'vm, IS>,
@@ -637,6 +646,11 @@ where
         let asset_id = contract_id.asset_id(&sub_id);
 
         if amount != 0 {
+            check_contract_is_not_read_only(
+                self.panic_context,
+                self.read_only_contracts,
+                &contract_id,
+            )?;
             let balance = balance(self.storage, &contract_id, &asset_id)?;
             let balance = balance
                 .checked_sub(amount)
@@ -668,6 +682,8 @@ struct MintCtx<'vm, S> {
     memory: &'vm MemoryInstance,
 
     receipts: &'vm mut ReceiptsCtx,
+    read_only_contracts: &'vm BTreeSet<ContractId>,
+    panic_context: &'vm mut PanicContext,
     new_storage_gas_per_byte: Word,
     cgas: RegMut<'vm, CGAS>,
     ggas: RegMut<'vm, GGAS>,
@@ -690,6 +706,11 @@ where
         let asset_id = contract_id.asset_id(&sub_id);
 
         if amount != 0 {
+            check_contract_is_not_read_only(
+                self.panic_context,
+                self.read_only_contracts,
+                &contract_id,
+            )?;
             let balance = balance(self.storage, &contract_id, &asset_id)?;
             let balance = balance
                 .checked_add(amount)
@@ -952,6 +973,8 @@ where
     balances: &'vm mut RuntimeBalances,
     storage: &'vm mut S,
     current_contract: Option<ContractId>,
+    read_only_contracts: &'vm BTreeSet<ContractId>,
+    panic_context: &'vm mut PanicContext,
     fp: Reg<'vm, FP>,
     pc: RegMut<'vm, PC>,
     /// A
@@ -983,6 +1006,13 @@ where
         // validations passed, perform the mutations
 
         if let Some(source_contract) = self.current_contract {
+            if self.amount_coins_to_send > 0 {
+                check_contract_is_not_read_only(
+                    self.panic_context,
+                    self.read_only_contracts,
+                    &source_contract,
+                )?;
+            }
             balance_decrease(
                 self.storage,
                 &source_contract,

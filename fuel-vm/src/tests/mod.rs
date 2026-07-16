@@ -31,6 +31,7 @@ mod memory;
 mod metadata;
 mod outputs;
 mod predicate;
+mod read_only_contract_inputs;
 mod receipts;
 mod spec;
 mod storage;

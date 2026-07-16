@@ -141,6 +141,27 @@ where
             })
             .collect();
 
+        // Contract inputs without the corresponding contract output are
+        // read-only: there is no output to commit updated roots, so their
+        // state and balances must not be modified during execution.
+        self.read_only_contracts = self
+            .tx
+            .inputs()
+            .iter()
+            .enumerate()
+            .filter_map(|(input_idx, i)| match i {
+                Input::Contract(contract) => {
+                    let input_idx = u16::try_from(input_idx)
+                        .expect("The maximum number of inputs is `u16::MAX`");
+                    (!self
+                        .input_contracts_index_to_output_index
+                        .contains_key(&input_idx))
+                    .then_some(contract.contract_id)
+                }
+                _ => None,
+            })
+            .collect();
+
         self.initial_balances = initial_balances.clone();
 
         self.frames.clear();

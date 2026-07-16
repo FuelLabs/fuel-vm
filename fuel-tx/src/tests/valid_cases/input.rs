@@ -1,4 +1,5 @@
 #![allow(clippy::cast_possible_truncation)]
+#![allow(non_snake_case)]
 
 use super::PREDICATE_PARAMS;
 use crate::{
@@ -259,85 +260,113 @@ fn coin_predicate() {
 }
 
 #[test]
-fn contract() {
+fn contract__check__contract_input_with_associated_output_is_valid() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     let txhash: Bytes32 = rng.r#gen();
 
-    Input::contract(
+    // Given: a contract input at index 1 with the associated contract output
+    let input = Input::contract(
         rng.r#gen(),
         rng.r#gen(),
         rng.r#gen(),
         rng.r#gen(),
         rng.r#gen(),
-    )
-    .check(
-        1,
-        &txhash,
-        &[Output::contract(1, rng.r#gen(), rng.r#gen())],
-        &[],
-        &Default::default(),
-        &mut None,
-    )
-    .unwrap();
-
-    let err = Input::contract(
-        rng.r#gen(),
-        rng.r#gen(),
-        rng.r#gen(),
-        rng.r#gen(),
-        rng.r#gen(),
-    )
-    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
-    .err()
-    .unwrap();
-
-    assert_eq!(
-        ValidityError::InputContractAssociatedOutputContract { index: 1 },
-        err
     );
 
-    let err = Input::contract(
-        rng.r#gen(),
-        rng.r#gen(),
-        rng.r#gen(),
-        rng.r#gen(),
-        rng.r#gen(),
-    )
-    .check(
-        1,
-        &txhash,
-        &[Output::coin(rng.r#gen(), rng.r#gen(), rng.r#gen())],
-        &[],
-        &Default::default(),
-        &mut None,
-    )
-    .err()
-    .unwrap();
+    // When / Then: the usual read-write contract input/output pair is valid
+    input
+        .check(
+            1,
+            &txhash,
+            &[Output::contract(1, rng.r#gen(), rng.r#gen())],
+            &[],
+            &Default::default(),
+            &mut None,
+        )
+        .expect("contract input with associated output should be valid");
+}
 
-    assert_eq!(
-        ValidityError::InputContractAssociatedOutputContract { index: 1 },
-        err
+#[test]
+fn contract__check__contract_input_without_output_is_read_only_and_valid() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let txhash: Bytes32 = rng.r#gen();
+
+    // Given: a contract input at index 1 and no contract output referring to it
+    let input = Input::contract(
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
     );
 
-    let err = Input::contract(
-        rng.r#gen(),
-        rng.r#gen(),
-        rng.r#gen(),
-        rng.r#gen(),
-        rng.r#gen(),
-    )
-    .check(
-        1,
-        &txhash,
-        &[Output::contract(2, rng.r#gen(), rng.r#gen())],
-        &[],
-        &Default::default(),
-        &mut None,
-    )
-    .err()
-    .unwrap();
+    // When / Then: a contract input without the associated output is a
+    // read-only access and is always valid.
+    input
+        .check(1, &txhash, &[], &[], &Default::default(), &mut None)
+        .expect("read-only contract input should be valid");
 
+    // A non-contract output does not associate with the contract input, so the
+    // input stays read-only and valid.
+    input
+        .check(
+            1,
+            &txhash,
+            &[Output::coin(rng.r#gen(), rng.r#gen(), rng.r#gen())],
+            &[],
+            &Default::default(),
+            &mut None,
+        )
+        .expect("read-only contract input should be valid");
+
+    // A contract output referring to a different input index does not associate
+    // with this input either.
+    input
+        .check(
+            1,
+            &txhash,
+            &[Output::contract(2, rng.r#gen(), rng.r#gen())],
+            &[],
+            &Default::default(),
+            &mut None,
+        )
+        .expect("read-only contract input should be valid");
+}
+
+#[test]
+fn contract__check__duplicate_contract_outputs_are_invalid() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let txhash: Bytes32 = rng.r#gen();
+
+    // Given: a contract input at index 1
+    let input = Input::contract(
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+    );
+
+    // When: two contract outputs point at the same input index
+    let err = input
+        .check(
+            1,
+            &txhash,
+            &[
+                Output::contract(1, rng.r#gen(), rng.r#gen()),
+                Output::contract(1, rng.r#gen(), rng.r#gen()),
+            ],
+            &[],
+            &Default::default(),
+            &mut None,
+        )
+        .err()
+        .unwrap();
+
+    // Then: more than one associated output is still invalid
     assert_eq!(
         ValidityError::InputContractAssociatedOutputContract { index: 1 },
         err
@@ -720,4 +749,82 @@ fn transaction_with_duplicate_contract_utxo_id_is_valid() {
         .finalize()
         .check_without_signatures(Default::default(), &ConsensusParameters::standard())
         .expect("Duplicated UTXO id is valid for contract input");
+}
+
+fn script_with_read_only_contract_input(rng: &mut StdRng) -> Script {
+    let fee = Input::coin_signed(
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        0,
+    );
+    let contract = Input::contract(
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+    );
+
+    TransactionBuilder::script(vec![], vec![])
+        .add_input(fee)
+        .add_input(contract)
+        .add_witness(rng.r#gen())
+        .finalize()
+}
+
+#[test]
+fn transaction__check__read_only_contract_input_is_valid() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    // Given: a contract input without the corresponding contract output
+    let tx = script_with_read_only_contract_input(rng);
+
+    // When / Then: a contract input without an output is a read-only access and
+    // is accepted by the standard consensus parameters.
+    tx.check_without_signatures(Default::default(), &ConsensusParameters::standard())
+        .expect("read-only contract input should be valid");
+}
+
+#[test]
+fn transaction__check__duplicate_contract_outputs_are_invalid() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let fee = Input::coin_signed(
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        0,
+    );
+    let contract = Input::contract(
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+    );
+
+    // Given: two contract outputs pointing at the same contract input
+    let tx = TransactionBuilder::script(vec![], vec![])
+        .add_input(fee)
+        .add_input(contract)
+        .add_output(Output::contract(1, rng.r#gen(), rng.r#gen()))
+        .add_output(Output::contract(1, rng.r#gen(), rng.r#gen()))
+        .add_witness(rng.r#gen())
+        .finalize();
+
+    // When
+    let err = tx
+        .check_without_signatures(Default::default(), &ConsensusParameters::standard())
+        .expect_err("Expected checkable failure");
+
+    // Then
+    assert_eq!(
+        err,
+        ValidityError::InputContractAssociatedOutputContract { index: 1 }
+    );
 }

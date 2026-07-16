@@ -28,6 +28,7 @@ use crate::{
             gas_charge,
         },
         internal::{
+            check_contract_is_not_read_only,
             current_contract,
             external_asset_id_balance_sub,
             inc_pc,
@@ -336,7 +337,7 @@ impl JumpArgs {
         };
 
         if target_addr >= VM_MAX_RAM {
-            return Err(PanicReason::MemoryOverflow.into())
+            return Err(PanicReason::MemoryOverflow.into());
         }
 
         *pc = target_addr;
@@ -398,6 +399,7 @@ where
             runtime_balances: &mut self.balances,
             storage: &mut self.storage,
             input_contracts: &self.input_contracts,
+            read_only_contracts: &self.read_only_contracts,
             panic_context: &mut self.panic_context,
             new_storage_gas_per_byte,
             receipts: &mut self.receipts,
@@ -465,6 +467,7 @@ struct PrepareCallCtx<'vm, S, V> {
     new_storage_gas_per_byte: Word,
     storage: &'vm mut S,
     input_contracts: &'vm BTreeSet<ContractId>,
+    read_only_contracts: &'vm BTreeSet<ContractId>,
     panic_context: &'vm mut PanicContext,
     receipts: &'vm mut ReceiptsCtx,
     frames: &'vm mut Vec<CallFrame>,
@@ -501,6 +504,24 @@ impl<S, V> PrepareCallCtx<'_, S, V> {
         )?;
 
         let amount = self.params.amount_of_coins_to_forward;
+
+        // Forwarding coins modifies the balances of both the funding source
+        // and the callee, which is forbidden for read-only contracts.
+        if amount > 0 {
+            if let Some(source_contract) = self.current_contract {
+                check_contract_is_not_read_only(
+                    self.panic_context,
+                    self.read_only_contracts,
+                    &source_contract,
+                )?;
+            }
+            check_contract_is_not_read_only(
+                self.panic_context,
+                self.read_only_contracts,
+                call.to(),
+            )?;
+        }
+
         if let Some(source_contract) = self.current_contract {
             balance_decrease(self.storage, &source_contract, &asset_id, amount)?;
         } else {

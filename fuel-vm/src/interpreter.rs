@@ -124,6 +124,10 @@ pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal, V = verification:
     initial_balances: InitialBalances,
     input_contracts: BTreeSet<ContractId>,
     input_contracts_index_to_output_index: alloc::collections::BTreeMap<u16, u16>,
+    /// Contracts of the inputs without the corresponding contract outputs.
+    /// Their state and balances are read-only during execution: there is no
+    /// output to commit updated roots, so any modification is forbidden.
+    read_only_contracts: BTreeSet<ContractId>,
     storage: S,
     debugger: Debugger,
     context: Context,

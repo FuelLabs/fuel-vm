@@ -11,6 +11,7 @@ use super::{
     RuntimeBalances,
     gas::gas_charge,
     internal::{
+        check_contract_is_not_read_only,
         external_asset_id_balance_sub,
         inc_pc,
         internal_contract,
@@ -108,6 +109,7 @@ where
             new_storage_gas_per_byte,
             tx: &mut self.tx,
             input_contracts: &self.input_contracts,
+            read_only_contracts: &self.read_only_contracts,
             panic_context: &mut self.panic_context,
             tx_offset,
             cgas,
@@ -149,6 +151,7 @@ where
             new_storage_gas_per_byte,
             tx: &mut self.tx,
             input_contracts: &self.input_contracts,
+            read_only_contracts: &self.read_only_contracts,
             panic_context: &mut self.panic_context,
             tx_offset,
             cgas,
@@ -218,6 +221,7 @@ struct TransferCtx<'vm, S, Tx, V> {
     new_storage_gas_per_byte: Word,
     tx: &'vm mut Tx,
     input_contracts: &'vm BTreeSet<ContractId>,
+    read_only_contracts: &'vm BTreeSet<ContractId>,
     panic_context: &'vm mut PanicContext,
     tx_offset: usize,
     cgas: RegMut<'vm, CGAS>,
@@ -256,8 +260,14 @@ impl<S, Tx, V> TransferCtx<'_, S, Tx, V> {
             &destination,
         )?;
 
+        check_contract_is_not_read_only(
+            self.panic_context,
+            self.read_only_contracts,
+            &destination,
+        )?;
+
         if amount == 0 {
-            return Err(PanicReason::TransferZeroCoins.into())
+            return Err(PanicReason::TransferZeroCoins.into());
         }
 
         let internal_context = match internal_contract(self.context, self.fp, self.memory)
@@ -272,6 +282,11 @@ impl<S, Tx, V> TransferCtx<'_, S, Tx, V> {
 
         if let Some(source_contract) = internal_context {
             // debit funding source (source contract balance)
+            check_contract_is_not_read_only(
+                self.panic_context,
+                self.read_only_contracts,
+                &source_contract,
+            )?;
             balance_decrease(self.storage, &source_contract, &asset_id, amount)?;
         } else {
             // debit external funding source (i.e. free balance)
@@ -330,7 +345,7 @@ impl<S, Tx, V> TransferCtx<'_, S, Tx, V> {
         let amount = transfer_amount;
 
         if amount == 0 {
-            return Err(PanicReason::TransferZeroCoins.into())
+            return Err(PanicReason::TransferZeroCoins.into());
         }
 
         let internal_context = match internal_contract(self.context, self.fp, self.memory)
@@ -345,6 +360,11 @@ impl<S, Tx, V> TransferCtx<'_, S, Tx, V> {
 
         if let Some(source_contract) = internal_context {
             // debit funding source (source contract balance)
+            check_contract_is_not_read_only(
+                self.panic_context,
+                self.read_only_contracts,
+                &source_contract,
+            )?;
             balance_decrease(self.storage, &source_contract, &asset_id, amount)?;
         } else {
             // debit external funding source (i.e. UTXOs)
@@ -424,7 +444,7 @@ where
 {
     if amount == 0 {
         // Don't update the balance if the amount is zero
-        return Ok(false)
+        return Ok(false);
     }
 
     let balance = balance(storage, contract, asset_id)?;
@@ -449,7 +469,7 @@ where
 {
     if amount == 0 {
         // Don't update the balance if the amount is zero
-        return Ok(())
+        return Ok(());
     }
 
     let balance = balance(storage, contract, asset_id)?;

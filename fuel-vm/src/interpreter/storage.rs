@@ -12,6 +12,7 @@ use crate::{
         IoResult,
         RuntimeError,
     },
+    interpreter::internal::check_contract_is_not_read_only,
     prelude::{
         Interpreter,
         Memory,
@@ -122,6 +123,11 @@ where
         key: Bytes32,
         value: Vec<u8>,
     ) -> Result<(), RuntimeError<S::DataError>> {
+        check_contract_is_not_read_only(
+            &mut self.panic_context,
+            &self.read_only_contracts,
+            &contract_id,
+        )?;
         let old_len = self.storage_slot_len_no_gas(contract_id, key)?;
         let max_size = self.interpreter_params.max_storage_slot_length;
         if (value.len() as u64) > max_size {
@@ -170,6 +176,11 @@ where
         key: Bytes32,
         range: usize,
     ) -> Result<(), RuntimeError<S::DataError>> {
+        check_contract_is_not_read_only(
+            &mut self.panic_context,
+            &self.read_only_contracts,
+            &contract_id,
+        )?;
         // Ensure the key range doesn't overflow U256. A range of 0 or 1 starting at
         // any key is always valid; for larger ranges we check that
         // start_key + (range - 1) doesn't wrap around.

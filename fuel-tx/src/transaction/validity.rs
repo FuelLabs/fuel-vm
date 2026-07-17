@@ -188,19 +188,28 @@ impl Input {
                 Err(ValidityError::InputWitnessIndexBounds { index })
             }
 
-            // ∀ inputContract ∃! outputContract : outputContract.inputIndex =
-            // inputContract.index
+            // A contract input has at most one associated contract output:
+            // outputContract.inputIndex = inputContract.index.
+            //
+            // A contract input *with* the associated output is a read-write
+            // access whose new state/balance roots are committed to that output.
+            // A contract input *without* the associated output is a read-only
+            // access: the VM forbids any modification of the state or balances
+            // of such a contract during execution, so its roots stay unchanged
+            // and no output is required to commit new ones. More than one
+            // associated output is always invalid.
             Self::Contract { .. }
-                if 1 != outputs
+                if outputs
                     .iter()
-                    .filter_map(|output| match output {
+                    .filter(|output| match output {
                         Output::Contract(output::contract::Contract {
                             input_index,
                             ..
-                        }) if *input_index as usize == index => Some(()),
-                        _ => None,
+                        }) => *input_index as usize == index,
+                        _ => false,
                     })
-                    .count() =>
+                    .count()
+                    > 1 =>
             {
                 Err(ValidityError::InputContractAssociatedOutputContract { index })
             }

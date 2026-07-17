@@ -172,6 +172,9 @@ enum_from! {
         OwnerIsUnknown = 0x41,
         /// Storage operation out of bounds or exceeds maximum allowed size
         StorageOutOfBounds = 0x42,
+        /// Attempt to modify the state or balances of a read-only contract
+        /// input (a contract input without the corresponding contract output).
+        ContractIsReadOnly = 0x43,
     }
 }
 

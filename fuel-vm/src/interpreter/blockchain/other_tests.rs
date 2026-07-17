@@ -59,11 +59,15 @@ fn test_burn(
     let is = 0;
     const ORIGINAL_PC: Word = 4;
     let mut pc = ORIGINAL_PC;
+    let mut panic_context = PanicContext::None;
+    let read_only_contracts = Default::default();
     BurnCtx {
         storage: &mut storage,
         context: &context,
         receipts: &mut receipts,
         memory: &mut memory,
+        read_only_contracts: &read_only_contracts,
+        panic_context: &mut panic_context,
         fp: Reg::new(&fp),
         pc: RegMut::new(&mut pc),
         is: Reg::new(&is),
@@ -140,11 +144,15 @@ fn test_mint(
     let mut pc = ORIGINAL_PC;
     let mut cgas = 10_000;
     let mut ggas = 10_000;
+    let mut panic_context = PanicContext::None;
+    let read_only_contracts = Default::default();
     MintCtx {
         storage: &mut storage,
         context: &context,
         receipts: &mut receipts,
         memory: &mut memory,
+        read_only_contracts: &read_only_contracts,
+        panic_context: &mut panic_context,
 
         new_storage_gas_per_byte: 1,
         cgas: RegMut::new(&mut cgas),

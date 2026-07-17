@@ -228,6 +228,8 @@ fn test_smo(
         .expect("Should be valid balance");
     let fp = 0;
     let mut pc = 0;
+    let mut panic_context = PanicContext::None;
+    let read_only_contracts = Default::default();
 
     let input = MessageOutputCtx {
         base_asset_id,
@@ -241,6 +243,8 @@ fn test_smo(
         } else {
             None
         },
+        read_only_contracts: &read_only_contracts,
+        panic_context: &mut panic_context,
         fp: Reg::new(&fp),
         pc: RegMut::new(&mut pc),
         recipient_mem_address,

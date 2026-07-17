@@ -104,6 +104,7 @@ where
             input_contracts: self.input_contracts,
             input_contracts_index_to_output_index: self
                 .input_contracts_index_to_output_index,
+            read_only_contracts: self.read_only_contracts,
             storage: self.storage.0,
             debugger: self.debugger,
             context: self.context,
@@ -196,6 +197,7 @@ where
             input_contracts: self.input_contracts,
             input_contracts_index_to_output_index: self
                 .input_contracts_index_to_output_index,
+            read_only_contracts: self.read_only_contracts,
             storage: Record::new(self.storage),
             debugger: self.debugger,
             context: self.context,

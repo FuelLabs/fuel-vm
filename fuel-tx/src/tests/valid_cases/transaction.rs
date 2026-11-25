@@ -386,6 +386,29 @@ fn script__check__not_set_owner_success() {
 }
 
 #[test]
+fn fee_asset_requires_a_change_output() {
+    let params = test_params();
+    let mut tx = TransactionBuilder::script(vec![], vec![])
+        .add_fee_input()
+        .add_output(Output::coin(Address::zeroed(), 0, *params.base_asset_id()))
+        .finalize();
+    for (index, error) in [
+        (
+            0,
+            ValidityError::TransactionFeeAssetOutputNotChange { index: 0 },
+        ),
+        (1, ValidityError::TransactionFeeAssetIndexOutOfBounds),
+        (
+            u64::from(u16::MAX) + 1,
+            ValidityError::TransactionPoliciesAreInvalid,
+        ),
+    ] {
+        tx.policies_mut().set(PolicyType::FeeAsset, Some(index));
+        assert_eq!(tx.check_without_signatures(0.into(), &params), Err(error));
+    }
+}
+
+#[test]
 fn script__check__set_owner_success() {
     // Given
     let rng = &mut StdRng::seed_from_u64(8586);
@@ -1424,7 +1447,7 @@ fn mint() {
 
     assert_eq!(err, ValidityError::TransactionMintIncorrectOutputIndex);
 
-    let err = TransactionBuilder::mint(
+    TransactionBuilder::mint(
         block_height,
         rng.r#gen(),
         rng.r#gen(),
@@ -1439,9 +1462,7 @@ fn mint() {
     )
     .finalize()
     .check(block_height, &test_params())
-    .expect_err("Expected erroneous transaction");
-
-    assert_eq!(err, ValidityError::TransactionMintNonBaseAsset);
+    .expect("Mint permits fees collected in a non-base asset");
 
     let err = TransactionBuilder::mint(
         block_height,

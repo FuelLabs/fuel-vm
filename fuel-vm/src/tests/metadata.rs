@@ -667,7 +667,7 @@ fn get_transaction_fields() {
         .add_unsigned_coin_input(
             SecretKey::random(rng),
             rng.r#gen(),
-            asset_amt,
+            asset_amt + max_fee_limit,
             asset,
             rng.r#gen(),
         )
@@ -807,6 +807,15 @@ fn get_transaction_fields() {
         op::and(0x20, 0x20, 0x10),
 
         op::movi(0x19, 0x00),
+        op::gtf_args(0x10, RegId::ZERO, GTFArgs::PolicyFeeAsset),
+        op::movi(0x11, 3),
+        op::eq(0x11, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x11),
+        op::gtf_args(0x11, 0x10, GTFArgs::OutputCoinAssetId),
+        op::gm_args(0x10, GMArgs::GetFeeAssetId),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
         op::movi(0x11, PoliciesBits::all().bits() as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::PolicyTypes),
         op::eq(0x10, 0x10, 0x11),
@@ -1187,6 +1196,7 @@ fn get_transaction_fields() {
         .script_gas_limit(gas_limit)
         .witness_limit(witness_limit)
         .max_fee_limit(max_fee_limit)
+        .fee_asset(3)
         .finalize_checked_basic(height);
 
     let receipts = client.transact(tx);

@@ -63,6 +63,7 @@ where
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         metadata(
+            &self.tx,
             &self.context,
             &self.frames,
             pc,
@@ -105,6 +106,7 @@ where
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn metadata(
+    tx: &impl ExecutableTransaction,
     context: &Context,
     frames: &[CallFrame],
     pc: RegMut<PC>,
@@ -127,6 +129,14 @@ pub(crate) fn metadata(
             .ok_or(PanicReason::TransactionValidity)?,
         GMArgs::GetChainId => chain_id.into(),
         GMArgs::BaseAssetId => VM_MEMORY_BASE_ASSET_ID_OFFSET as Word,
+        GMArgs::GetFeeAssetId => match tx.policies().get(PolicyType::FeeAsset) {
+            Some(index) => {
+                let index =
+                    u16::try_from(index).map_err(|_| PanicReason::OutputNotFound)?;
+                output_asset_id_ptr(tx, tx_offset, usize::from(index))?
+            }
+            None => VM_MEMORY_BASE_ASSET_ID_OFFSET as Word,
+        },
         GMArgs::TxStart => tx_offset,
         GMArgs::GetCaller => match parent {
             Some(0) => return Err(PanicReason::ExpectedNestedCaller.into()),
@@ -152,6 +162,24 @@ pub(crate) fn metadata(
 
     inc_pc(pc);
     Ok(())
+}
+
+fn output_asset_id_ptr(
+    tx: &impl ExecutableTransaction,
+    tx_offset: Word,
+    index: usize,
+) -> SimpleResult<Word> {
+    let offset = tx
+        .outputs()
+        .get(index)
+        .filter(|output| output.is_coin() || output.is_change())
+        .and_then(|output| output.repr().asset_id_offset())
+        .and_then(|field| {
+            tx.outputs_offset_at(index)
+                .map(|output| output.saturating_add(field))
+        })
+        .ok_or(PanicReason::OutputNotFound)?;
+    Ok(tx_offset.saturating_add(offset as Word))
 }
 
 struct GTFInput<'vm, Tx> {
@@ -211,6 +239,10 @@ impl<Tx> GTFInput<'_, Tx> {
             GTFArgs::PolicyMaxFee => tx
                 .policies()
                 .get(PolicyType::MaxFee)
+                .ok_or(PanicReason::PolicyIsNotSet)?,
+            GTFArgs::PolicyFeeAsset => tx
+                .policies()
+                .get(PolicyType::FeeAsset)
                 .ok_or(PanicReason::PolicyIsNotSet)?,
             GTFArgs::PolicyOwner => tx
                 .policies()
@@ -488,17 +520,7 @@ impl<Tx> GTFInput<'_, Tx> {
                 .filter(|o| o.is_coin())
                 .and_then(Output::amount)
                 .ok_or(PanicReason::OutputNotFound)?,
-            GTFArgs::OutputCoinAssetId => ofs.saturating_add(
-                tx.outputs()
-                    .get(b)
-                    .filter(|o| o.is_coin() || o.is_change())
-                    .map(Output::repr)
-                    .and_then(|r| r.asset_id_offset())
-                    .and_then(|ofs| {
-                        tx.outputs_offset_at(b).map(|o| o.saturating_add(ofs))
-                    })
-                    .ok_or(PanicReason::OutputNotFound)?,
-            ) as Word,
+            GTFArgs::OutputCoinAssetId => output_asset_id_ptr(tx, ofs as Word, b)?,
             GTFArgs::OutputContractInputIndex => {
                 tx.outputs()
                     .get(b)

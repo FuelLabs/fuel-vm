@@ -403,6 +403,7 @@ where
     }
 
     check_owner(tx)?;
+    tx.fee_asset_id(base_asset_id)?;
 
     let any_spendable_input = tx.inputs().iter().find(|input| match input {
         Input::CoinSigned(_)

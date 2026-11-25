@@ -198,6 +198,8 @@ pub mod script {
     pub struct CheckedMetadata {
         /// The base asset id.
         pub base_asset_id: AssetId,
+        /// Asset used to fund this transaction’s fees.
+        pub fee_asset_id: AssetId,
         /// See [`NonRetryableFreeBalances`].
         pub non_retryable_balances: NonRetryableFreeBalances,
         /// See [`RetryableAmount`].
@@ -229,6 +231,7 @@ pub mod script {
             } = initial_free_balances(&self, consensus_params.base_asset_id())?;
 
             let metadata = CheckedMetadata {
+                fee_asset_id: self.fee_asset_id(consensus_params.base_asset_id())?,
                 base_asset_id: *consensus_params.base_asset_id(),
                 non_retryable_balances: NonRetryableFreeBalances(non_retryable_balances),
                 retryable_balance: RetryableAmount {

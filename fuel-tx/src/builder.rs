@@ -397,6 +397,14 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self
     }
 
+    pub fn fee_asset(&mut self, output_index: u16) -> &mut Self {
+        self.tx.policies_mut().set(
+            crate::policies::PolicyType::FeeAsset,
+            Some(output_index.into()),
+        );
+        self
+    }
+
     pub fn owner(&mut self, owner: Word) -> &mut Self {
         self.tx.set_owner(owner);
 

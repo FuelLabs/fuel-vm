@@ -2,6 +2,8 @@ use crate::{
     FeeParameters,
     GasCosts,
     Input,
+    Output,
+    ValidityError,
     field,
     field::{
         MaxFeeLimit,
@@ -23,7 +25,10 @@ use crate::{
     policies::PolicyType,
 };
 use fuel_asm::Word;
-use fuel_types::canonical::Serialize;
+use fuel_types::{
+    AssetId,
+    canonical::Serialize,
+};
 use hashbrown::HashSet;
 
 #[derive(
@@ -121,7 +126,9 @@ impl TransactionFee {
     }
 }
 
-fn gas_to_fee(gas: Word, gas_price: Word, factor: Word) -> u128 {
+/// Converts gas units into the fee asset’s smallest unit, rounding up before the tip.
+/// The consensus gas price factor must be nonzero.
+pub fn gas_to_fee(gas: Word, gas_price: Word, factor: Word) -> u128 {
     let total_price = (gas as u128)
         .checked_mul(gas_price as u128)
         .expect("Impossible to overflow because multiplication of two `u64` <= `u128`");
@@ -149,6 +156,23 @@ where
 
 /// Means that the blockchain charges fee for the transaction.
 pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
+    /// Resolves the signed fee denomination and validates the referenced change output.
+    fn fee_asset_id(&self, base_asset_id: &AssetId) -> Result<AssetId, ValidityError>
+    where
+        Self: field::Outputs,
+    {
+        let Some(index) = self.policies().get(PolicyType::FeeAsset) else {
+            return Ok(*base_asset_id);
+        };
+        let index = u16::try_from(index)
+            .map_err(|_| ValidityError::TransactionFeeAssetIndexOutOfBounds)?;
+        match self.outputs().get(usize::from(index)) {
+            Some(Output::Change { asset_id, .. }) => Ok(*asset_id),
+            Some(_) => Err(ValidityError::TransactionFeeAssetOutputNotChange { index }),
+            None => Err(ValidityError::TransactionFeeAssetIndexOutOfBounds),
+        }
+    }
+
     /// Returns the minimum gas required to start transaction execution.
     fn min_gas(&self, gas_costs: &GasCosts, fee: &FeeParameters) -> Word {
         min_gas(self, gas_costs, fee)

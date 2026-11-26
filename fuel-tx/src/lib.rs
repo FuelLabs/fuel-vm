@@ -118,6 +118,7 @@ pub use transaction::{
     Witness,
     consensus_parameters,
     field,
+    gas_to_fee,
     input,
     input::Input,
     input::InputRepr,

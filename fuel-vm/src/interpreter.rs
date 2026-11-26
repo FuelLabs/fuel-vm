@@ -495,7 +495,7 @@ pub trait ExecutableTransaction:
     /// Update change and variable outputs.
     ///
     /// `revert` will signal if the execution was reverted. It will refund the unused gas
-    /// cost to the base asset and reset output changes to their `initial_balances`.
+    /// cost to the fee asset and reset output changes to their `initial_balances`.
     ///
     /// `remaining_gas` expects the raw content of `$ggas`
     ///
@@ -521,39 +521,23 @@ pub trait ExecutableTransaction:
             .refund_fee(gas_costs, fee_params, used_gas, gas_price)
             .ok_or(ValidityError::GasCostsCoinsOverflow)?;
 
+        let fee_asset_id = self.fee_asset_id(base_asset_id)?;
         self.outputs_mut().iter_mut().try_for_each(|o| match o {
-            // If revert, set base asset to initial balance and refund unused gas
-            //
-            // Note: the initial balance deducts the gas limit from base asset
-            Output::Change {
-                asset_id, amount, ..
-            } if revert && asset_id == base_asset_id => initial_balances.non_retryable
-                [base_asset_id]
-                .checked_add(gas_refund)
-                .map(|v| *amount = v)
-                .ok_or(ValidityError::BalanceOverflow),
-
-            // If revert, reset any non-base asset to its initial balance
-            Output::Change {
-                asset_id, amount, ..
-            } if revert => {
-                *amount = initial_balances.non_retryable[asset_id];
-                Ok(())
-            }
-
-            // The change for the base asset will be the available balance + unused gas
-            Output::Change {
-                asset_id, amount, ..
-            } if asset_id == base_asset_id => balances[asset_id]
-                .checked_add(gas_refund)
-                .map(|v| *amount = v)
-                .ok_or(ValidityError::BalanceOverflow),
-
-            // Set changes to the remainder provided balances
             Output::Change {
                 asset_id, amount, ..
             } => {
-                *amount = balances[asset_id];
+                let remaining = if revert {
+                    initial_balances.non_retryable[asset_id]
+                } else {
+                    balances[asset_id]
+                };
+                *amount = if *asset_id == fee_asset_id {
+                    remaining
+                        .checked_add(gas_refund)
+                        .ok_or(ValidityError::BalanceOverflow)?
+                } else {
+                    remaining
+                };
                 Ok(())
             }
 
@@ -670,11 +654,20 @@ pub struct InitialBalances {
 
 /// Methods that should be implemented by the checked metadata of supported transactions.
 pub trait CheckedMetadata {
+    /// The fee denomination for this checked transaction.
+    fn fee_asset_id(&self, base_asset_id: &AssetId) -> AssetId {
+        *base_asset_id
+    }
+
     /// Returns the initial balances from the checked metadata of the transaction.
     fn balances(&self) -> InitialBalances;
 }
 
 impl CheckedMetadata for ScriptCheckedMetadata {
+    fn fee_asset_id(&self, _: &AssetId) -> AssetId {
+        self.fee_asset_id
+    }
+
     fn balances(&self) -> InitialBalances {
         InitialBalances {
             non_retryable: self.non_retryable_balances.clone(),

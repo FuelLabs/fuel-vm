@@ -1200,6 +1200,33 @@ mod tests {
     }
 
     #[test]
+    fn max_fee_must_be_funded_in_the_selected_asset() {
+        let asset = AssetId::new([7; 32]);
+        let tx = TransactionBuilder::script(vec![], vec![])
+            .add_fee_input()
+            .add_input(Input::coin_signed(
+                Default::default(),
+                Default::default(),
+                4,
+                asset,
+                Default::default(),
+                0,
+            ))
+            .add_output(Output::change(Default::default(), 0, asset))
+            .fee_asset(0)
+            .max_fee_limit(5)
+            .finalize();
+        assert_eq!(
+            tx.into_checked_basic(Default::default(), &ConsensusParameters::standard())
+                .unwrap_err(),
+            CheckError::Validity(ValidityError::InsufficientFeeAmount {
+                expected: 5,
+                provided: 4
+            })
+        );
+    }
+
+    #[test]
     fn into_checked__tx_accepts_valid_signed_message_coin_for_fees() {
         // simple test to ensure a tx that only has a message input can cover fees
         let rng = &mut StdRng::seed_from_u64(2322u64);

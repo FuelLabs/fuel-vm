@@ -192,4 +192,8 @@ pub enum ValidityError {
     TransactionOwnerInputHasNoOwner {
         index: usize,
     },
+    TransactionFeeAssetIndexOutOfBounds,
+    TransactionFeeAssetOutputNotChange {
+        index: u16,
+    },
 }

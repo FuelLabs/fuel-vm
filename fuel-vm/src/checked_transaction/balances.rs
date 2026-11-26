@@ -39,7 +39,18 @@ where
         .policies()
         .get(PolicyType::MaxFee)
         .ok_or(ValidityError::TransactionMaxFeeNotSet)?;
-    deduct_max_fee_from_base_asset(&mut non_retryable_balances, base_asset_id, max_fee)?;
+    // Base change on revert excludes retryable message funds.
+    non_retryable_balances.entry(*base_asset_id).or_default();
+    let balance = non_retryable_balances
+        .entry(tx.fee_asset_id(base_asset_id)?)
+        .or_default();
+    *balance =
+        balance
+            .checked_sub(max_fee)
+            .ok_or(ValidityError::InsufficientFeeAmount {
+                expected: max_fee,
+                provided: *balance,
+            })?;
 
     reduce_free_balances_by_coin_outputs(&mut non_retryable_balances, tx)?;
 
@@ -87,22 +98,6 @@ fn add_up_input_balances<T: field::Inputs>(
     }
 
     Some((non_retryable_balances, retryable_balance))
-}
-
-fn deduct_max_fee_from_base_asset(
-    non_retryable_balances: &mut BTreeMap<AssetId, Word>,
-    base_asset_id: &AssetId,
-    max_fee: Word,
-) -> Result<(), ValidityError> {
-    let base_asset_balance = non_retryable_balances.entry(*base_asset_id).or_default();
-    *base_asset_balance = base_asset_balance.checked_sub(max_fee).ok_or(
-        ValidityError::InsufficientFeeAmount {
-            expected: max_fee,
-            provided: *base_asset_balance,
-        },
-    )?;
-
-    Ok(())
 }
 
 fn reduce_free_balances_by_coin_outputs(

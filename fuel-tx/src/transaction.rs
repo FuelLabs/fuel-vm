@@ -71,6 +71,7 @@ pub use consensus_parameters::{
 pub use fee::{
     Chargeable,
     TransactionFee,
+    gas_to_fee,
 };
 use fuel_types::bytes::Bytes;
 pub use metadata::Cacheable;

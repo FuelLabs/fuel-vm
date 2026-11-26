@@ -43,6 +43,8 @@ bitflags::bitflags! {
         const Expiration = 1 << 4;
         /// If set, the owner is present in the policies.
         const Owner = 1 << 5;
+        /// The index of the change output denominating the transaction fee.
+        const FeeAsset = 1 << 6;
     }
 }
 
@@ -92,6 +94,7 @@ pub enum PolicyType {
     MaxFee,
     Expiration,
     Owner,
+    FeeAsset,
 }
 
 impl PolicyType {
@@ -103,6 +106,7 @@ impl PolicyType {
             PolicyType::MaxFee => 3,
             PolicyType::Expiration => 4,
             PolicyType::Owner => 5,
+            PolicyType::FeeAsset => 6,
         }
     }
 
@@ -114,6 +118,7 @@ impl PolicyType {
             PolicyType::MaxFee => PoliciesBits::MaxFee,
             PolicyType::Expiration => PoliciesBits::Expiration,
             PolicyType::Owner => PoliciesBits::Owner,
+            PolicyType::FeeAsset => PoliciesBits::FeeAsset,
         }
     }
 }
@@ -191,6 +196,12 @@ impl Policies {
         self
     }
 
+    /// Pays fees in the asset named by this change output.
+    pub fn with_fee_asset(mut self, output_index: u16) -> Self {
+        self.set(PolicyType::FeeAsset, Some(output_index.into()));
+        self
+    }
+
     /// Returns a policy's value if the corresponding bit is set.
     pub fn get(&self, policy_type: PolicyType) -> Option<Word> {
         if self.bits.contains(policy_type.bit()) {
@@ -251,7 +262,8 @@ impl Policies {
             return false;
         }
 
-        true
+        self.get(PolicyType::FeeAsset)
+            .is_none_or(|index| u16::try_from(index).is_ok())
     }
 
     /// Helper function to generate values arrays based on the `PoliciesBits`.
@@ -703,7 +715,7 @@ pub mod typescript {
 fn values_for_bitmask_produces_expected_values() {
     const MAX_BITMASK: u32 = 1 << POLICIES_NUMBER;
     const VALUES: [Word; POLICIES_NUMBER] = [
-        0x1000001, 0x2000001, 0x3000001, 0x4000001, 0x5000001, 0x6000001,
+        0x1000001, 0x2000001, 0x3000001, 0x4000001, 0x5000001, 0x6000001, 7,
     ];
 
     // Given
@@ -724,7 +736,7 @@ fn values_for_bitmask_produces_expected_values() {
 fn canonical_serialization_deserialization_for_any_combination_of_values_works() {
     const MAX_BITMASK: u32 = 1 << POLICIES_NUMBER;
     const VALUES: [Word; POLICIES_NUMBER] = [
-        0x1000001, 0x2000001, 0x3000001, 0x4000001, 0x5000001, 0x6000001,
+        0x1000001, 0x2000001, 0x3000001, 0x4000001, 0x5000001, 0x6000001, 7,
     ];
 
     for bitmask in 0..MAX_BITMASK {
@@ -746,6 +758,8 @@ fn canonical_serialization_deserialization_for_any_combination_of_values_works()
 
         assert_eq!(policies, new_policies);
         assert_eq!(new_policies.bits.bits(), bitmask);
+        let bytes = postcard::to_allocvec(&policies).unwrap();
+        assert_eq!(postcard::from_bytes::<Policies>(&bytes).unwrap(), policies);
 
         for (index, bit) in PoliciesBits::all().iter().enumerate() {
             if policies.bits.contains(bit) {
@@ -776,7 +790,7 @@ fn serde_de_serialization_is_backward_compatible() {
     // Given
     let policies = Policies {
         bits: PoliciesBits::Maturity.union(PoliciesBits::MaxFee),
-        values: [0, 0, 20, 10, 0, 0],
+        values: [0, 0, 20, 10, 0, 0, 0],
     };
 
     assert_tokens(
@@ -855,7 +869,7 @@ fn serde_deserialization_new_format() {
         bits: PoliciesBits::Maturity
             .union(PoliciesBits::Expiration)
             .union(PoliciesBits::Owner),
-        values: [0, 0, 20, 0, 10, 3],
+        values: [0, 0, 20, 0, 10, 3, 0],
     };
 
     assert_tokens(

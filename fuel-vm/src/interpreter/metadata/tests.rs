@@ -23,6 +23,7 @@ fn test_metadata() {
     let mut result = 1;
     let imm = 0x03;
     metadata(
+        &Script::default(),
         &context,
         &frames,
         RegMut::new(&mut pc),
@@ -73,6 +74,7 @@ fn get_chain_id(context: Context, chain_id: u64) {
         frames.push(CallFrame::default());
     }
     metadata(
+        &Script::default(),
         &context,
         &frames,
         RegMut::new(&mut pc),
@@ -102,6 +104,7 @@ fn get_owner(context: Context, owner: Word) {
         frames.push(CallFrame::default());
     }
     metadata(
+        &Script::default(),
         &context,
         &frames,
         RegMut::new(&mut pc),
@@ -128,6 +131,7 @@ fn get_owner__panic_if_owner_if_not_set() {
 
     // When
     let result = metadata(
+        &Script::default(),
         &Context::Script {
             block_height: BlockHeight::default(),
         },
@@ -164,6 +168,7 @@ fn get_gas_price(context: Context, gas_price: u64, expected_res: SimpleResult<()
 
     // when
     let actual_res = metadata(
+        &Script::default(),
         &context,
         &frames,
         RegMut::new(&mut pc),

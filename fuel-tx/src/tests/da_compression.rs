@@ -488,6 +488,21 @@ where
 }
 
 #[tokio::test]
+async fn fee_asset_policy_survives_compression() {
+    use crate::{
+        Finalizable,
+        Output,
+        TransactionBuilder,
+    };
+    let tx = TransactionBuilder::script(vec![], vec![])
+        .add_fee_input()
+        .add_output(Output::change(Default::default(), 0, AssetId::BASE))
+        .fee_asset(0)
+        .finalize();
+    assert_can_decompress_compressed_transaction(core::iter::once(tx)).await;
+}
+
+#[tokio::test]
 async fn can_decompress_compressed_transaction_script() {
     let iter = TransactionFactory::<_, Script>::from_seed(1234).map(|(tx, _)| tx);
     assert_can_decompress_compressed_transaction(iter).await;

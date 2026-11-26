@@ -256,6 +256,31 @@ mod da_compression {
     }
 
     #[tokio::test]
+    async fn legacy_fee_transaction_keeps_its_wire_formats() {
+        // v0.66.4 serialized this transaction and its compressed form using TestContext.
+        let tx = latest_fuel_tx::TransactionBuilder::script(vec![], vec![])
+            .add_fee_input()
+            .max_fee_limit(1)
+            .expiration(100.into())
+            .owner(0)
+            .finalize_as_transaction();
+        let plain = include_bytes!("../fixtures/fee-policy-0.66.4.postcard");
+        assert_eq!(
+            postcard::from_bytes::<latest_fuel_tx::Transaction>(plain).unwrap(),
+            tx
+        );
+        assert_eq!(postcard::to_allocvec(&tx).unwrap(), plain.as_slice());
+
+        let compressed = tx.compress_with(&mut TestContext).await.unwrap();
+        let old = include_bytes!("../fixtures/fee-policy-0.66.4-compressed.postcard");
+        assert_eq!(
+            postcard::from_bytes::<latest_fuel_tx::CompressedTransaction>(old).unwrap(),
+            compressed
+        );
+        assert_eq!(postcard::to_allocvec(&compressed).unwrap(), old.as_slice());
+    }
+
+    #[tokio::test]
     async fn release_0_58_2_can_deserialize_compressed_latest() {
         // Given
         let mut context = TestContext;

@@ -39,6 +39,8 @@ where
         .policies()
         .get(PolicyType::MaxFee)
         .ok_or(ValidityError::TransactionMaxFeeNotSet)?;
+    // Base change on revert excludes retryable message funds.
+    non_retryable_balances.entry(*base_asset_id).or_default();
     let balance = non_retryable_balances
         .entry(tx.fee_asset_id(base_asset_id)?)
         .or_default();

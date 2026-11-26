@@ -4,6 +4,10 @@ use alloc::{
 };
 
 use crate::{
+    interpreter::{
+        CheckedMetadata,
+        RuntimeBalances,
+    },
     prelude::{
         field::Outputs,
         *,
@@ -108,6 +112,43 @@ fn correct_change_is_provided_for_coin_outputs_script() {
         .execute_get_change(asset_id);
 
     assert_eq!(change, input_amount - spend_amount);
+}
+
+#[rstest::rstest]
+fn change_with_retryable_base_and_separate_fee_asset(
+    #[values(false, true)] revert: bool,
+) {
+    let rng = &mut StdRng::seed_from_u64(2322);
+    let key = SecretKey::random(rng);
+    let fee_asset = AssetId::new([7; 32]);
+    let (mut tx, metadata) = TransactionBuilder::script(vec![], vec![])
+        .add_unsigned_coin_input(key, rng.r#gen(), 10, fee_asset, rng.r#gen())
+        .add_unsigned_message_input(key, rng.r#gen(), rng.r#gen(), 8, vec![1])
+        .add_output(Output::change(Default::default(), 0, fee_asset))
+        .add_output(Output::change(Default::default(), 0, AssetId::BASE))
+        .fee_asset(0)
+        .max_fee_limit(4)
+        .tip(1)
+        .finalize_checked(Default::default())
+        .into();
+
+    let initial = metadata.balances();
+    let balances = RuntimeBalances::try_from(initial.clone()).unwrap();
+    let params = ConsensusParameters::standard();
+    tx.update_outputs(
+        revert,
+        0,
+        &initial,
+        &balances,
+        params.gas_costs(),
+        params.fee_params(),
+        params.base_asset_id(),
+        0,
+    )
+    .unwrap();
+
+    assert_eq!(tx.outputs()[0].amount(), Some(9));
+    assert_eq!(tx.outputs()[1].amount(), Some(if revert { 0 } else { 8 }));
 }
 
 #[test]
